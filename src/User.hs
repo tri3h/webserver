@@ -1,63 +1,79 @@
 {-# LANGUAGE OverloadedStrings #-}
 module User where
 
-import Data.Text ( Text, pack, unpack )
-import qualified Database.User as Db
-import qualified Types.User.FullUser as F
-import qualified Types.User.ReceivedUser as R
-import qualified Types.User.SentUser as S
-import Data.Time.Clock
-import Crypto.Hash
-import Data.Text.Encoding 
+import Network.Wai
+import Network.HTTP.Types.Status
+import Network.HTTP.Types.Header
+import Network.HTTP.Types.URI
+import Data.Text.Lazy.Encoding ( encodeUtf8 )
+import Data.Text.Encoding ( decodeUtf8 )
+import qualified Data.Text.Lazy as LazyText
+import Data.Text ( Text, unpack )
+import Control.Monad
+import Data.ByteString.Lazy ( append )
+import Data.Aeson
 import System.Random
-import qualified Data.ByteString.Char8 as Char8
+import Data.Time.Clock
+import qualified Types.User.ReceivedUser as R
+import qualified Handler.User as Handler
+import qualified Database.User as Db
 
-create :: R.ReceivedUser -> IO (Either Text Text)
-create recUser = do 
-    isUnique <- Db.isLoginUnique $ R.login recUser
-    if isUnique 
-        then do 
-            token <- generateToken
-            time <- getCurrentTime
-            let date = pack . take 10 $ show time
-            let hashPassw = pack . show . hashWith SHA256 . encodeUtf8 $ R.password recUser
-            let user = F.FullUser {
-                F.name = R.name recUser,
-                F.surname = R.surname recUser,
-                F.avatar = R.avatar recUser,
-                F.login = R.login recUser,
-                F.password = hashPassw,
-                F.date = date,
-                F.admin = False,
-                F.token = token
+createUser :: Query -> IO Response
+createUser query = do
+    let name = join $ lookup "name" query
+    let surname = join $ lookup "surname" query
+    let avatar = join $ lookup "avatar" query
+    let login = join $ lookup "login" query
+    let password = join $ lookup "password" query
+    let arr = [name, surname, avatar, login, password]
+    if Nothing `notElem` arr
+        then do
+            let val' = map (decodeUtf8 . (\(Just a) -> a)) arr
+            let user = R.ReceivedUser {
+                    R.name = head val',
+                    R.surname = val' !! 1,
+                    R.avatar = val' !! 2,
+                    R.login = val' !! 3,
+                    R.password = val' !! 4
             }
-            isCreated <- Db.create user
-            if isCreated
-                then return $ Right token
-                else return $ Left "Failed to create user"
-        else return $ Left "Login is already taken"
+            result <- Handler.createUser handle user
+            case result of
+                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                Right r -> do
+                    let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict r) `append` "\"}"
+                    return $ responseLBS status200 [(hContentType, "application/json")] a
+        else return $ responseLBS status400 [] ""
 
-get :: Text -> IO S.SentUser
-get = Db.findByToken
 
-delete :: Text -> IO (Either Text ())
-delete user_id = do 
-    result <- Db.delete (read $ unpack user_id :: Integer)
-    if result 
-        then return $ Right ()
-        else return $ Left "Failed to delete user"
+getUser :: Query -> Text -> IO Response
+getUser query token = do
+            user <- Handler.getUser handle token
+            return $ responseLBS status200 [(hContentType, "application/json")] $ encode user
 
-generateToken :: IO Text
-generateToken = do 
-    number <- (randomIO :: IO Integer) 
-    let token = pack . show . hashWith SHA256 . Char8.pack $ show number
-    isUnique <- Db.isTokenUnique token
-    if isUnique
-        then return token
-        else generateToken
+deleteUser :: Query -> IO Response
+deleteUser query = do
+        let user_id = join $ lookup "user_id" query
+        case user_id of
+            Just u -> do
+                result <- Handler.deleteUser handle (read . unpack $ decodeUtf8 u :: Integer)
+                case result of
+                    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                    Right r -> return $ responseLBS status204 [] ""
+            Nothing -> return $ responseLBS status400 [] ""
 
-isTokenValid :: Text -> IO Bool
+isAdmin :: Handler.Token -> IO Bool
+isAdmin = Db.isAdmin
+
+isTokenValid :: Handler.Token -> IO Bool
 isTokenValid = Db.isTokenValid
 
-isAdmin :: Text -> IO Bool 
-isAdmin = Db.isAdmin 
+handle = Handler.Handle {
+    Handler.isLoginUnique = Db.isLoginUnique,
+    Handler.isTokenUnique = Db.isTokenUnique,
+    Handler.create = Db.create,
+    Handler.getUser = Db.findByToken,
+    Handler.delete = Db.delete,
+    Handler.getRandomNumber = randomIO,
+    Handler.getCurrentTime = do
+        show <$> getCurrentTime
+}
