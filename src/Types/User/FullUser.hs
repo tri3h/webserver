@@ -16,5 +16,5 @@ data FullUser = FullUser {
 
 type Login = Text
 type Token = Text 
-type UserID = Integer
+type UserId = Integer
 type Password = Text

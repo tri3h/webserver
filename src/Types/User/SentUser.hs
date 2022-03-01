@@ -6,6 +6,7 @@ import Data.Aeson
 import GHC.Generics
 
 data SentUser = SentUser {
+    userId :: Integer,
     name :: Text,
     surname :: Text,
     avatar :: Text,

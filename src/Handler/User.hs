@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Handler.User(Login, Token, UserID, Handle(..), createUser, deleteUser, getNewToken) where
+module Handler.User(Login, Token, UserId, Handle(..), createUser, deleteUser, getNewToken) where
 
 import Data.Text ( Text, pack, unpack )
 import Types.User.FullUser
@@ -14,7 +14,7 @@ data Handle m = Handle {
     isTokenUnique :: Token -> m Bool,
     create :: FullUser -> m Bool,
     getUser :: Token -> m S.SentUser,
-    delete :: UserID -> m Bool,
+    delete :: UserId -> m Bool,
     getRandomNumber :: m Integer,
     getCurrentTime :: m String,
     isLoginValid :: Login -> m Bool,
@@ -50,7 +50,7 @@ createUser handle recUser = do
                 else return $ Left "Failed to create user"
         else return $ Left "Login is already taken"
 
-deleteUser :: Monad m => Handle m -> UserID -> m (Either Text ())
+deleteUser :: Monad m => Handle m -> UserId -> m (Either Text ())
 deleteUser handle user_id = do 
     result <- delete handle user_id
     if result 

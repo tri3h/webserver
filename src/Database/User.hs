@@ -57,28 +57,29 @@ create user = do
     close conn
     return $ n == 1
 
-delete :: UserID -> IO Bool
-delete user_id = do 
+delete :: UserId -> IO Bool
+delete userId = do 
     conn <- connect defaultConnectInfo {connectDatabase = "webserver", connectPassword = "password"}
-    n <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only user_id)
+    n <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
     close conn
     return $ n == 1
 
-doesExist :: UserID -> IO Bool
-doesExist user_id = do
+doesExist :: UserId -> IO Bool
+doesExist userId = do
     conn <- connect defaultConnectInfo {connectDatabase = "webserver", connectPassword = "password"}
-    [Only n] <- query conn "SELECT COUNT(user_id) FROM users WHERE users.user_id = ?" (Only user_id)
+    [Only n] <- query conn "SELECT COUNT(user_id) FROM users WHERE users.user_id = ?" (Only userId)
     close conn
     return $ (n :: Integer) == 1
 
 findByToken :: Token -> IO S.SentUser
 findByToken token = do
     conn <- connect defaultConnectInfo {connectDatabase = "webserver", connectPassword = "password"}
-    [(name, surname, avatar, login, reg_date)] <- query conn 
-        "SELECT name, surname, avatar, login, registration_date FROM users WHERE users.token = ?" (Only token)
+    [(userId, name, surname, avatar, login, reg_date)] <- query conn 
+        "SELECT user_id, name, surname, avatar, login, registration_date FROM users WHERE users.token = ?" (Only token)
     close conn
     let date = pack $ show (reg_date :: Date)
-    return S.SentUser {S.name = name,
+    return S.SentUser { S.userId = userId, 
+                S.name = name,
                 S.surname = surname,
                 S.avatar = avatar,
                 S.login = login,
