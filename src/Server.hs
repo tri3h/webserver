@@ -39,7 +39,7 @@ makeNoTokenResponse req = case pathInfo req of
             ["users"] -> if requestMethod req == "POST"
                 then User.createUser $ queryString req
                 else return $ responseLBS status400 [] "No token"
-            ["auth"] -> undefined
+            ["tokens"] -> User.getNewToken $ queryString req
             _ -> return $ responseLBS status404 [] ""
 
 main :: IO ()

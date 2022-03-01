@@ -1,27 +1,29 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Handler.User(Login, Token, UserID, Handle(..), createUser, deleteUser) where
+module Handler.User(Login, Token, UserID, Handle(..), createUser, deleteUser, getNewToken) where
 
 import Data.Text ( Text, pack, unpack )
-import qualified Types.User.FullUser as F
+import Types.User.FullUser
 import qualified Types.User.ReceivedUser as R
 import qualified Types.User.SentUser as S
 import Crypto.Hash
 import Data.Text.Encoding 
 import qualified Data.ByteString.Char8 as Char8
 
-type Login = Text
-type Token = Text 
-type UserID = Integer
-
 data Handle m = Handle {
     isLoginUnique :: Login -> m Bool,
     isTokenUnique :: Token -> m Bool,
-    create :: F.FullUser -> m Bool,
+    create :: FullUser -> m Bool,
     getUser :: Token -> m S.SentUser,
     delete :: UserID -> m Bool,
     getRandomNumber :: m Integer,
-    getCurrentTime :: m String
+    getCurrentTime :: m String,
+    isLoginValid :: Login -> m Bool,
+    findPassword :: Login -> m Password,
+    updateToken :: Login -> Token -> m Bool
 }
+
+hashPassword :: Password -> Password
+hashPassword p = pack . show . hashWith SHA256 $ encodeUtf8 p
 
 createUser :: Monad m => Handle m -> R.ReceivedUser -> m (Either Text Text)
 createUser handle recUser = do 
@@ -31,16 +33,16 @@ createUser handle recUser = do
             token <- generateToken handle
             time <- getCurrentTime handle
             let date = pack $ take 10 time
-            let hashPassw = pack . show . hashWith SHA256 . encodeUtf8 $ R.password recUser
-            let user = F.FullUser {
-                F.name = R.name recUser,
-                F.surname = R.surname recUser,
-                F.avatar = R.avatar recUser,
-                F.login = R.login recUser,
-                F.password = hashPassw,
-                F.date = date,
-                F.admin = False,
-                F.token = token
+            let hashPassw = hashPassword $ R.password recUser
+            let user = FullUser {
+                name = R.name recUser,
+                surname = R.surname recUser,
+                avatar = R.avatar recUser,
+                login = R.login recUser,
+                password = hashPassw,
+                date = date,
+                admin = False,
+                token = token
             }
             isCreated <- create handle user
             if isCreated
@@ -54,6 +56,21 @@ deleteUser handle user_id = do
     if result 
         then return $ Right ()
         else return $ Left "Failed to delete user"
+
+getNewToken :: Monad m => Handle m -> Password -> Login -> m (Either Text Token)
+getNewToken handle login password = do
+    isValid <- isLoginValid handle login
+    if isValid 
+        then do 
+            oldPass <- findPassword handle login
+            let hash = hashPassword password
+            if hash == oldPass
+                then do
+                    newToken <- generateToken handle
+                    updateToken handle login newToken
+                    return $ Right newToken
+                else return $ Left "Invalid data"
+        else return $ Left "Invalid data"
 
 generateToken :: Monad m => Handle m -> m Text
 generateToken handle = do 

@@ -13,3 +13,8 @@ data FullUser = FullUser {
     admin :: Bool,
     token :: Text
 } deriving Show
+
+type Login = Text
+type Token = Text 
+type UserID = Integer
+type Password = Text

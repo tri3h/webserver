@@ -61,6 +61,22 @@ deleteUser query = do
                     Right r -> return $ responseLBS status204 [] ""
             Nothing -> return $ responseLBS status400 [] ""
 
+getNewToken :: Query -> IO Response
+getNewToken query = do 
+    let login = join $ lookup "login" query
+    let password = join $ lookup "password" query
+    let arr = [login, password]
+    if Nothing `notElem` arr
+        then do 
+            let val = map (decodeUtf8 . (\(Just a) -> a)) arr
+            result <- Handler.getNewToken handle (val !! 0) (val !! 1)
+            case result of
+                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                Right r -> do
+                    let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict r) `append` "\"}"
+                    return $ responseLBS status200 [(hContentType, "application/json")] a
+        else return $ responseLBS status400 [] ""
+
 isAdmin :: Handler.Token -> IO Bool
 isAdmin = Db.isAdmin
 
@@ -75,5 +91,8 @@ handle = Handler.Handle {
     Handler.delete = Db.delete,
     Handler.getRandomNumber = randomIO,
     Handler.getCurrentTime = do
-        show <$> getCurrentTime
+        show <$> getCurrentTime,
+    Handler.isLoginValid = Db.isLoginValid,
+    Handler.findPassword = Db.findPassword,
+    Handler.updateToken = Db.updateToken
 }
