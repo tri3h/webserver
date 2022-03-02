@@ -16,7 +16,8 @@ import System.Random
 import Data.Time.Clock
 import qualified Types.User.ReceivedUser as R
 import qualified Handler.User as Handler
-import qualified Database.User as Db
+import qualified Database.Queries.User as Db
+import Database.Connection
 
 createUser :: Query -> IO Response
 createUser query = do
@@ -62,12 +63,12 @@ deleteUser query = do
             Nothing -> return $ responseLBS status400 [] ""
 
 getNewToken :: Query -> IO Response
-getNewToken query = do 
+getNewToken query = do
     let login = join $ lookup "login" query
     let password = join $ lookup "password" query
     let arr = [login, password]
     if Nothing `notElem` arr
-        then do 
+        then do
             let val = map (decodeUtf8 . (\(Just a) -> a)) arr
             result <- Handler.getNewToken handle (val !! 0) (val !! 1)
             case result of
@@ -78,21 +79,21 @@ getNewToken query = do
         else return $ responseLBS status400 [] ""
 
 isAdmin :: Handler.Token -> IO Bool
-isAdmin = Db.isAdmin
+isAdmin = manage . Db.isAdmin
 
 isTokenValid :: Handler.Token -> IO Bool
-isTokenValid = Db.isTokenValid
+isTokenValid = manage . Db.isTokenValid
 
 handle = Handler.Handle {
-    Handler.isLoginUnique = Db.isLoginUnique,
-    Handler.isTokenUnique = Db.isTokenUnique,
-    Handler.create = Db.create,
-    Handler.getUser = Db.findByToken,
-    Handler.delete = Db.delete,
+    Handler.isLoginUnique= manage . Db.isLoginUnique,
+    Handler.isTokenUnique = manage . Db.isTokenUnique,
+    Handler.create = manage . Db.create,
+    Handler.getUser = manage . Db.findByToken,
+    Handler.delete = manage . Db.delete,
     Handler.getRandomNumber = randomIO,
     Handler.getCurrentTime = do
         show <$> getCurrentTime,
-    Handler.isLoginValid = Db.isLoginValid,
-    Handler.findPassword = Db.findPassword,
-    Handler.updateToken = Db.updateToken
+    Handler.isLoginValid = manage . Db.isLoginValid,
+    Handler.findPassword = manage . Db.findPassword,
+    Handler.updateToken = \ a b -> manage $ Db.updateToken a b 
 }

@@ -25,11 +25,15 @@ source-repository head
 
 library
   exposed-modules:
-      Database.User
+      Database.Connection
+      Database.Queries.Author
+      Database.Queries.User
+      Handler.Author
       Handler.Logger
       Handler.User
       Lib
       Server
+      Types.Author
       Types.User.FullUser
       Types.User.ReceivedUser
       Types.User.SentUser
@@ -42,6 +46,7 @@ library
       aeson
     , base >=4.7 && <5
     , bytestring
+    , configurator
     , cryptonite
     , http-types
     , postgresql-simple
@@ -63,6 +68,7 @@ executable webserver-exe
       aeson
     , base >=4.7 && <5
     , bytestring
+    , configurator
     , cryptonite
     , http-types
     , postgresql-simple
@@ -86,6 +92,7 @@ test-suite webserver-test
       aeson
     , base >=4.7 && <5
     , bytestring
+    , configurator
     , cryptonite
     , http-types
     , postgresql-simple
