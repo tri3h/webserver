@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      Author
       Database.Connection
       Database.Queries.Author
       Database.Queries.User
@@ -34,10 +35,9 @@ library
       Lib
       Server
       Types.Author
-      Types.User.FullUser
-      Types.User.ReceivedUser
-      Types.User.SentUser
+      Types.User
       User
+      Utility
   other-modules:
       Paths_webserver
   hs-source-dirs:

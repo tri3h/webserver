@@ -2,9 +2,7 @@
 module Handler.User(Login, Token, UserId, Handle(..), createUser, deleteUser, getNewToken) where
 
 import Data.Text ( Text, pack, unpack )
-import Types.User.FullUser
-import qualified Types.User.ReceivedUser as R
-import qualified Types.User.SentUser as S
+import Types.User
 import Crypto.Hash
 import Data.Text.Encoding 
 import qualified Data.ByteString.Char8 as Char8
@@ -12,8 +10,8 @@ import qualified Data.ByteString.Char8 as Char8
 data Handle m = Handle {
     isLoginUnique :: Login -> m Bool,
     isTokenUnique :: Token -> m Bool,
-    create :: FullUser -> m Bool,
-    getUser :: Token -> m S.SentUser,
+    create :: User -> m Bool,
+    getUser :: Token -> m User,
     delete :: UserId -> m Bool,
     getRandomNumber :: m Integer,
     getCurrentTime :: m String,
@@ -25,20 +23,20 @@ data Handle m = Handle {
 hashPassword :: Password -> Password
 hashPassword p = pack . show . hashWith SHA256 $ encodeUtf8 p
 
-createUser :: Monad m => Handle m -> R.ReceivedUser -> m (Either Text Text)
+createUser :: Monad m => Handle m -> User -> m (Either Text Text)
 createUser handle recUser = do 
-    isUnique <- isLoginUnique handle $ R.login recUser
+    isUnique <- isLoginUnique handle $ login recUser
     if isUnique 
         then do 
             token <- generateToken handle
             time <- getCurrentTime handle
             let date = pack $ take 10 time
-            let hashPassw = hashPassword $ R.password recUser
+            let hashPassw = hashPassword $ password recUser
             let user = FullUser {
-                name = R.name recUser,
-                surname = R.surname recUser,
-                avatar = R.avatar recUser,
-                login = R.login recUser,
+                name = name recUser,
+                surname = surname recUser,
+                avatar = avatar recUser,
+                login = login recUser,
                 password = hashPassw,
                 date = date,
                 admin = False,

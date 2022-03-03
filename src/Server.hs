@@ -2,6 +2,7 @@
 module Server where
 
 import qualified User
+import qualified Author
 import Network.Wai.Handler.Warp
 import Network.Wai
 import Network.HTTP.Types.Status
@@ -24,6 +25,12 @@ makeAdminResponse req = do
                 case pathInfo req of
                     ["users"] -> case requestMethod req of
                         "DELETE" -> User.deleteUser query
+                        _ -> return $ responseLBS status404 [] ""
+                    ["authors"] -> case requestMethod req of 
+                        "POST" -> Author.create query 
+                        "PUT" -> Author.edit query 
+                        "GET" -> Author.get query
+                        "DELETE" -> Author.delete query 
                         _ -> return $ responseLBS status404 [] ""
                     _ -> return $ responseLBS status404 [] ""
 

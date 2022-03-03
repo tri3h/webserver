@@ -14,7 +14,7 @@ import Data.ByteString.Lazy ( append )
 import Data.Aeson
 import System.Random
 import Data.Time.Clock
-import qualified Types.User.ReceivedUser as R
+import Types.User
 import qualified Handler.User as Handler
 import qualified Database.Queries.User as Db
 import Database.Connection
@@ -30,12 +30,12 @@ createUser query = do
     if Nothing `notElem` arr
         then do
             let val' = map (decodeUtf8 . (\(Just a) -> a)) arr
-            let user = R.ReceivedUser {
-                    R.name = head val',
-                    R.surname = val' !! 1,
-                    R.avatar = val' !! 2,
-                    R.login = val' !! 3,
-                    R.password = val' !! 4
+            let user = CreateUser {
+                    name = head val',
+                    surname = val' !! 1,
+                    avatar = val' !! 2,
+                    login = val' !! 3,
+                    password = val' !! 4
             }
             result <- Handler.createUser handle user
             case result of
@@ -88,7 +88,7 @@ handle = Handler.Handle {
     Handler.isLoginUnique= manage . Db.isLoginUnique,
     Handler.isTokenUnique = manage . Db.isTokenUnique,
     Handler.create = manage . Db.create,
-    Handler.getUser = manage . Db.findByToken,
+    Handler.getUser = manage . Db.get,
     Handler.delete = manage . Db.delete,
     Handler.getRandomNumber = randomIO,
     Handler.getCurrentTime = do

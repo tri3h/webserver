@@ -5,8 +5,7 @@ import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.Time (Date)
 import Data.Text
 import Control.Monad
-import qualified Types.User.SentUser as S
-import Types.User.FullUser
+import Types.User
 
 isLoginUnique :: Login -> Connection ->  IO Bool
 isLoginUnique login conn = do
@@ -33,7 +32,7 @@ isAdmin token conn = do
     [Only admin] <- query conn "SELECT admin FROM users WHERE users.token = ?" (Only token)
     return admin
 
-create :: FullUser -> Connection -> IO Bool
+create :: User -> Connection -> IO Bool
 create user conn = do
     n <- execute conn "INSERT INTO users (name, surname, avatar, login, password, registration_date, admin, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)" 
         (name user, surname user, avatar user, login user, password user, date user, admin user, token user)
@@ -44,22 +43,22 @@ delete userId conn = do
     n <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
     return $ n == 1
 
+get :: Token -> Connection -> IO User
+get token conn = do
+    [(userId, name, surname, avatar, login, reg_date)] <- query conn 
+        "SELECT user_id, name, surname, avatar, login, registration_date FROM users WHERE users.token = ?" (Only token)
+    let date = pack $ show (reg_date :: Date)
+    return GetUser { userId = userId, 
+                name = name,
+                surname = surname,
+                avatar = avatar,
+                login = login,
+                date = date}
+
 doesExist :: UserId -> Connection -> IO Bool
 doesExist userId conn = do
     [Only n] <- query conn "SELECT COUNT(user_id) FROM users WHERE users.user_id = ?" (Only userId)
     return $ (n :: Integer) == 1
-
-findByToken :: Token -> Connection -> IO S.SentUser
-findByToken token conn = do
-    [(userId, name, surname, avatar, login, reg_date)] <- query conn 
-        "SELECT user_id, name, surname, avatar, login, registration_date FROM users WHERE users.token = ?" (Only token)
-    let date = pack $ show (reg_date :: Date)
-    return S.SentUser { S.userId = userId, 
-                S.name = name,
-                S.surname = surname,
-                S.avatar = avatar,
-                S.login = login,
-                S.date = date}
 
 findPassword :: Login -> Connection -> IO Password
 findPassword login conn = do 
