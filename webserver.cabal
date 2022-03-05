@@ -28,13 +28,17 @@ library
       Author
       Database.Connection
       Database.Queries.Author
+      Database.Queries.Tag
       Database.Queries.User
       Handler.Author
       Handler.Logger
+      Handler.Tag
       Handler.User
       Lib
       Server
+      Tag
       Types.Author
+      Types.Tag
       Types.User
       User
       Utility

@@ -3,6 +3,7 @@ module Server where
 
 import qualified User
 import qualified Author
+import qualified Tag
 import Network.Wai.Handler.Warp
 import Network.Wai
 import Network.HTTP.Types.Status
@@ -16,6 +17,9 @@ makeUserResponse req token = do
                 case pathInfo req of
                     ["users"] -> case requestMethod req of
                         "GET" -> User.getUser query token
+                        _ -> return $ responseLBS status404 [] ""
+                    ["tags"] -> case requestMethod req of 
+                        "GET" -> Tag.get query
                         _ -> return $ responseLBS status404 [] ""
                     _ -> return $ responseLBS status404 [] ""
 
@@ -31,6 +35,11 @@ makeAdminResponse req = do
                         "PUT" -> Author.edit query 
                         "GET" -> Author.get query
                         "DELETE" -> Author.delete query 
+                        _ -> return $ responseLBS status404 [] ""
+                    ["tags"] -> case requestMethod req of 
+                        "POST" -> Tag.create query 
+                        "PUT" -> Tag.edit query 
+                        "DELETE" -> Tag.delete query 
                         _ -> return $ responseLBS status404 [] ""
                     _ -> return $ responseLBS status404 [] ""
 
