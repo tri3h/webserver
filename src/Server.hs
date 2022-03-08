@@ -4,6 +4,7 @@ module Server where
 import qualified User
 import qualified Author
 import qualified Tag
+import qualified Category
 import Network.Wai.Handler.Warp
 import Network.Wai
 import Network.HTTP.Types.Status
@@ -11,20 +12,8 @@ import Data.Text.Encoding ( decodeUtf8 )
 import Data.Text ( Text )
 import Control.Monad
 
-makeUserResponse :: Request -> Text -> IO Response
-makeUserResponse req token = do
-                let query = queryString req
-                case pathInfo req of
-                    ["users"] -> case requestMethod req of
-                        "GET" -> User.getUser query token
-                        _ -> return $ responseLBS status404 [] ""
-                    ["tags"] -> case requestMethod req of 
-                        "GET" -> Tag.get query
-                        _ -> return $ responseLBS status404 [] ""
-                    _ -> return $ responseLBS status404 [] ""
-
-makeAdminResponse :: Request -> IO Response
-makeAdminResponse req = do
+makeAdminResponse :: Request -> Text -> IO Response
+makeAdminResponse req token = do
                 let query = queryString req
                 case pathInfo req of
                     ["users"] -> case requestMethod req of
@@ -41,14 +30,31 @@ makeAdminResponse req = do
                         "PUT" -> Tag.edit query 
                         "DELETE" -> Tag.delete query 
                         _ -> return $ responseLBS status404 [] ""
+                    ["categories"] -> case requestMethod req of 
+                        "POST" -> Category.create query 
+                        "PUT" -> Category.edit query 
+                        "DELETE" -> Category.delete query 
+                        _ -> return $ responseLBS status404 [] ""
                     _ -> return $ responseLBS status404 [] ""
 
 makeTokenResponse :: Request -> Text -> IO Response
 makeTokenResponse req token = do
-                                isAdmin <- User.isAdmin token
-                                if isAdmin
-                                    then makeAdminResponse req
-                                    else makeUserResponse req token
+                    isAdmin <- User.isAdmin token
+                    let query = queryString req
+                    case pathInfo req of
+                        ["users"] -> case requestMethod req of
+                            "GET" -> User.getUser query token
+                            _ -> f isAdmin
+                        ["tags"] -> case requestMethod req of 
+                            "GET" -> Tag.get query
+                            _ -> f isAdmin
+                        ["categories"] -> case requestMethod req of 
+                            "GET" -> Category.get query
+                            _ -> f isAdmin
+                        _ -> f isAdmin
+            where f isAdmin = if isAdmin
+                                    then makeAdminResponse req token
+                                    else return $ responseLBS status404 [] ""
 
 makeNoTokenResponse :: Request -> IO Response
 makeNoTokenResponse req = case pathInfo req of

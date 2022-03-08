@@ -26,11 +26,14 @@ source-repository head
 library
   exposed-modules:
       Author
+      Category
       Database.Connection
       Database.Queries.Author
+      Database.Queries.Category
       Database.Queries.Tag
       Database.Queries.User
       Handler.Author
+      Handler.Category
       Handler.Logger
       Handler.Tag
       Handler.User
@@ -38,6 +41,7 @@ library
       Server
       Tag
       Types.Author
+      Types.Category
       Types.Tag
       Types.User
       User
