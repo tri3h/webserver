@@ -47,9 +47,8 @@ editCategory handle cat = do
                 Nothing -> return True
                 Just b -> do 
                     doesExist <- doesExist handle b
-                    parents <- getParents handle $ categoryId cat
-                    children <- getChildren handle b
-                    return $ doesExist && (b /= categoryId cat) && (b `notElem` parents) && (b `notElem` children)
+                    children <- getChildren handle $ categoryId cat
+                    return $ doesExist && (b `notElem` children)
         if a 
             then do 
             res <- edit handle cat 

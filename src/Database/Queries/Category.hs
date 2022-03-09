@@ -3,7 +3,7 @@ module Database.Queries.Category where
 
 import Database.PostgreSQL.Simple
 import Types.Category
-import Data.Text
+import Control.Monad
 
 create :: Category -> Connection -> IO Bool
 create cat conn = do
@@ -37,32 +37,13 @@ doesExist catId conn = do
 
 getParents :: CategoryId -> Connection -> IO [CategoryId]
 getParents catId conn = do 
-    [x] <- query conn "WITH RECURSIVE parents AS ( SELECT category_id, parent_id FROM categories WHERE category_id = ? UNION SELECT c.category_id, c.parent_id FROM categories c, parents p WHERE c.category_id = p.parent_id) SELECT category_id FROM parents" (Only catId)        
-    return x
+    xs <- query conn "WITH RECURSIVE parents AS (SELECT category_id, parent_id FROM categories WHERE category_id = ? UNION SELECT c.category_id, c.parent_id FROM categories c, parents p WHERE c.category_id = p.parent_id) SELECT category_id FROM parents" (Only catId)
+    let xs' = map (\(Only x) -> x) xs
+    return xs'
 
 getChildren :: CategoryId -> Connection -> IO [CategoryId]
 getChildren parId conn = do 
-    [x] <- query conn "WITH RECURSIVE parents AS (SELECT category_id, parent_id FROM categories WHERE parent_id = ? UNION SELECT c.category_id, c.parent_id FROM categories c, parents p WHERE p.category_id = c.parent_id) SELECT category_id FROM parents;" (Only parId)        
-    return x
+    xs <- query conn "WITH RECURSIVE children AS (SELECT category_id, parent_id FROM categories WHERE parent_id = ? UNION SELECT c.category_id, c.parent_id FROM categories c, children ch WHERE ch.category_id = c.parent_id) SELECT category_id FROM children" (Only parId)        
+    let xs' = map (\(Only x) -> x) xs
+    return xs'
 
-{-
-
-getChildren catId conn = 
-
-
-WITH RECURSIVE parents AS (
-    SELECT category_id, parent_id FROM categories WHERE parent_id = 18
-    UNION ALL
-    SELECT c.category_id, c.parent_id FROM categories c, parents p WHERE p.category_id = c.parent_id
-)
-SELECT category_id FROM parents;
-
-
-
-WITH RECURSIVE parents AS 
-( SELECT category_id, parent_id FROM categories WHERE category_id = ? 
-UNION SELECT c.category_id, c.parent_id FROM categories c, parents p 
-WHERE c.category_id = p.parent_id) 
-SELECT category_id FROM parents;
-
--}

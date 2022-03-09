@@ -30,6 +30,7 @@ library
       Database.Connection
       Database.Queries.Author
       Database.Queries.Category
+      Database.Queries.Post
       Database.Queries.Tag
       Database.Queries.User
       Handler.Author
