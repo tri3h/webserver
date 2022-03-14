@@ -3,7 +3,6 @@ module Category where
 
 import Utility
 import Types.Category
-import Database.Queries.Category
 import qualified Handler.Category as Handler
 import qualified Database.Queries.Category as Db
 import Database.Connection
@@ -78,6 +77,5 @@ handle = Handler.Handle {
     Handler.delete = manage . Db.delete,
     Handler.edit = manage . Db.edit,
     Handler.doesExist = manage . Db.doesExist,
-    Handler.getParents = manage . Db.getParents,
     Handler.getChildren = manage . Db.getChildren
 }

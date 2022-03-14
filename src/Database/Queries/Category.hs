@@ -38,8 +38,7 @@ doesExist catId conn = do
 getParents :: CategoryId -> Connection -> IO [CategoryId]
 getParents catId conn = do 
     xs <- query conn "WITH RECURSIVE parents AS (SELECT category_id, parent_id FROM categories WHERE category_id = ? UNION SELECT c.category_id, c.parent_id FROM categories c, parents p WHERE c.category_id = p.parent_id) SELECT category_id FROM parents" (Only catId)
-    let xs' = map (\(Only x) -> x) xs
-    return xs'
+    return $ map fromOnly xs
 
 getChildren :: CategoryId -> Connection -> IO [CategoryId]
 getChildren parId conn = do 

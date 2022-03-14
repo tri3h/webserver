@@ -4,7 +4,6 @@ module Database.Queries.User where
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.Time (Date)
 import Data.Text
-import Control.Monad
 import Types.User
 
 isLoginUnique :: Login -> Connection ->  IO Bool

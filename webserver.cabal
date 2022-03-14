@@ -36,13 +36,17 @@ library
       Handler.Author
       Handler.Category
       Handler.Logger
+      Handler.Post
       Handler.Tag
       Handler.User
       Lib
+      Post
       Server
       Tag
       Types.Author
       Types.Category
+      Types.Filter
+      Types.Post
       Types.Tag
       Types.User
       User

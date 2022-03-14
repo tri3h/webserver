@@ -10,7 +10,6 @@ data Handle m = Handle {
     delete :: CategoryId -> m Bool,
     edit :: Category -> m Bool,
     doesExist :: CategoryId -> m Bool,
-    getParents :: CategoryId -> m [CategoryId],
     getChildren :: CategoryId -> m [CategoryId]
 }
 

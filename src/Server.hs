@@ -5,6 +5,7 @@ import qualified User
 import qualified Author
 import qualified Tag
 import qualified Category
+import qualified Post
 import Network.Wai.Handler.Warp
 import Network.Wai
 import Network.HTTP.Types.Status
@@ -50,6 +51,9 @@ makeTokenResponse req token = do
                             _ -> f isAdmin
                         ["categories"] -> case requestMethod req of 
                             "GET" -> Category.get query
+                            _ -> f isAdmin
+                        ["posts"] -> case requestMethod req of 
+                            "GET" -> Post.get query
                             _ -> f isAdmin
                         _ -> f isAdmin
             where f isAdmin = if isAdmin
