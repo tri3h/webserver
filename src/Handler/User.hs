@@ -6,6 +6,7 @@ import Types.User
 import Crypto.Hash
 import Data.Text.Encoding 
 import qualified Data.ByteString.Char8 as Char8
+import Data.ByteString (ByteString)
 
 data Handle m = Handle {
     isLoginUnique :: Login -> m Bool,

@@ -58,6 +58,7 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , base64-bytestring
     , bytestring
     , configurator
     , cryptonite
@@ -80,6 +81,7 @@ executable webserver-exe
   build-depends:
       aeson
     , base >=4.7 && <5
+    , base64-bytestring
     , bytestring
     , configurator
     , cryptonite
@@ -104,6 +106,7 @@ test-suite webserver-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , base64-bytestring
     , bytestring
     , configurator
     , cryptonite

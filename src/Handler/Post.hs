@@ -42,9 +42,9 @@ getPost handle params order = do
     r12 <- applyFilter (F.substring params) (filterBySubstring handle)
     let common = chooseCommon $ filter (not . null) [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12]
     orderedCommon <- applyOrder [F.date order, F.author order,
-                        F.category order, F.photosNumber order] common [orderByDate handle,
-                        orderByAuthor handle, orderByCategory handle,
-                        orderByPhotosNumber handle]
+                        F.category order, F.photosNumber order] common 
+                        [orderByDate handle,orderByAuthor handle, 
+                        orderByCategory handle, orderByPhotosNumber handle]
     if null orderedCommon
         then return $ Left "No posts with such parameters"
         else Right <$> get handle orderedCommon

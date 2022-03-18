@@ -24,9 +24,9 @@ data User = FullUser {
 } | CreateUser {
     name :: Text,
     surname :: Text,
-    avatar :: Text,
     login :: Text,
-    password :: Text
+    password :: Text,
+    avatar :: Text
 } deriving (Show, Generic)
 
 type Login = Text
