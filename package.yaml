@@ -32,7 +32,6 @@ dependencies:
 - bytestring
 - aeson
 - configurator
-- base64-bytestring
 
 library:
   source-dirs: src

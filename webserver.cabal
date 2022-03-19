@@ -27,14 +27,17 @@ library
   exposed-modules:
       Author
       Category
+      Comment
       Database.Connection
       Database.Queries.Author
       Database.Queries.Category
+      Database.Queries.Comment
       Database.Queries.Post
       Database.Queries.Tag
       Database.Queries.User
       Handler.Author
       Handler.Category
+      Handler.Comment
       Handler.Logger
       Handler.Post
       Handler.Tag
@@ -45,6 +48,7 @@ library
       Tag
       Types.Author
       Types.Category
+      Types.Comment
       Types.Filter
       Types.Post
       Types.Tag
@@ -58,7 +62,6 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
-    , base64-bytestring
     , bytestring
     , configurator
     , cryptonite
@@ -81,7 +84,6 @@ executable webserver-exe
   build-depends:
       aeson
     , base >=4.7 && <5
-    , base64-bytestring
     , bytestring
     , configurator
     , cryptonite
@@ -106,7 +108,6 @@ test-suite webserver-test
   build-depends:
       aeson
     , base >=4.7 && <5
-    , base64-bytestring
     , bytestring
     , configurator
     , cryptonite

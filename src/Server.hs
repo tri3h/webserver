@@ -6,6 +6,7 @@ import qualified Author
 import qualified Tag
 import qualified Category
 import qualified Post
+import qualified Comment
 import Network.Wai.Handler.Warp
 import Network.Wai
 import Network.HTTP.Types.Status
@@ -38,6 +39,9 @@ makeAdminResponse req token = do
                         "PUT" -> Category.edit query 
                         "DELETE" -> Category.delete query 
                         _ -> return $ responseLBS status404 [] ""
+                    ["comments"] -> case requestMethod req of 
+                        "DELETE" -> Comment.delete query
+                        _ -> return $ responseLBS status404 [] ""
                     _ -> return $ responseLBS status404 [] ""
 
 makeTokenResponse :: Request -> Text -> IO Response
@@ -57,6 +61,13 @@ makeTokenResponse req token = do
                         ["posts"] -> case requestMethod req of 
                             "GET" -> Post.get query
                             _ -> f isAdmin
+                        ["pictures"] -> case requestMethod req of 
+                                "GET" -> User.getAvatar $ queryString req
+                                _ -> return $ responseLBS status404 [] ""
+                        ["comments"] -> case requestMethod req of 
+                                "GET" -> Comment.get query
+                                "POST" -> Comment.create query 
+                                _ -> f isAdmin
                         _ -> f isAdmin
             where f isAdmin = if isAdmin
                                     then makeAdminResponse req token
@@ -70,9 +81,6 @@ makeNoTokenResponse req = case pathInfo req of
                     User.createUser (queryString req) body
                 else return $ responseLBS status400 [] "No token"
             ["tokens"] -> User.getNewToken $ queryString req
-            ["pictures"] -> case requestMethod req of 
-                "GET" -> User.getAvatar $ queryString req
-                _ -> return $ responseLBS status404 [] ""
             _ -> return $ responseLBS status404 [] ""
 
 getFullBody :: Request -> BS.ByteString -> IO BS.ByteString
