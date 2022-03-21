@@ -8,6 +8,7 @@ import Types.Author
 import Types.Category 
 import Types.User 
 import Types.Tag
+import Types.Comment
 
 data Post = PartialPost {
     postId :: Integer,
@@ -22,7 +23,7 @@ data Post = PartialPost {
     user :: User,
     category :: [Category],
     tag :: [Tag],
-    --commentary :: [Commentary]
+    comment :: [Comment],
     postId :: Integer,
     name :: Text,
     date :: Text,

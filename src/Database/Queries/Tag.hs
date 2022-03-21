@@ -3,7 +3,8 @@ module Database.Queries.Tag where
 
 import Database.PostgreSQL.Simple
 import Types.Tag
-import Data.Text
+import Types.Post(PostId)
+import Data.Text(Text)
 
 create :: Tag -> Connection -> IO Bool
 create tag conn = do
@@ -21,6 +22,15 @@ get tagId conn = do
         "SELECT tag_id, name FROM tags WHERE tags.tag_id = ?" (Only tagId)
     return EditTag { tagId = tagId,
                     name = name}
+
+getByPostId :: PostId -> Connection -> IO [Tag]
+getByPostId postId conn = do
+    xs <- query conn 
+        "SELECT t.tag_id, t.name FROM tags t INNER JOIN post_tags pt \
+        \ON t.tag_id = pt.tag_id WHERE pt.post_id = ?" (Only postId)
+    let xs' = map (\(tagId, name) -> EditTag { tagId = tagId,
+                                                name = name}) xs
+    return xs'
 
 edit :: Tag -> Connection -> IO Bool
 edit tag conn = do 

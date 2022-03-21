@@ -25,7 +25,6 @@ createAuthor handle author = do
                 else return $ Left "Author was not created"
         else return $ Left "User with such id doesn't exist"
 
-
 getAuthor :: Monad m => Handle m -> AuthorId -> m (Either Text Author)
 getAuthor handle authorId = do
     exist <- doesExist handle authorId

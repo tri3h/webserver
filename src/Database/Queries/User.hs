@@ -58,6 +58,19 @@ get token conn = do
                 login = login,
                 date = pack $ show (regDate :: Date)}
 
+getByUserId :: UserId -> Connection -> IO User
+getByUserId userId conn = do 
+    server <- serverAddress
+    [(userId, name, surname, picId, login, regDate)] <- query conn
+        "SELECT user_id, name, surname, picture_id, login, registration_date FROM users \
+        \ WHERE users.user_id = ?" (Only userId)
+    return GetUser { userId = userId,
+                name = name,
+                surname = surname,
+                avatar = server `append` "/pictures?picture_id=" `append` pack (show (picId :: Integer)),
+                login = login,
+                date = pack $ show (regDate :: Date)}
+
 getAvatar :: Text -> Connection -> IO Text
 getAvatar picId conn = do
     [Only picture] <- query conn "SELECT encode(picture,'base64') AS picture FROM \

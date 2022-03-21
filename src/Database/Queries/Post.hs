@@ -9,12 +9,14 @@ import qualified Types.Author as Author
 import qualified Types.Category as Category
 import qualified Types.User as User
 import Control.Monad
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, append)
+import Database.Connection
 
 get :: [PostId] -> Connection -> IO [Post]
 get postId conn = do
+    server <- serverAddress
     result <- query conn "SELECT p.post_id, p.author_id, p.category_id, \
-    \p.name, p.date, p.text, p.main_photo \
+    \p.name, p.date, p.text, p.picture_id \
     \FROM posts p WHERE p.post_id IN ?" (Only $ In postId)
     let posts = map (\(postId, authorId, categoryId, name, date, text, mainPhoto) -> PartialPost {
         postId = postId,
@@ -23,8 +25,15 @@ get postId conn = do
         name = name,
         date = pack $ show (date :: Date),
         text = text,
-        mainPhoto = mainPhoto} ) result
+        mainPhoto = server `append` "/pictures?picture_id=" `append` pack (show (mainPhoto :: Integer))} ) result
     return posts
+
+getMinorPhotos :: PostId -> Connection -> IO [Text]
+getMinorPhotos postId conn = do 
+    server <- serverAddress
+    xs <- query conn "SELECT picture_id FROM minor_photos WHERE post_id = ?" (Only postId)
+    let xs' = map (\(Only x) -> server `append` "/pictures?picture_id=" `append` pack (show (x :: Integer))) xs
+    return xs'
 
 filterByDateBefore :: Text -> Connection -> IO [PostId]
 filterByDateBefore date conn = do

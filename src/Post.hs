@@ -6,6 +6,11 @@ import Types.Post
 import qualified Types.Filter as F
 import qualified Handler.Post as Handler
 import qualified Database.Queries.Post as Db
+import qualified Database.Queries.Author as AuthorDb
+import qualified Database.Queries.User as UserDb 
+import qualified Database.Queries.Category as CategoryDb
+import qualified Database.Queries.Tag as TagDb
+import qualified Database.Queries.Comment as CommentDb
 import Database.Connection
 import Data.Aeson
 import Network.Wai
@@ -55,6 +60,14 @@ get query = do
 handle :: Handler.Handle IO
 handle = Handler.Handle {
     Handler.get = manage . Db.get,
+    Handler.getMinorPhotos = manage . Db.getMinorPhotos,
+    Handler.getAuthor = manage . AuthorDb.get,
+    Handler.getUser = manage . UserDb.getByUserId,
+    Handler.getCategory = \catId -> do 
+        parents <- manage $ CategoryDb.getParents catId
+        mapM (manage . CategoryDb.get) parents,
+    Handler.getTag = manage . TagDb.getByPostId,
+    Handler.getComment = manage . CommentDb.get,
     Handler.filterByDateBefore = manage . Db.filterByDateBefore,
     Handler.filterByDateAfter = manage . Db.filterByDateAfter,
     Handler.filterByDateAt = manage . Db.filterByDateAt,
