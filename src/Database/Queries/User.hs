@@ -5,6 +5,7 @@ import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.Time (Date)
 import Data.Text
 import Types.User
+import Types.Image
 import Database.Connection
 
 
@@ -35,9 +36,11 @@ isAdmin token conn = do
 
 create :: User -> Connection -> IO Bool
 create user conn = do
-    [Only pictureId] <- query conn "INSERT INTO pictures (picture) VALUES (decode(?,'base64')) RETURNING picture_id" (Only $ avatar user)
-    n <- execute conn "INSERT INTO users (name, surname, picture_id, login, password, registration_date, admin, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        (name user, surname user, pictureId :: Integer, login user, password user, date user, admin user, token user)
+    [Only imageId] <- query conn "INSERT INTO images (image) VALUES (decode(?,'base64')) \
+    \RETURNING image_id" (Only $ avatar user)
+    n <- execute conn "INSERT INTO users (name, surname, image_id, \
+    \login, password, registration_date, admin, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        (name user, surname user, imageId :: Integer, login user, password user, date user, admin user, token user)
     return $ n == 1
 
 delete :: UserId -> Connection -> IO Bool
@@ -48,34 +51,28 @@ delete userId conn = do
 get :: Token -> Connection -> IO User
 get token conn = do
     server <- serverAddress
-    [(userId, name, surname, picId, login, regDate)] <- query conn
-        "SELECT user_id, name, surname, picture_id, login, registration_date FROM users \
+    [(userId, name, surname, imageId, login, regDate)] <- query conn
+        "SELECT user_id, name, surname, image_id, login, registration_date FROM users \
         \ WHERE users.token = ?" (Only token)
     return GetUser { userId = userId,
                 name = name,
                 surname = surname,
-                avatar = server `append` "/pictures?picture_id=" `append` pack (show (picId :: Integer)),
+                avatar = Link $ server `append` "/images?image_id=" `append` pack (show (imageId :: Integer)),
                 login = login,
                 date = pack $ show (regDate :: Date)}
 
 getByUserId :: UserId -> Connection -> IO User
 getByUserId userId conn = do 
     server <- serverAddress
-    [(userId, name, surname, picId, login, regDate)] <- query conn
-        "SELECT user_id, name, surname, picture_id, login, registration_date FROM users \
+    [(userId, name, surname, imageId, login, regDate)] <- query conn
+        "SELECT user_id, name, surname, image_id, login, registration_date FROM users \
         \ WHERE users.user_id = ?" (Only userId)
     return GetUser { userId = userId,
                 name = name,
                 surname = surname,
-                avatar = server `append` "/pictures?picture_id=" `append` pack (show (picId :: Integer)),
+                avatar = Link $ server `append` "/images?image_id=" `append` pack (show (imageId :: Integer)),
                 login = login,
                 date = pack $ show (regDate :: Date)}
-
-getAvatar :: Text -> Connection -> IO Text
-getAvatar picId conn = do
-    [Only picture] <- query conn "SELECT encode(picture,'base64') AS picture FROM \
-    \pictures WHERE pictures.picture_id = ?" (Only picId)
-    return picture
 
 doesExist :: UserId -> Connection -> IO Bool
 doesExist userId conn = do

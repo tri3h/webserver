@@ -22,40 +22,32 @@ import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
 
 
-get :: Query -> IO Response
-get query = do 
-    let res = queryToMaybeList query ["date_after", "date_before","date_at",
-            "author_name","category_id","tag_id","tag","tag_in","tag_all", 
-            "post_name","text", "substring", "order_date", "order_author",
-            "order_category","order_photos_number"]
+get :: QueryText -> IO Response
+get query = do
     let filter = F.Filter {
-        F.dateAfter = head res,
-        F.dateBefore = res !! 1,
-        F.dateAt = res !! 2,
-        F.authorName = res !! 3,
-        F.categoryId = toInteger $ res !! 4,
-        F.tagId = toInteger $ res !! 5,
-        F.tag = res !! 6,
-        F.tagIn = toIntegerList $ res !! 7,
-        F.tagAll = toIntegerList $ res !! 8,
-        F.postName = res !! 9,
-        F.text = res !! 10,
-        F.substring = res !! 11
+        F.dateAfter = getMaybeText query "date_after",
+        F.dateBefore = getMaybeText query "date_before",
+        F.dateAt = getMaybeText query "date_at",
+        F.authorName = getMaybeText query "author_name",
+        F.categoryId = getMaybeInteger query "category_id",
+        F.tagId = getMaybeInteger query "tag_id",
+        F.tag = getMaybeText query "tag",
+        F.tagIn = getMaybeIntegers query "tag_in",
+        F.tagAll = getMaybeIntegers query "tag_all",
+        F.postName = getMaybeText query "post_name",
+        F.text = getMaybeText query "text",
+        F.substring = getMaybeText query "substring"
     }
     let order = F.Order {
-        F.date = toBool (res !! 12),
-        F.author = toBool (res !! 13),
-        F.category = toBool (res !! 14),
-        F.photosNumber = toBool (res !! 15)
+        F.date = getBool query "order_date",
+        F.author = getBool query "order_author",
+        F.category = getBool query "order_category",
+        F.photosNumber = getBool query "order_photos_number"
     }
     posts <- Handler.getPost handle filter order
     case posts of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right r -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode r
-    where toBool Nothing = False
-          toBool (Just a) = read (unpack a) :: Bool
-          toInteger x = fmap (\a -> read (unpack a) :: Integer ) x
-          toIntegerList x = fmap (\a -> read (unpack a) :: [Integer] ) x
 
 handle :: Handler.Handle IO
 handle = Handler.Handle {

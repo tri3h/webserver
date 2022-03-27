@@ -19,14 +19,16 @@ import Control.Monad
 import Data.ByteString.Lazy ( append )
 import Utility
 
-create :: Query -> IO Response
+create :: QueryText -> IO Response
 create query = do
-    let res = queryToList query ["user_id", "description"]
-    case res of 
-        Right r ->  do
+    let isAuthor = getInteger query "user_id" >>=
+            \userId -> getText query "description" >>=
+            \descr -> Right (userId, descr) 
+    case isAuthor of 
+        Right (userId, descr) ->  do
             let author = CreateAuthor {
-                userId = read . unpack $ head r :: Integer,
-                description = r !! 1
+                userId = userId,
+                description = descr
             }
             result <- Handler.createAuthor handle author
             case result of
@@ -34,38 +36,37 @@ create query = do
                 Right r -> return $ responseLBS status200 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: Query -> IO Response
+get :: QueryText -> IO Response
 get query = do 
-    let res = queryToList query ["author_id"]
-    case res of 
-        Right r -> do 
-            res' <- Handler.getAuthor handle (read . unpack $ head r :: Integer)
+    case getInteger query "author_id" of 
+        Right authorId -> do 
+            res' <- Handler.getAuthor handle authorId
             case res' of 
                 Right r' -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode r'
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-edit :: Query -> IO Response
+edit :: QueryText -> IO Response
 edit query = do 
-    let res = queryToList query ["author_id", "description"]
-    case res of 
-        Right r -> do 
-            let author = EditAuthor {
-                authorId = read . unpack $ head r :: Integer,
-                description = r !! 1
+    let isAuthor = getInteger query "author_id" >>=
+            \authorId -> getText query "description" >>=
+            \descr -> Right $ EditAuthor {
+                authorId = authorId,
+                description = descr
             }
+    case isAuthor of 
+        Right author -> do 
             res' <- Handler.editAuthor handle author
             case res' of 
                 Right r' -> return $ responseLBS status200 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: Query -> IO Response
+delete :: QueryText -> IO Response
 delete query = do 
-    let res = queryToList query ["author_id"]
-    case res of 
-        Right r -> do 
-            res' <- Handler.deleteAuthor handle (read . unpack $ head r :: Integer)
+    case getInteger query "author_id" of 
+        Right authorId -> do 
+            res' <- Handler.deleteAuthor handle authorId
             case res' of
                 Right r' -> return $ responseLBS status200 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'

@@ -1,29 +1,53 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Utility where
 
-import Prelude hiding (splitOn, concat,words, breakOn,dropWhile, takeWhile, drop)
-import Data.ByteString (ByteString, breakSubstring, dropWhile, takeWhile, append, drop)
-import Data.ByteString.Internal (c2w)
-import Network.HTTP.Types.URI
-import Data.Text (Text)
-import Control.Monad
-import Data.Text.Encoding ( decodeUtf8 )
+import Data.Text (Text, append, unpack, splitOn)
+import Types.Image ( Image(..) )
+import Network.HTTP.Types.URI ( QueryText )
+import Control.Monad ( join )
+import Data.Text(unpack)
 
+getText :: QueryText -> Text -> Either Text Text
+getText query name = case join $ lookup name query of
+    Nothing -> Left $ "No " `append` name `append` " specified"
+    Just x -> Right x
 
-queryToList :: Query -> [ByteString] -> Either Text [Text]
-queryToList query list = let arr = map (\a -> join $ lookup a query) list in
-    if Nothing `notElem` arr
-        then Right $ map (decodeUtf8 . (\(Just a) -> a)) arr
-        else Left "Not enough parameters"
+getInteger :: QueryText -> Text -> Either Text Integer
+getInteger query name = case join $ lookup name query of
+    Nothing -> Left $ "No " `append` name `append` " specified"
+    Just x -> Right (read $ unpack x :: Integer)
 
-queryToMaybeList :: Query -> [ByteString] -> [Maybe Text]
-queryToMaybeList query list = let arr = map (\a -> join $ lookup a query) list in
-     map (\a -> case a of
-            Nothing -> Nothing
-            Just a' -> Just $ decodeUtf8 a') arr
+getIntegers :: QueryText -> Text -> Either Text [Integer]
+getIntegers query name = case join $ lookup name query of
+    Nothing -> Left $ "No " `append` name `append` " specified"
+    Just xs -> Right $ map (\x -> read $ unpack x :: Integer) (splitOn "," xs)
 
-getPicture :: ByteString -> ByteString -> Either Text Text
-getPicture pict name = let check = snd $ breakSubstring ("name=\"" `append` name) pict
-    in case check of
-            "" -> Left "No picture with such name"
-            _ -> Right $ decodeUtf8 ( takeWhile (/=c2w '-') $ drop 3 $ dropWhile (/=c2w '\n') (snd $ breakSubstring "Content-Type:" check))
+getImage :: QueryText -> Text -> Either Text Image
+getImage query name = case join $ lookup name query of
+    Nothing -> Left $ "No " `append` name `append` " specified"
+    Just x -> Right $ Image x
+
+getImages :: QueryText -> Text -> Either Text [Image]
+getImages query name = case join $ lookup name query of
+    Nothing -> Left $ "No " `append` name `append` " specified"
+    Just xs -> Right $ map Image (splitOn "," xs)
+
+getMaybeText :: QueryText -> Text -> Maybe Text
+getMaybeText query name = join $ lookup name query
+
+getMaybeInteger :: QueryText -> Text -> Maybe Integer
+getMaybeInteger query name = fmap (\x -> read $ unpack x :: Integer) (join $ lookup name query)
+
+getMaybeIntegers :: QueryText -> Text -> Maybe [Integer]
+getMaybeIntegers query name = fmap (map (\x -> read $ unpack x :: Integer) . splitOn ",") (join $ lookup name query)
+
+getMaybeImage :: QueryText -> Text -> Maybe Image
+getMaybeImage query name = fmap Image (join $ lookup name query)
+
+getMaybeImages :: QueryText -> Text -> Maybe [Image]
+getMaybeImages query name = fmap (map Image . splitOn ",") (join $ lookup name query)
+
+getBool :: QueryText -> Text -> Bool
+getBool query name = case join $ lookup name query of
+    Nothing -> False 
+    Just x -> read $ unpack x :: Bool

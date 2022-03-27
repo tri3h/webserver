@@ -2,7 +2,7 @@
 module Database.Queries.Post where
 
 import Database.PostgreSQL.Simple
-import Database.PostgreSQL.Simple.Time (Date)
+import qualified Database.PostgreSQL.Simple.Time as Time
 import Types.Post
 import qualified Types.Tag as Tag
 import qualified Types.Author as Author
@@ -16,23 +16,23 @@ get :: [PostId] -> Connection -> IO [Post]
 get postId conn = do
     server <- serverAddress
     result <- query conn "SELECT p.post_id, p.author_id, p.category_id, \
-    \p.name, p.date, p.text, p.picture_id \
+    \p.name, p.date, p.text, p.image_id \
     \FROM posts p WHERE p.post_id IN ?" (Only $ In postId)
     let posts = map (\(postId, authorId, categoryId, name, date, text, mainPhoto) -> PartialPost {
         postId = postId,
         authorId = authorId,
         categoryId = categoryId,
         name = name,
-        date = pack $ show (date :: Date),
+        date = pack $ show (date :: Time.Date),
         text = text,
-        mainPhoto = server `append` "/pictures?picture_id=" `append` pack (show (mainPhoto :: Integer))} ) result
+        mainPhoto = server `append` "/images?image_id=" `append` pack (show (mainPhoto :: Integer))} ) result
     return posts
 
 getMinorPhotos :: PostId -> Connection -> IO [Text]
 getMinorPhotos postId conn = do 
     server <- serverAddress
-    xs <- query conn "SELECT picture_id FROM minor_photos WHERE post_id = ?" (Only postId)
-    let xs' = map (\(Only x) -> server `append` "/pictures?picture_id=" `append` pack (show (x :: Integer))) xs
+    xs <- query conn "SELECT image_id FROM minor_photos WHERE post_id = ?" (Only postId)
+    let xs' = map (\(Only x) -> server `append` "/images?image_id=" `append` pack (show (x :: Integer))) xs
     return xs'
 
 filterByDateBefore :: Text -> Connection -> IO [PostId]

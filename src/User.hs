@@ -18,65 +18,60 @@ import Types.User
 import qualified Handler.User as Handler
 import qualified Database.Queries.User as Db
 import Database.Connection
-import Utility
 import qualified Data.ByteString as BS
 import qualified Data.Text as Text
+import Types.Image
+import Utility
 
-createUser :: Query -> BS.ByteString -> IO Response
-createUser query body = do
-    let res = queryToList query ["name", "surname", "login", "password"]
-    let avatar = getPicture body "avatar"
-    case avatar of
+createUser :: QueryText -> IO Response
+createUser query = do
+    let isUser = getText query "name" >>= 
+            \name -> getText query "surname" >>=
+            \surname -> getText query "login" >>=
+            \login -> getText query "password" >>=
+            \password -> getImage query "avatar" >>=
+            \avatar -> Right $ CreateUser {
+                name = name,
+                surname = surname,
+                login = login,
+                password = password,
+                avatar = avatar
+                }
+    case isUser of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-        Right pic -> case res of
-                Right r -> do
-                    let user = CreateUser {
-                        name = head r,
-                        surname = r!! 1,
-                        login = r !! 2,
-                        password = r !! 3,
-                        avatar = pic
-                        }
+        Right user -> do
                     result <- Handler.createUser handle user
                     case result of
                         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                         Right r -> do
                             let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict r) `append` "\"}"
                             return $ responseLBS status200 [(hContentType, "application/json")] a
-                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-getUser :: Query -> Text -> IO Response
+getUser :: QueryText -> Text -> IO Response
 getUser query token = do
             user <- Handler.getUser handle token
             return $ responseLBS status200 [(hContentType, "application/json")] $ encode user
 
-getAvatar :: Query -> IO Response
-getAvatar query = do
-    let res = queryToList query ["picture_id"]
-    case res of
-            Right r -> do
-                result <- manage $ Db.getAvatar (head r)
-                let html = "<img src=\"data:image/png;base64," `Text.append` result `Text.append` "\"/>"
-                return $ responseLBS status200 [(hContentType, "text/html")] . encodeUtf8 $ LazyText.fromStrict html
-            Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-
-deleteUser :: Query -> IO Response
+deleteUser :: QueryText -> IO Response
 deleteUser query = do
-        let res = queryToList query ["user_id"]
-        case res of
-            Right r -> do
-                result <- Handler.deleteUser handle (read . unpack $ head r :: Integer)
-                case result of
-                    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                    Right r -> return $ responseLBS status204 [] ""
-            Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+    let isUserId = getInteger query "user_id" >>= 
+            \userId -> Right userId
+    case isUserId of 
+        Right userId -> do
+            result <- Handler.deleteUser handle userId
+            case result of
+                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                Right r -> return $ responseLBS status204 [] ""
+        Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-getNewToken :: Query -> IO Response
+getNewToken :: QueryText -> IO Response
 getNewToken query = do
-    let res = queryToList query ["login", "password"]
-    case res of
-        Right r -> do
-            result <- Handler.getNewToken handle (head r) (r !! 1)
+    let isData = getText query "login" >>= 
+            \login -> getText query "password" >>=
+            \password -> Right (login, password)
+    case isData of 
+        Right (login, password) -> do
+            result <- Handler.getNewToken handle  login password
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right r -> do

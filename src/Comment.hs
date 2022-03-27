@@ -16,39 +16,39 @@ import qualified Data.Text.Lazy as LazyText
 import Data.Text (unpack)
 import Data.Aeson
 
-get :: Query -> IO Response
+get :: QueryText -> IO Response
 get query = do 
-    let res = queryToList query ["post_id"]
-    case res of 
-        Right r -> do 
-            result <- Handler.get handle (read (unpack $ head r) :: Integer)
+    case getInteger query "post_id" of 
+        Right postId -> do 
+            result <- Handler.get handle postId
             case result of 
                 Right r -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode r
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-create :: Query -> IO Response
+create :: QueryText -> IO Response
 create query = do 
-    let res = queryToList query ["post_id", "user_id", "text"]
-    case res of 
-        Right r -> do 
-            let comment = CreateComment {
-                postId = read (unpack $ head r) :: Integer,
-                userId = read (unpack $ r !! 1) :: Integer,
-                text = r !! 2
-            }
+    let isComment = getInteger query "post_id" >>= 
+            \postId -> getInteger query "user_id" >>=
+            \userId -> getText query "text" >>=
+            \text -> Right $ CreateComment {
+                postId = postId,
+                userId = userId,
+                text = text
+                }
+    case isComment of
+        Right comment -> do 
             result <- Handler.create handle comment 
             case result of 
                 Right r -> return $ responseLBS status200 [] ""
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: Query -> IO Response
+delete :: QueryText -> IO Response
 delete query = do 
-    let res = queryToList query ["comment_id"]
-    case res of 
-        Right r -> do 
-            result <- Handler.delete handle (read (unpack $ head r) :: Integer)
+    case getInteger query "comment_id" of 
+        Right commId -> do 
+            result <- Handler.delete handle commId
             case result of 
                 Right r -> return $ responseLBS status200 [] ""
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l

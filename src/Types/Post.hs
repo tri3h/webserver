@@ -36,3 +36,4 @@ instance ToJSON Post where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
 
 type PostId = Integer
+type Date = Text

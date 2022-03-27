@@ -4,11 +4,12 @@ module Types.User where
 import Data.Text
 import Data.Aeson
 import GHC.Generics
+import Types.Image
 
 data User = FullUser {
     name :: Text,
     surname :: Text,
-    avatar :: Text,
+    avatar :: Image,
     login :: Text,
     password :: Text,
     date :: Text,
@@ -18,7 +19,7 @@ data User = FullUser {
     userId :: Integer,
     name :: Text,
     surname :: Text,
-    avatar :: Text,
+    avatar :: Image,
     login :: Text,
     date :: Text
 } | CreateUser {
@@ -26,13 +27,15 @@ data User = FullUser {
     surname :: Text,
     login :: Text,
     password :: Text,
-    avatar :: Text
+    avatar :: Image
 } deriving (Show, Generic)
 
 type Login = Text
 type Token = Text 
 type UserId = Integer
 type Password = Text
+type Name = Text
+type Surname = Text 
 
 instance ToJSON User where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}

@@ -15,56 +15,53 @@ import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
 
-create :: Query -> IO Response
+create :: QueryText -> IO Response
 create query = do
-    let res = queryToList query ["name"]
-    let resExtra = queryToMaybeList query ["parent_id"]
-    case res of
-        Right r ->  do
-            let cat = CreateCategory {
-                name = head r,
-                parentId = (\a -> read a :: Integer) . unpack <$> head resExtra
+    case getText query "name" of
+        Right name ->  do
+            let categ = CreateCategory {
+                name = name,
+                parentId = getMaybeInteger query "parent_id"
             }
-            result <- Handler.createCategory handle cat
+            result <- Handler.createCategory handle categ
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right r -> return $ responseLBS status200 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: Query -> IO Response
+get :: QueryText -> IO Response
 get query = do
-    let res = queryToList query ["category_id"]
-    case res of
-        Right r -> do
-            res' <- Handler.getCategory handle (read . unpack $ head r :: Integer)
+    case getInteger query "category_id" of
+        Right categId -> do
+            res' <- Handler.getCategory handle categId
             case res' of
                 Right r' -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode r'
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-edit :: Query -> IO Response
+edit :: QueryText -> IO Response
 edit query = do
-    let res = queryToList query ["category_id", "name"]
-    let resExtra = queryToMaybeList query ["parent_id"]
-    case res of
-        Right r -> do
-            let cat = GetCategory {
-                categoryId = read . unpack $ head r :: Integer,
-                name = r !! 1,
-                parentId = (\a -> read a :: Integer) . unpack <$> head resExtra
+    let isData = getInteger query "category_id" >>=
+            \categId -> getText query "name" >>=
+            \name -> Right (categId, name)
+    case isData of
+        Right (categId, name) -> do
+            let categ = GetCategory {
+                categoryId = categId,
+                name = name,
+                parentId = getMaybeInteger query "parent_id"
             }
-            res' <- Handler.editCategory handle cat
+            res' <- Handler.editCategory handle categ
             case res' of
                 Right r' -> return $ responseLBS status200 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: Query -> IO Response
+delete :: QueryText -> IO Response
 delete query = do
-    let res = queryToList query ["category_id"]
-    case res of
-        Right r -> do
-            res' <- Handler.deleteCategory handle (read . unpack $ head r :: Integer)
+    case getInteger query "category_id" of
+        Right categId -> do
+            res' <- Handler.deleteCategory handle categId
             case res' of
                 Right r' -> return $ responseLBS status200 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'

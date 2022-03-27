@@ -16,13 +16,12 @@ import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
 
-create :: Query -> IO Response
+create :: QueryText -> IO Response
 create query = do
-    let res = queryToList query ["name"]
-    case res of
-        Right r ->  do
+    case getText query "name" of 
+        Right name ->  do
             let tag = CreateTag {
-                name = head r
+                name = name
             }
             result <- Handler.createTag handle tag
             case result of
@@ -30,25 +29,26 @@ create query = do
                 Right r -> return $ responseLBS status200 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: Query -> IO Response
-get query = do 
-    let res = queryToList query ["tag_id"]
-    case res of 
-        Right r -> do 
-            res' <- Handler.getTag handle (read . unpack $ head r :: Integer)
+get :: QueryText -> IO Response
+get query = do
+    case getInteger query "tag_id" of 
+        Right tagId -> do 
+            res' <- Handler.getTag handle tagId
             case res' of 
                 Right r' -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode r'
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-edit :: Query -> IO Response
-edit query = do 
-    let res = queryToList query ["tag_id", "name"]
-    case res of 
-        Right r -> do 
+edit :: QueryText -> IO Response
+edit query = do
+    let isTag = getText query "name" >>= 
+            \name -> getInteger query "tag_id" >>=
+            \tagId -> Right (tagId,name)
+    case isTag of 
+        Right (tagId, name) -> do 
             let tag = EditTag {
-                tagId = read . unpack $ head r :: Integer,
-                name = r !! 1
+                tagId = tagId,
+                name = name
             }
             res' <- Handler.editTag handle tag
             case res' of 
@@ -56,12 +56,11 @@ edit query = do
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: Query -> IO Response
-delete query = do 
-    let res = queryToList query ["tag_id"]
-    case res of 
-        Right r -> do 
-            res' <- Handler.deleteTag handle (read . unpack $ head r :: Integer)
+delete :: QueryText -> IO Response
+delete query = do
+    case getInteger query "tagId"  of 
+        Right tagId -> do 
+            res' <- Handler.deleteTag handle tagId
             case res' of
                 Right r' -> return $ responseLBS status200 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
