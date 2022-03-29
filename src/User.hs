@@ -30,7 +30,7 @@ createUser query = do
             \surname -> getText query "login" >>=
             \login -> getText query "password" >>=
             \password -> getImage query "avatar" >>=
-            \avatar -> Right $ CreateUser {
+            \avatar -> Right $ UserToCreate {
                 name = name,
                 surname = surname,
                 login = login,

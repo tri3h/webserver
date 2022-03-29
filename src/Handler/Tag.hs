@@ -5,16 +5,16 @@ import Types.Tag
 import Data.Text
 
 data Handle m = Handle {
-    create :: Tag -> m Bool,
+    create :: Name -> m Bool,
     get :: TagId -> m Tag,
     delete :: TagId -> m Bool,
     edit :: Tag -> m Bool,
     doesExist :: TagId -> m Bool
 }
 
-createTag :: Monad m => Handle m -> Tag -> m (Either Text Text)
-createTag handle tag = do 
-        res <- create handle tag
+createTag :: Monad m => Handle m -> Name -> m (Either Text Text)
+createTag handle name = do 
+        res <- create handle name
         if res
             then return $ Right "Tag was created"
             else return $ Left "Failed to create tag"

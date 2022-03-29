@@ -10,7 +10,10 @@ import Types.User
 import Types.Tag
 import Types.Comment
 
-data Post = PartialPost {
+postsOnPage :: Integer
+postsOnPage = 10
+
+data Post = PostFromDatabase {
     postId :: Integer,
     authorId :: Integer,
     categoryId :: Integer,
@@ -18,7 +21,7 @@ data Post = PartialPost {
     date :: Text,
     text :: Text,
     mainPhoto :: Text
-} | FullPost {
+} | PostToGet {
     author :: Author,
     user :: User,
     category :: [Category],

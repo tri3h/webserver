@@ -31,7 +31,7 @@ create query = do
     let isComment = getInteger query "post_id" >>= 
             \postId -> getInteger query "user_id" >>=
             \userId -> getText query "text" >>=
-            \text -> Right $ CreateComment {
+            \text -> Right CommentToCreate {
                 postId = postId,
                 userId = userId,
                 text = text

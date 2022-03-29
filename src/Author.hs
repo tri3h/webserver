@@ -26,7 +26,7 @@ create query = do
             \descr -> Right (userId, descr) 
     case isAuthor of 
         Right (userId, descr) ->  do
-            let author = CreateAuthor {
+            let author = AuthorToCreate {
                 userId = userId,
                 description = descr
             }
@@ -50,7 +50,7 @@ edit :: QueryText -> IO Response
 edit query = do 
     let isAuthor = getInteger query "author_id" >>=
             \authorId -> getText query "description" >>=
-            \descr -> Right $ EditAuthor {
+            \descr -> Right $ AuthorToEdit {
                 authorId = authorId,
                 description = descr
             }

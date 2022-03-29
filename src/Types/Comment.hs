@@ -5,11 +5,11 @@ import Data.Text
 import Data.Aeson
 import GHC.Generics
 
-data Comment = CreateComment {
+data Comment = CommentToCreate {
     postId :: Integer,
     userId :: Integer,
     text :: Text
-} | GetComment {
+} | CommentToGet {
     commentId :: Integer,
     userId :: Integer,
     text :: Text

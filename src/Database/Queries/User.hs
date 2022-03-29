@@ -54,7 +54,7 @@ get token conn = do
     [(userId, name, surname, imageId, login, regDate)] <- query conn
         "SELECT user_id, name, surname, image_id, login, registration_date FROM users \
         \ WHERE users.token = ?" (Only token)
-    return GetUser { userId = userId,
+    return UserToGet { userId = userId,
                 name = name,
                 surname = surname,
                 avatar = Link $ server `append` "/images?image_id=" `append` pack (show (imageId :: Integer)),
@@ -67,7 +67,7 @@ getByUserId userId conn = do
     [(userId, name, surname, imageId, login, regDate)] <- query conn
         "SELECT user_id, name, surname, image_id, login, registration_date FROM users \
         \ WHERE users.user_id = ?" (Only userId)
-    return GetUser { userId = userId,
+    return UserToGet { userId = userId,
                 name = name,
                 surname = surname,
                 avatar = Link $ server `append` "/images?image_id=" `append` pack (show (imageId :: Integer)),

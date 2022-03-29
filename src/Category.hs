@@ -19,7 +19,7 @@ create :: QueryText -> IO Response
 create query = do
     case getText query "name" of
         Right name ->  do
-            let categ = CreateCategory {
+            let categ = CategoryToCreate {
                 name = name,
                 parentId = getMaybeInteger query "parent_id"
             }
@@ -46,7 +46,7 @@ edit query = do
             \name -> Right (categId, name)
     case isData of
         Right (categId, name) -> do
-            let categ = GetCategory {
+            let categ = CategoryToGet {
                 categoryId = categId,
                 name = name,
                 parentId = getMaybeInteger query "parent_id"

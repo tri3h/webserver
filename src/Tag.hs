@@ -20,10 +20,7 @@ create :: QueryText -> IO Response
 create query = do
     case getText query "name" of 
         Right name ->  do
-            let tag = CreateTag {
-                name = name
-            }
-            result <- Handler.createTag handle tag
+            result <- Handler.createTag handle name
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right r -> return $ responseLBS status200 [] ""
@@ -46,7 +43,7 @@ edit query = do
             \tagId -> Right (tagId,name)
     case isTag of 
         Right (tagId, name) -> do 
-            let tag = EditTag {
+            let tag = Tag {
                 tagId = tagId,
                 name = name
             }

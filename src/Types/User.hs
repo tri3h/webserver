@@ -6,7 +6,7 @@ import Data.Aeson
 import GHC.Generics
 import Types.Image
 
-data User = FullUser {
+data User = UserToDatabase {
     name :: Text,
     surname :: Text,
     avatar :: Image,
@@ -15,14 +15,14 @@ data User = FullUser {
     date :: Text,
     admin :: Bool,
     token :: Text
-} | GetUser {
+} | UserToGet {
     userId :: Integer,
     name :: Text,
     surname :: Text,
     avatar :: Image,
     login :: Text,
     date :: Text
-} | CreateUser {
+} | UserToCreate {
     name :: Text,
     surname :: Text,
     login :: Text,

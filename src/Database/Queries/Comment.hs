@@ -13,7 +13,7 @@ create comment conn = do
 get :: PostId -> Connection -> IO [Comment]
 get postId conn = do
     xs <- query conn "SELECT comment_id, user_id, text FROM comments WHERE post_id = ?" (Only postId)
-    let comments = map (\(commentId, userId, text) -> GetComment {
+    let comments = map (\(commentId, userId, text) -> CommentToGet {
         commentId = commentId,
         userId = userId,
         text = text

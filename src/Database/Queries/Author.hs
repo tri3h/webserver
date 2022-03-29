@@ -22,7 +22,7 @@ get :: AuthorId -> Connection -> IO Author
 get authorId conn = do
     [(authorId, userId, descr)] <- query conn 
         "SELECT author_id, user_id, description FROM authors WHERE authors.author_id = ?" (Only authorId)
-    return GetAuthor { authorId = authorId,
+    return AuthorToGet { authorId = authorId,
                     userId = userId,
                     description = descr}
 

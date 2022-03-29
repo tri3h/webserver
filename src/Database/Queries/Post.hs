@@ -18,7 +18,7 @@ get postId conn = do
     result <- query conn "SELECT p.post_id, p.author_id, p.category_id, \
     \p.name, p.date, p.text, p.image_id \
     \FROM posts p WHERE p.post_id IN ?" (Only $ In postId)
-    let posts = map (\(postId, authorId, categoryId, name, date, text, mainPhoto) -> PartialPost {
+    let posts = map (\(postId, authorId, categoryId, name, date, text, mainPhoto) -> PostFromDatabase {
         postId = postId,
         authorId = authorId,
         categoryId = categoryId,

@@ -40,21 +40,23 @@ data Handle m = Handle {
 
 getPost :: Monad m => Handle m -> F.Filter -> F.Order -> m (Either Text [Post])
 getPost handle params order = do
-    r1 <- applyFilter (F.dateAfter params) (filterByDateAfter handle)
-    r2 <- applyFilter (F.dateBefore params) (filterByDateBefore handle)
-    r3 <- applyFilter (F.dateAt params) (filterByDateAt handle)
-    r4 <- applyFilter (F.authorName params) (filterByAuthorName handle)
-    r5 <- applyFilter (F.categoryId params) (filterByCategoryId handle)
-    r6 <- applyFilter (F.tagId params) (filterByTagId handle)
-    r7 <- applyFilter (F.tag params) (filterByTag handle)
-    r8 <- applyFilter (F.tagIn params) (filterByOneOfTags handle)
-    r9 <- applyFilter (F.tagAll params) (filterByAllOfTags handle)
-    r10 <- applyFilter (F.postName params) (filterByPostName handle)
-    r11 <- applyFilter (F.text params) (filterByText handle)
-    r12 <- applyFilter (F.substring params) (filterBySubstring handle)
-    let common = chooseCommon $ filter (not . null) [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12]
+    filtered <- sequence 
+                    [applyFilter (F.dateAfter params) (filterByDateAfter handle),
+                    applyFilter (F.dateBefore params) (filterByDateBefore handle),
+                    applyFilter (F.dateAt params) (filterByDateAt handle),
+                    applyFilter (F.authorName params) (filterByAuthorName handle),
+                    applyFilter (F.categoryId params) (filterByCategoryId handle),
+                    applyFilter (F.tagId params) (filterByTagId handle),
+                    applyFilter (F.tag params) (filterByTag handle),
+                    applyFilter (F.tagIn params) (filterByOneOfTags handle),
+                    applyFilter (F.tagAll params) (filterByAllOfTags handle),
+                    applyFilter (F.postName params) (filterByPostName handle),
+                    applyFilter (F.text params) (filterByText handle),
+                    applyFilter (F.substring params) (filterBySubstring handle)]
+    let common = chooseCommon $ filter (not . null) filtered
     orderedCommon <- applyOrder [F.date order, F.author order,
-                        F.category order, F.photosNumber order] common
+                        F.category order, F.photosNumber order] 
+                        common
                         [orderByDate handle,orderByAuthor handle,
                         orderByCategory handle, orderByPhotosNumber handle]
     posts <- get handle orderedCommon
@@ -65,7 +67,7 @@ getPost handle params order = do
     comments <- mapM (getComment handle . postId) posts
     minorPhotos <- mapM (getMinorPhotos handle . postId) posts
     let fullPosts = zipWith7 (\p a u cat t com mp ->
-            FullPost {
+            PostToGet {
                 author = a,
                 user = u,
                 category = cat,

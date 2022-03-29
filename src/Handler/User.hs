@@ -33,7 +33,7 @@ createUser handle recUser = do
             time <- getCurrentTime handle
             let date = pack $ take 10 time
             let hashPassw = hashPassword $ password recUser
-            let user = FullUser {
+            let user = UserToDatabase {
                 name = name recUser,
                 surname = surname recUser,
                 avatar = avatar recUser,

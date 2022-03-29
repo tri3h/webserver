@@ -5,14 +5,14 @@ import Data.Text
 import Data.Aeson
 import GHC.Generics
 
-data Author = GetAuthor {
+data Author = AuthorToGet {
     authorId :: Integer,
     userId :: Integer,
     description :: Text
-} | EditAuthor {
+} | AuthorToEdit {
     authorId :: Integer,
     description :: Text
-} | CreateAuthor {
+} | AuthorToCreate {
     userId :: Integer,
     description :: Text
 } deriving (Show, Generic)

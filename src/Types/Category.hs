@@ -5,11 +5,11 @@ import Data.Text
 import Data.Aeson
 import GHC.Generics
 
-data Category = GetCategory {
+data Category = CategoryToGet {
     categoryId :: Integer,
     name :: Text,
     parentId :: Maybe Integer
-} | CreateCategory {
+} | CategoryToCreate {
     name :: Text,
     parentId :: Maybe Integer
 } deriving (Show, Generic)

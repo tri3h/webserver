@@ -19,7 +19,7 @@ get :: CategoryId -> Connection -> IO Category
 get catId conn = do
     [(catId, name, parentId)] <- query conn 
         "SELECT category_id, name, parent_id FROM categories WHERE categories.category_id = ?" (Only catId)
-    return GetCategory { categoryId = catId,
+    return CategoryToGet { categoryId = catId,
                     name = name,
                     parentId = parentId}
 
