@@ -55,7 +55,7 @@ edit query = do
 
 delete :: QueryText -> IO Response
 delete query = do
-    case getInteger query "tagId"  of 
+    case getInteger query "tag_id"  of 
         Right tagId -> do 
             res' <- Handler.deleteTag handle tagId
             case res' of

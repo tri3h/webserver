@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.Draft where
 
 import Database.PostgreSQL.Simple.ToField
@@ -13,7 +14,7 @@ import Types.Image
 
 type DraftId = Integer
 type Name = Text
-type Description = Text
+newtype Description = Description Text deriving (Show, Generic)
 
 data Draft = Draft {
     draftId :: Maybe DraftId,
@@ -32,9 +33,19 @@ data EditParams = EditParams {
     eTagId :: Maybe [TagId],
     eName :: Maybe Name,
     eDescription :: Maybe Description,
-    eMainPhoto :: Maybe Image,
-    eMinorPhoto :: Maybe [Image]
+    eMainPhoto :: Maybe Image
 }
+
+instance ToJSON Description where
+    toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+
+instance FromJSON Description where 
+    parseJSON = withObject "Draft description" $ \obj -> do 
+        descr <- obj .: "description"
+        return $ Description descr
+
+instance ToField Description where 
+    toField (Description x) = toField x 
 
 instance ToJSON Draft where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}

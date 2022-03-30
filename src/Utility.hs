@@ -1,53 +1,71 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Utility where
 
-import Data.Text (Text, append, unpack, splitOn)
+import Prelude hiding (null)
+import Data.Text ( Text, append, unpack, splitOn, null, unpack )
 import Types.Image ( Image(..) )
 import Network.HTTP.Types.URI ( QueryText )
 import Control.Monad ( join )
-import Data.Text(unpack)
+import Data.ByteString(ByteString)
+import Data.Aeson
+import Types.Draft ( Description(..) )
 
 getText :: QueryText -> Text -> Either Text Text
 getText query name = case join $ lookup name query of
-    Nothing -> Left $ "No " `append` name `append` " specified"
-    Just x -> Right x
+    Nothing -> err name
+    Just x -> if null x
+        then err name
+        else Right x
 
 getInteger :: QueryText -> Text -> Either Text Integer
 getInteger query name = case join $ lookup name query of
-    Nothing -> Left $ "No " `append` name `append` " specified"
-    Just x -> Right (read $ unpack x :: Integer)
+    Nothing -> err name
+    Just x -> if null x
+        then err name
+        else Right (read $ unpack x :: Integer)
 
 getIntegers :: QueryText -> Text -> Either Text [Integer]
 getIntegers query name = case join $ lookup name query of
-    Nothing -> Left $ "No " `append` name `append` " specified"
-    Just xs -> Right $ map (\x -> read $ unpack x :: Integer) (splitOn "," xs)
+    Nothing -> err name
+    Just xs -> if null xs
+        then err name
+        else Right $ map (\x -> read $ unpack x :: Integer) (splitOn "," xs)
 
-getImage :: QueryText -> Text -> Either Text Image
-getImage query name = case join $ lookup name query of
-    Nothing -> Left $ "No " `append` name `append` " specified"
-    Just x -> Right $ Image x
+getImage :: ByteString -> Either Text Image
+getImage bs = case decodeStrict bs :: (Maybe Image) of
+    Nothing -> Left "No image specified"
+    Just x -> Right x
 
-getImages :: QueryText -> Text -> Either Text [Image]
-getImages query name = case join $ lookup name query of
-    Nothing -> Left $ "No " `append` name `append` " specified"
-    Just xs -> Right $ map Image (splitOn "," xs)
+getDescription :: ByteString -> Either Text Description
+getDescription bs = case decodeStrict bs :: (Maybe Description) of
+    Nothing -> Left "No description specified"
+    Just x -> Right x
 
 getMaybeText :: QueryText -> Text -> Maybe Text
-getMaybeText query name = join $ lookup name query
+getMaybeText query name = case join $ lookup name query of 
+    Nothing -> Nothing 
+    Just x -> if null x then Nothing else Just x
 
 getMaybeInteger :: QueryText -> Text -> Maybe Integer
-getMaybeInteger query name = fmap (\x -> read $ unpack x :: Integer) (join $ lookup name query)
+getMaybeInteger query name = case join $ lookup name query of 
+    Nothing -> Nothing 
+    Just x -> if null x then Nothing else Just (read $ unpack x :: Integer)
 
 getMaybeIntegers :: QueryText -> Text -> Maybe [Integer]
-getMaybeIntegers query name = fmap (map (\x -> read $ unpack x :: Integer) . splitOn ",") (join $ lookup name query)
+getMaybeIntegers query name = case join $ lookup name query of 
+    Nothing -> Nothing 
+    Just xs -> if null xs 
+        then Nothing 
+        else Just $ map (\x -> read $ unpack x :: Integer) $ splitOn "," xs
 
-getMaybeImage :: QueryText -> Text -> Maybe Image
-getMaybeImage query name = fmap Image (join $ lookup name query)
+getMaybeImage :: ByteString -> Maybe Image
+getMaybeImage bs = case decodeStrict bs :: (Maybe Image) of 
+    image@(Just (Image x)) -> if null x then Nothing else image
+    _ -> Nothing 
 
-getMaybeImages :: QueryText -> Text -> Maybe [Image]
-getMaybeImages query name = fmap (map Image . splitOn ",") (join $ lookup name query)
+getMaybeDescription :: ByteString -> Maybe Description
+getMaybeDescription bs = case decodeStrict bs :: (Maybe Description) of 
+    descr@(Just (Description x)) -> if null x then Nothing else descr
+    _ -> Nothing 
 
-getBool :: QueryText -> Text -> Bool
-getBool query name = case join $ lookup name query of
-    Nothing -> False 
-    Just x -> read $ unpack x :: Bool
+err name = Left $ "No " `append` name `append` " specified"

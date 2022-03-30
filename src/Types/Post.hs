@@ -22,12 +22,12 @@ data Post = PostFromDatabase {
     text :: Text,
     mainPhoto :: Text
 } | PostToGet {
+    postId :: Integer,
     author :: Author,
     user :: User,
     category :: [Category],
     tag :: [Tag],
     comment :: [Comment],
-    postId :: Integer,
     name :: Text,
     date :: Text,
     text :: Text,

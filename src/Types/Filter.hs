@@ -17,9 +17,4 @@ data Filter = Filter {
     substring :: Maybe Text
 }
 
-data Order = Order {
-    date :: Bool,
-    author :: Bool,
-    category :: Bool,
-    photosNumber :: Bool
-}
+data Order = ByDate | ByAuthor | ByCategory | ByPhotosNumber | None

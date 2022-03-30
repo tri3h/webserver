@@ -24,16 +24,17 @@ import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text.Encoding ( decodeUtf8, decodeUtf16BE )
 import qualified Data.Text.Lazy as LazyText
 import Utility
+import Data.ByteString ( ByteString )
 
-create :: QueryText -> IO Response
-create query = do 
+create :: QueryText -> ByteString -> IO Response
+create query body = do 
     let isDraft = getInteger query "category_id" >>= 
             \categoryId -> getIntegers query "tag_id" >>=
             \tagId -> getText query "name" >>=
             \name -> getText query "description" >>=
-            \description -> getImage query "main_photo" >>=
-            \mainPhoto -> getImages query "minor_photo" >>=
-            \minorPhoto -> Right $ Draft {
+            \description -> getImage body >>=
+            \mainPhoto -> getDescription body >>=
+            \description -> Right $ Draft {
                 draftId = Nothing,
                 postId = Nothing,
                 authorId = undefined,
@@ -42,7 +43,7 @@ create query = do
                 name = name,
                 description = description,
                 mainPhoto = mainPhoto,
-                minorPhoto = minorPhoto
+                minorPhoto = []
                 }
     case isDraft of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -74,20 +75,21 @@ delete query = do
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right _ -> return $ responseLBS status200 [] ""
             
-edit :: QueryText -> IO Response
-edit query = do 
-    case getInteger query "draft_id" of 
+edit :: QueryText -> ByteString -> IO Response
+edit query body = do 
+    case getText query "token" >>=
+        \token -> getInteger query "draft_id" >>=
+        \draftId -> Right (token, draftId) of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-        Right draftId -> do 
+        Right (token, draftId) -> do 
             let editParams = EditParams {
                     eCategoryId = getMaybeInteger query "category_id" ,
                     eTagId = getMaybeIntegers query "tag_id",
                     eName = getMaybeText query "name",
-                    eDescription = getMaybeText query "description",
-                    eMainPhoto = getMaybeImage query "main_photo",
-                    eMinorPhoto = getMaybeImages query "minor_photo"
+                    eDescription = getMaybeDescription body,
+                    eMainPhoto = getMaybeImage body
                     }
-            result <- Handler.edit handle draftId editParams
+            result <- Handler.edit handle draftId token editParams
             case result of 
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right _ -> return $ responseLBS status200 [] ""
@@ -104,6 +106,28 @@ publish query = do
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right postId -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode postId
 
+addMinorPhoto :: QueryText -> ByteString -> IO Response
+addMinorPhoto query body = do 
+    case getInteger query "draft_id" >>=
+        \draftId -> getText query "token" >>=
+        \token -> getImage body >>=
+        \image -> Right (draftId, token, image) of 
+        Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+        Right (draftId, token, image) -> do 
+            Handler.addMinorPhoto handle draftId token image
+            return $ responseLBS status200 [] ""
+
+deleteMinorPhoto :: QueryText -> IO Response
+deleteMinorPhoto query = do 
+    case getInteger query "draft_id" >>=
+        \draftId -> getText query "token" >>=
+        \token -> getInteger query "minor_photo_id" >>=
+        \imageId -> Right (draftId, token, imageId) of 
+        Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+        Right (draftId, token, imageId) -> do 
+            Handler.deleteMinorPhoto handle draftId token imageId
+            return $ responseLBS status200 [] ""
+
 handle :: Handler.Handle IO
 handle = Handler.Handle {
     Handler.hCreate = manage . Db.Draft.create,
@@ -112,7 +136,6 @@ handle = Handler.Handle {
     Handler.hEditName = \a b -> manage $ Db.Draft.editName a b,
     Handler.hEditDescription = \a b -> manage $ Db.Draft.editDescription a b,
     Handler.hEditMainPhoto = \a b -> manage $ Db.Draft.editMainPhoto a b,
-    Handler.hEditMinorPhotos = \a b -> manage $ Db.Draft.editMinorPhotos a b,
     Handler.hDoesExist = manage . Db.Draft.doesExist,
     Handler.hIsAuthor = manage . Db.Author.isAuthor,
     Handler.hHasPost = manage . Db.Draft.hasPost,
@@ -123,5 +146,7 @@ handle = Handler.Handle {
     Handler.hGetAuthor = manage . Db.Author.getByDraftId,
     Handler.hPublish = \a b -> manage $ Db.Draft.publish a b,
     Handler.hUpdate = manage . Db.Draft.update,
-    Handler.hGetAuthorIdByToken = manage . Db.Author.getByToken
+    Handler.hGetAuthorIdByToken = manage . Db.Author.getByToken,
+    Handler.hAddMinorPhoto = \a b -> manage $ Db.Draft.addMinorPhoto a b,
+    Handler.hDeleteMinorPhoto = \a b -> manage $ Db.Draft.deleteMinorPhoto a b
 }

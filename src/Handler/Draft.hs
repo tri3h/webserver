@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Handler.Draft(Handle(..), create, get, edit, delete, publish) where
+module Handler.Draft(Handle(..), create, get, edit, delete, publish, addMinorPhoto, deleteMinorPhoto) where
 
 import Prelude hiding (words)
 import Data.Text (Text, unpack, words)
@@ -22,7 +22,6 @@ data Handle m = Handle {
     hEditName :: DraftId -> Name -> m (),
     hEditDescription :: DraftId -> Description -> m (),
     hEditMainPhoto :: DraftId -> Image -> m (),
-    hEditMinorPhotos :: DraftId -> [Image] -> m (),
     hDoesExist :: DraftId -> m Bool,
     hIsAuthor :: Token -> m Bool,
     hHasPost :: DraftId -> m Bool,
@@ -32,7 +31,9 @@ data Handle m = Handle {
     hGetAuthor :: DraftId -> m AuthorId,
     hPublish :: Draft -> String -> m PostId,
     hUpdate :: Draft -> m PostId,
-    hGetAuthorIdByToken :: Token -> m AuthorId
+    hGetAuthorIdByToken :: Token -> m AuthorId,
+    hAddMinorPhoto :: DraftId -> Image -> m (),
+    hDeleteMinorPhoto :: DraftId -> ImageId -> m ()
 }
 
 create :: Monad m => Handle m -> Draft -> m ()
@@ -43,17 +44,14 @@ get handle draftId token = do
     hasRights <- hasRights handle draftId token
     case hasRights of
         Left l -> return $ Left l
-        Right _ -> do
-            doesExist <- hDoesExist handle draftId
-            if doesExist
-                then Right <$> hGet handle draftId
-                else return $ Left "Draft with such id doesn't exist"
+        Right _ -> Right <$> hGet handle draftId
 
-edit :: Monad m => Handle m -> DraftId -> EditParams -> m (Either Text ())
-edit handle draftId params = do
-    doesExist <- hDoesExist handle draftId
-    if doesExist
-        then do
+edit :: Monad m => Handle m -> DraftId -> Token -> EditParams -> m (Either Text ())
+edit handle draftId token params = do
+    hasRights <- hasRights handle draftId token
+    case hasRights of
+        Left l -> return $ Left l 
+        Right _ -> do
             case eCategoryId params of
                 Just x -> hEditCategoryId handle draftId x
                 _ -> return ()
@@ -69,26 +67,18 @@ edit handle draftId params = do
             case eMainPhoto params of
                 Just x -> hEditMainPhoto handle draftId x
                 _ -> return ()
-            case eMinorPhoto params of
-                Just x -> hEditMinorPhotos handle draftId x
-                _ -> return ()
             return $ Right ()
-        else return $ Left "Draft with such id doesn't exist"
 
 delete :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
 delete handle draftId token = do
-            doesExist <- hDoesExist handle draftId
-            if doesExist
-                then do
-                    hasRights <- hasRights handle draftId token
-                    hasPost <- hHasPost handle draftId
-                    let canDelete = if hasPost then Left "No rights to delete" else Right ()
-                    case hasRights >> canDelete of
-                        Left l -> return $ Left l
-                        Right _ -> do
-                            hDelete handle draftId
-                            return $ Right ()
-                else return $ Left "Draft with such id doesn't exist"
+                hasRights <- hasRights handle draftId token
+                hasPost <- hHasPost handle draftId
+                let canDelete = if hasPost then Left "No rights to delete" else Right ()
+                case hasRights >> canDelete of
+                    Left l -> return $ Left l
+                    Right _ -> do
+                        hDelete handle draftId
+                        return $ Right ()
 
 publish :: Monad m => Handle m -> DraftId -> Token -> m (Either Text PostId)
 publish handle draftId token = do
@@ -104,8 +94,33 @@ publish handle draftId token = do
                     date <- hGetCurrentDate handle
                     Right <$> hPublish handle draft date
 
+addMinorPhoto :: Monad m => Handle m -> DraftId -> Token -> Image -> m (Either Text ())
+addMinorPhoto handle draftId token image = do 
+    hasRights <- hasRights handle draftId token 
+    case hasRights of 
+        Left l -> return $ Left l
+        Right _ -> Right <$> hAddMinorPhoto handle draftId image
+
+deleteMinorPhoto :: Monad m => Handle m -> DraftId -> Token -> ImageId -> m (Either Text ())
+deleteMinorPhoto handle draftId token imageId = do 
+    hasRights <- hasRights handle draftId token 
+    case hasRights of 
+        Left l -> return $ Left l
+        Right _ -> Right <$> hDeleteMinorPhoto handle draftId imageId
+
 hasRights :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
 hasRights handle draftId token = do
+    exist <- doesExist handle draftId 
+    case exist of 
+        Left l -> return $ Left l 
+        Right _ -> do 
+            author <- isAuthor handle draftId token
+            case author of 
+                Left l -> return $ Left l 
+                Right _ -> return $ Right ()
+
+isAuthor :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
+isAuthor handle draftId token = do
     isAuthor <- hIsAuthor handle token
     if isAuthor
         then do
@@ -115,3 +130,10 @@ hasRights handle draftId token = do
                 then return $ Right ()
                 else return $ Left "This author isn't author of the draft"
         else return $ Left "The user isn't author"
+
+doesExist :: Monad m => Handle m -> DraftId -> m (Either Text ())
+doesExist handle draftId = do 
+    exist <- hDoesExist handle draftId 
+    if exist 
+        then return $ Right ()
+        else return $ Left "Draft with such id doesn't exist"

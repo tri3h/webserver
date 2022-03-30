@@ -38,12 +38,12 @@ get query = do
         F.text = getMaybeText query "text",
         F.substring = getMaybeText query "substring"
     }
-    let order = F.Order {
-        F.date = getBool query "order_date",
-        F.author = getBool query "order_author",
-        F.category = getBool query "order_category",
-        F.photosNumber = getBool query "order_photos_number"
-    }
+    let order = case getMaybeText query "sort_by" of 
+            Just "by_date" -> F.ByDate 
+            Just "by_author" -> F.ByAuthor
+            Just "by_category" -> F.ByCategory 
+            Just "by_photos_number" -> F.ByPhotosNumber
+            _ -> F.None
     posts <- Handler.getPost handle filter order
     case posts of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l

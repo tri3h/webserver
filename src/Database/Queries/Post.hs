@@ -31,7 +31,7 @@ get postId conn = do
 getMinorPhotos :: PostId -> Connection -> IO [Text]
 getMinorPhotos postId conn = do 
     server <- serverAddress
-    xs <- query conn "SELECT image_id FROM minor_photos WHERE post_id = ?" (Only postId)
+    xs <- query conn "SELECT image_id FROM post_minor_photos WHERE post_id = ?" (Only postId)
     let xs' = map (\(Only x) -> server `append` "/images?image_id=" `append` pack (show (x :: Integer))) xs
     return xs'
 

@@ -15,6 +15,7 @@ import Data.Text.Encoding ( decodeUtf8 )
 import Data.Text ( Text )
 import Control.Monad
 import qualified Data.ByteString as BS
+import Data.ByteString.Lazy (toStrict)
 import Network.HTTP.Types (queryToQueryText)
 import qualified Image
 
@@ -49,6 +50,7 @@ makeAdminResponse req = do
 makeTokenResponse :: Request -> Text -> IO Response
 makeTokenResponse req token = do
                     isAdmin <- User.isAdmin token
+                    body <- strictRequestBody req
                     let query = queryToQueryText $ queryString req
                     case pathInfo req of
                         ["users"] -> case requestMethod req of
@@ -69,9 +71,13 @@ makeTokenResponse req token = do
                                 _ -> f isAdmin
                         ["drafts"] -> case requestMethod req of 
                             "GET" -> Draft.get query
-                            "POST" -> Draft.create query
-                            "PUT" -> Draft.edit query
+                            "POST" -> Draft.create query (toStrict body)
+                            "PUT" -> Draft.edit query (toStrict body)
                             "DELETE" -> Draft.delete query
+                            _ -> return $ responseLBS status404 [] ""
+                        ["drafts","minor_photo"] -> case requestMethod req of 
+                            "POST" -> Draft.addMinorPhoto query (toStrict body)
+                            "DELETE" -> Draft.deleteMinorPhoto query
                             _ -> return $ responseLBS status404 [] ""
                         ["publish"] -> Draft.publish query
                         _ -> f isAdmin
@@ -82,9 +88,10 @@ makeTokenResponse req token = do
 makeNoTokenResponse :: Request -> IO Response
 makeNoTokenResponse req = do 
         let query = queryToQueryText $ queryString req
+        body <- strictRequestBody req
         case pathInfo req of
             ["users"] -> if requestMethod req == "POST"
-                then User.createUser query
+                then User.createUser query (toStrict body)
                 else return $ responseLBS status400 [] "No token"
             ["tokens"] -> User.getNewToken query
             ["images"] -> case requestMethod req of 

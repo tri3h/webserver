@@ -22,14 +22,15 @@ import qualified Data.ByteString as BS
 import qualified Data.Text as Text
 import Types.Image
 import Utility
+import Data.ByteString(ByteString)
 
-createUser :: QueryText -> IO Response
-createUser query = do
+createUser :: QueryText -> ByteString -> IO Response
+createUser query body = do
     let isUser = getText query "name" >>= 
             \name -> getText query "surname" >>=
             \surname -> getText query "login" >>=
             \login -> getText query "password" >>=
-            \password -> getImage query "avatar" >>=
+            \password -> getImage body >>=
             \avatar -> Right $ UserToCreate {
                 name = name,
                 surname = surname,

@@ -45,7 +45,7 @@ get draftId conn = do
         categoryId = categoryId,
         tagId = map (\(Only x) -> x) tagIds,
         name = name,
-        description = description,
+        description = Description description,
         mainPhoto = Link $ server `append` "/images?image_id=" `append` pack (show (mainPhotoId :: Integer)),
         minorPhoto = map (\(Only x) -> Link $ server `append` "/images?image_id=" `append` pack (show (x :: Integer))) minorPhotoId
     }
@@ -81,16 +81,17 @@ editMainPhoto draftId photo conn = do
     \WHERE draft_id = ?" (imageId :: Integer, draftId)
     return ()
 
-editMinorPhotos :: DraftId -> [Image] -> Connection -> IO ()
-editMinorPhotos draftId photos conn = do
-    let onlyPhotos = map Only photos
-    imageIds <- returning conn "INSERT INTO images (image) \
-    \VALUES (decode(?,'base64')) RETURNING image_id" onlyPhotos
-    let draftPhotos = map (\(Only x) -> (draftId, x)) (imageIds :: [Only Integer])
-    execute conn "DELETE FROM draft_minor_photos dmp INNER JOIN drafts d \
-    \ON dt.draft_id = d.draft_id WHERE draft_id = ?" (Only draftId)
-    executeMany conn "INSERT INTO draft_minor_photos \
-    \(draft_id, minot_photo_id) VALUES (?,?)" draftPhotos
+deleteMinorPhoto :: DraftId -> ImageId -> Connection -> IO ()
+deleteMinorPhoto draftId photoId conn = do 
+    execute conn "DELETE FROM draft_minor_photos \
+    \WHERE image_id = ? AND draft_id = ?" (photoId, draftId)
+    return ()
+
+addMinorPhoto :: DraftId -> Image -> Connection -> IO ()
+addMinorPhoto draftId photo conn = do 
+    [Only imageId] <- query conn "INSERT INTO images (image) VALUES (?) RETURNING image_id" (Only photo)
+    execute conn "INSERT INTO draft_minor_photos (image_id, draft_id) \
+    \VALUES (?,?)" (imageId :: Integer, draftId)
     return ()
 
 delete :: DraftId -> Connection -> IO ()

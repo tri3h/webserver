@@ -54,11 +54,12 @@ getPost handle params order = do
                     applyFilter (F.text params) (filterByText handle),
                     applyFilter (F.substring params) (filterBySubstring handle)]
     let common = chooseCommon $ filter (not . null) filtered
-    orderedCommon <- applyOrder [F.date order, F.author order,
-                        F.category order, F.photosNumber order] 
-                        common
-                        [orderByDate handle,orderByAuthor handle,
-                        orderByCategory handle, orderByPhotosNumber handle]
+    orderedCommon <- case order of 
+        F.ByAuthor -> orderByAuthor handle common
+        F.ByCategory -> orderByCategory handle common 
+        F.ByDate -> orderByDate handle common 
+        F.ByPhotosNumber -> orderByPhotosNumber handle common
+        _ -> return common 
     posts <- get handle orderedCommon
     authors <- mapM (getAuthor handle . authorId) posts
     users <- mapM (getUser handle . A.userId) authors
@@ -86,10 +87,6 @@ getPost handle params order = do
 
 applyFilter Nothing _ = return []
 applyFilter (Just x) f = f x
-
-applyOrder [] xs _ = return xs
-applyOrder _ xs [] = return xs
-applyOrder (o:order) xs (f:funcs) = if o then f xs else applyOrder order xs funcs
 
 chooseCommon :: Eq a => [[a]] -> [a]
 chooseCommon [] = []
