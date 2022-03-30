@@ -40,7 +40,7 @@ create query = do
         Right comment -> do 
             result <- Handler.create handle comment 
             case result of 
-                Right r -> return $ responseLBS status200 [] ""
+                Right r -> return $ responseLBS status201 [] ""
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
@@ -50,7 +50,7 @@ delete query = do
         Right commId -> do 
             result <- Handler.delete handle commId
             case result of 
-                Right r -> return $ responseLBS status200 [] ""
+                Right r -> return $ responseLBS status204 [] ""
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 

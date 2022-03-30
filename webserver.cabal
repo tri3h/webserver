@@ -29,6 +29,7 @@ library
       Category
       Comment
       Database.Connection
+      Database.Migration
       Database.Queries.Author
       Database.Queries.Category
       Database.Queries.Comment
@@ -75,6 +76,7 @@ library
     , cryptonite
     , http-types
     , postgresql-simple
+    , postgresql-simple-migration
     , random
     , text
     , time
@@ -98,6 +100,7 @@ executable webserver-exe
     , cryptonite
     , http-types
     , postgresql-simple
+    , postgresql-simple-migration
     , random
     , text
     , time
@@ -123,6 +126,7 @@ test-suite webserver-test
     , cryptonite
     , http-types
     , postgresql-simple
+    , postgresql-simple-migration
     , random
     , text
     , time

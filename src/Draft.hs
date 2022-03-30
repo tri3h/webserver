@@ -49,7 +49,7 @@ create query body = do
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right draft -> do 
             Handler.create handle draft
-            return $ responseLBS status200 [] ""
+            return $ responseLBS status201 [] ""
 
 get :: QueryText -> IO Response
 get query = do 
@@ -73,7 +73,7 @@ delete query = do
             result <- Handler.delete handle draftId token
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                Right _ -> return $ responseLBS status200 [] ""
+                Right _ -> return $ responseLBS status204 [] ""
             
 edit :: QueryText -> ByteString -> IO Response
 edit query body = do 
@@ -92,7 +92,7 @@ edit query body = do
             result <- Handler.edit handle draftId token editParams
             case result of 
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                Right _ -> return $ responseLBS status200 [] ""
+                Right _ -> return $ responseLBS status201 [] ""
 
 publish :: QueryText -> IO Response
 publish query = do 
@@ -104,7 +104,7 @@ publish query = do
             result <- Handler.publish handle draftId token
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                Right postId -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode postId
+                Right postId -> return $ responseLBS status201 [(hContentType, "application/json")] $ encode postId
 
 addMinorPhoto :: QueryText -> ByteString -> IO Response
 addMinorPhoto query body = do 
@@ -115,7 +115,7 @@ addMinorPhoto query body = do
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token, image) -> do 
             Handler.addMinorPhoto handle draftId token image
-            return $ responseLBS status200 [] ""
+            return $ responseLBS status201 [] ""
 
 deleteMinorPhoto :: QueryText -> IO Response
 deleteMinorPhoto query = do 
@@ -126,7 +126,7 @@ deleteMinorPhoto query = do
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token, imageId) -> do 
             Handler.deleteMinorPhoto handle draftId token imageId
-            return $ responseLBS status200 [] ""
+            return $ responseLBS status204 [] ""
 
 handle :: Handler.Handle IO
 handle = Handler.Handle {

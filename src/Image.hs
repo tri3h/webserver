@@ -24,6 +24,6 @@ get query = do
     case getInteger query "image_id" of
             Right imageId -> do
                 (Image image) <- manage $ Db.get imageId
-                let html = "<img src=\"data:image/png;base64," `append` image `append` "\"/>"
+                let html = "<img src=\"data:image;base64," `append` image `append` "\"/>"
                 return $ responseBuilder status200 [(hContentType, "text/html")] . fromByteString $ encodeUtf8 html
             Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 l

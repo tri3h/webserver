@@ -46,7 +46,7 @@ createUser query body = do
                         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                         Right r -> do
                             let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict r) `append` "\"}"
-                            return $ responseLBS status200 [(hContentType, "application/json")] a
+                            return $ responseLBS status201 [(hContentType, "application/json")] a
 
 getUser :: QueryText -> Text -> IO Response
 getUser query token = do
@@ -77,7 +77,7 @@ getNewToken query = do
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right r -> do
                     let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict r) `append` "\"}"
-                    return $ responseLBS status200 [(hContentType, "application/json")] a
+                    return $ responseLBS status201 [(hContentType, "application/json")] a
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 isAdmin :: Handler.Token -> IO Bool
@@ -86,6 +86,7 @@ isAdmin = manage . Db.isAdmin
 isTokenValid :: Handler.Token -> IO Bool
 isTokenValid = manage . Db.isTokenValid
 
+handle :: Handler.Handle IO
 handle = Handler.Handle {
     Handler.isLoginUnique= manage . Db.isLoginUnique,
     Handler.isTokenUnique = manage . Db.isTokenUnique,

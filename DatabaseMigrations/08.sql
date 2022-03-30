@@ -6,8 +6,6 @@ ALTER TABLE images RENAME COLUMN picture TO image;
 
 ALTER TABLE users RENAME COLUMN picture_id TO image_id;
 
-ALTER TABLE post_minor_photos RENAME COLUMN picture_id TO image_id;
-
 ALTER TABLE posts RENAME COLUMN picture_id TO image_id;
 
 CREATE TABLE drafts (
@@ -40,6 +38,8 @@ CREATE TABLE drafts (
 ALTER TABLE minor_photos RENAME COLUMN minor_photo_id TO post_minor_photo_id;
 
 ALTER TABLE minor_photos RENAME TO post_minor_photos;
+
+ALTER TABLE post_minor_photos RENAME COLUMN picture_id TO image_id;
 
 CREATE TABLE draft_tags (
     draft_tag_id SERIAL,

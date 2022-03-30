@@ -23,7 +23,7 @@ create query = do
             result <- Handler.createTag handle name
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                Right r -> return $ responseLBS status200 [] ""
+                Right r -> return $ responseLBS status201 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 get :: QueryText -> IO Response
@@ -49,7 +49,7 @@ edit query = do
             }
             res' <- Handler.editTag handle tag
             case res' of 
-                Right r' -> return $ responseLBS status200 [] ""
+                Right r' -> return $ responseLBS status201 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
@@ -59,7 +59,7 @@ delete query = do
         Right tagId -> do 
             res' <- Handler.deleteTag handle tagId
             case res' of
-                Right r' -> return $ responseLBS status200 [] ""
+                Right r' -> return $ responseLBS status204 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 

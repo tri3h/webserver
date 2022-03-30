@@ -33,6 +33,7 @@ dependencies:
 - aeson
 - configurator
 - binary
+- postgresql-simple-migration
 
 library:
   source-dirs: src

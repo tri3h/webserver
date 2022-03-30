@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Database.Connection (manage, serverAddress) where
+module Database.Connection (manage, open, serverAddress) where
 
 import Database.PostgreSQL.Simple
 import qualified Data.Configurator as Config

@@ -33,7 +33,7 @@ create query = do
             result <- Handler.createAuthor handle author
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                Right r -> return $ responseLBS status200 [] ""
+                Right r -> return $ responseLBS status201 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 get :: QueryText -> IO Response
@@ -58,7 +58,7 @@ edit query = do
         Right author -> do 
             res' <- Handler.editAuthor handle author
             case res' of 
-                Right r' -> return $ responseLBS status200 [] ""
+                Right r' -> return $ responseLBS status201 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
@@ -68,7 +68,7 @@ delete query = do
         Right authorId -> do 
             res' <- Handler.deleteAuthor handle authorId
             case res' of
-                Right r' -> return $ responseLBS status200 [] ""
+                Right r' -> return $ responseLBS status204 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 

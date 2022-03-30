@@ -26,7 +26,7 @@ create query = do
             result <- Handler.createCategory handle categ
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                Right r -> return $ responseLBS status200 [] ""
+                Right r -> return $ responseLBS status201 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 get :: QueryText -> IO Response
@@ -53,7 +53,7 @@ edit query = do
             }
             res' <- Handler.editCategory handle categ
             case res' of
-                Right r' -> return $ responseLBS status200 [] ""
+                Right r' -> return $ responseLBS status201 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
@@ -63,7 +63,7 @@ delete query = do
         Right categId -> do
             res' <- Handler.deleteCategory handle categId
             case res' of
-                Right r' -> return $ responseLBS status200 [] ""
+                Right r' -> return $ responseLBS status204 [] ""
                 Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
