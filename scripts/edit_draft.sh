@@ -21,7 +21,7 @@ case "$name" in
 esac
 done < ../Server.config
 
-base64 $main_photo > "image.dat"
+if [ ! -z ${main_photo+x} ]; then base64 $main_photo > "image.dat"; fi
 
 curl "$host:$port/drafts?token=$token&draft_id=$draft_id&category_id=$category_id&tag_id=$tag_id&name=$name&description=$description&image_type=$main_photo_image_type" -X PUT -F main_photo=@image.dat
 
