@@ -8,7 +8,6 @@ import Types.User
 import Types.Image
 import Database.Connection
 
-
 isLoginUnique :: Login -> Connection ->  IO Bool
 isLoginUnique login conn = do
     [Only n] <- query conn "SELECT COUNT(login) FROM users WHERE users.login = ?" (Only login)
@@ -36,8 +35,10 @@ isAdmin token conn = do
 
 create :: User -> Connection -> IO Bool
 create user conn = do
-    [Only imageId] <- query conn "INSERT INTO images (image) VALUES (decode(?,'base64')) \
-    \RETURNING image_id" (Only $ avatar user)
+    let (Image image imageType) = avatar user
+    [Only imageId] <- query conn "INSERT INTO images (image, image_type) \
+    \VALUES (decode(?,'base64'), ?) \
+    \RETURNING image_id" (image, imageType)
     n <- execute conn "INSERT INTO users (name, surname, image_id, \
     \login, password, registration_date, admin, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         (name user, surname user, imageId :: Integer, login user, password user, date user, admin user, token user)
@@ -59,7 +60,8 @@ get token conn = do
                 surname = surname,
                 avatar = Link $ server `append` "/images?image_id=" `append` pack (show (imageId :: Integer)),
                 login = login,
-                date = pack $ show (regDate :: Date)}
+                date = pack $ show (regDate :: Date)
+                }
 
 getByUserId :: UserId -> Connection -> IO User
 getByUserId userId conn = do 

@@ -13,17 +13,20 @@ import Network.Wai.Handler.Warp
 import Network.Wai
 import Network.HTTP.Types.Status
 import Data.Text.Encoding ( decodeUtf8, encodeUtf8 )
-import Data.Text ( Text )
+import Data.Text ( Text, pack)
 import Control.Monad
 import qualified Data.ByteString as BS
 import Network.HTTP.Types (queryToQueryText, hContentType)
 import Data.Binary.Builder (fromByteString)
+import Data.ByteString.Base64 (decode)
 
 get :: QueryText -> IO Response
 get query = do
     case getInteger query "image_id" of
             Right imageId -> do
-                (Image image) <- manage $ Db.get imageId
-                let html = "<img src=\"data:image;base64," `append` image `append` "\"/>"
-                return $ responseBuilder status200 [(hContentType, "text/html")] . fromByteString $ encodeUtf8 html
+                (Image image imageType) <- manage $ Db.get imageId
+                let decodeImage = decode $ encodeUtf8 image 
+                case decodeImage of 
+                    Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 $ pack l
+                    Right r -> return $ responseBuilder status200 [(hContentType, encodeUtf8 $ "image/" `append` imageType)] $ fromByteString r
             Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 l

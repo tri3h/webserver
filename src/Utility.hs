@@ -2,7 +2,7 @@
 module Utility where
 
 import Prelude hiding (null)
-import Data.Text ( Text, append, unpack, splitOn, null, unpack )
+import Data.Text ( Text, append, unpack, splitOn, null, unpack, isInfixOf, replace )
 import Types.Image ( Image(..) )
 import Network.HTTP.Types.URI ( QueryText )
 import Control.Monad ( join )
@@ -31,10 +31,14 @@ getIntegers query name = case join $ lookup name query of
         then err name
         else Right $ map (\x -> read $ unpack x :: Integer) (splitOn "," xs)
 
-getImage :: ByteString -> Either Text Image
-getImage bs = case decodeStrict bs :: (Maybe Image) of
-    Nothing -> Left "No image specified"
-    Just x -> Right x
+err :: Text -> Either Text b
+err name = Left $ "No " `append` name `append` " specified"
+
+getImage :: Text -> Text -> Either Text Text
+getImage body name = let hasImage = ("name=\"" `append` name) `isInfixOf` body
+                in if hasImage 
+                    then Right $ replace "\n" "" $ head $ tail $ dropWhile (/="") $ splitOn "\r\n" body 
+                    else Left "No image with such name"
 
 getDescription :: ByteString -> Either Text Description
 getDescription bs = case decodeStrict bs :: (Maybe Description) of
@@ -58,14 +62,13 @@ getMaybeIntegers query name = case join $ lookup name query of
         then Nothing 
         else Just $ map (\x -> read $ unpack x :: Integer) $ splitOn "," xs
 
-getMaybeImage :: ByteString -> Maybe Image
-getMaybeImage bs = case decodeStrict bs :: (Maybe Image) of 
-    image@(Just (Image x)) -> if null x then Nothing else image
-    _ -> Nothing 
-
 getMaybeDescription :: ByteString -> Maybe Description
 getMaybeDescription bs = case decodeStrict bs :: (Maybe Description) of 
     descr@(Just (Description x)) -> if null x then Nothing else descr
     _ -> Nothing 
 
-err name = Left $ "No " `append` name `append` " specified"
+getMaybeImage :: Text -> Text -> Maybe Text
+getMaybeImage body name = let hasImage = ("name=\"" `append` name) `isInfixOf` body
+                in if hasImage 
+                    then Just $ replace "\n" "" $ head $ tail $ dropWhile (/="") $ splitOn "\r\n" body 
+                    else Nothing

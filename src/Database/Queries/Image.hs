@@ -7,6 +7,6 @@ import Types.Image
 
 get :: Integer -> Connection -> IO Image
 get imageId conn = do
-    [Only image] <- query conn "SELECT encode(image,'base64') AS image FROM \
+    [(image, imageType)] <- query conn "SELECT translate(encode(image,'base64'), E'\n', '') AS image, image_type FROM \
     \images WHERE images.image_id = ?" (Only imageId)
-    return $ Image image
+    return (Image image imageType)

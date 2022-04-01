@@ -15,9 +15,13 @@ import Data.Text.Encoding ( decodeUtf8 )
 import Data.Text ( Text )
 import Control.Monad
 import qualified Data.ByteString as BS
-import Data.ByteString.Lazy (toStrict)
-import Network.HTTP.Types (queryToQueryText)
+import Data.ByteString.Lazy (toStrict, fromStrict)
+import Network.HTTP.Types (queryToQueryText, QueryText)
 import qualified Image
+
+import Types.Image 
+import Data.Aeson
+import Utility
 
 makeAdminResponse :: Request -> IO Response
 makeAdminResponse req = do
@@ -47,10 +51,9 @@ makeAdminResponse req = do
                         _ -> return $ responseLBS status404 [] ""
                     _ -> return $ responseLBS status404 [] ""
 
-makeTokenResponse :: Request -> Text -> IO Response
-makeTokenResponse req token = do
+makeTokenResponse :: Request -> BS.ByteString -> Text -> IO Response
+makeTokenResponse req body token = do
                     isAdmin <- User.isAdmin token
-                    body <- strictRequestBody req
                     let query = queryToQueryText $ queryString req
                     case pathInfo req of
                         ["users"] -> case requestMethod req of
@@ -71,12 +74,12 @@ makeTokenResponse req token = do
                                 _ -> f isAdmin
                         ["drafts"] -> case requestMethod req of 
                             "GET" -> Draft.get query
-                            "POST" -> Draft.create query (toStrict body)
-                            "PUT" -> Draft.edit query (toStrict body)
+                            "POST" -> Draft.create query body
+                            "PUT" -> Draft.edit query body
                             "DELETE" -> Draft.delete query
                             _ -> return $ responseLBS status404 [] ""
                         ["drafts","minor_photo"] -> case requestMethod req of 
-                            "POST" -> Draft.addMinorPhoto query (toStrict body)
+                            "POST" -> Draft.addMinorPhoto query body
                             "DELETE" -> Draft.deleteMinorPhoto query
                             _ -> return $ responseLBS status404 [] ""
                         ["publish"] -> Draft.publish query
@@ -85,13 +88,12 @@ makeTokenResponse req token = do
                                 then makeAdminResponse req
                                 else return $ responseLBS status404 [] ""
 
-makeNoTokenResponse :: Request -> IO Response
-makeNoTokenResponse req = do 
+makeNoTokenResponse :: Request -> BS.ByteString -> IO Response
+makeNoTokenResponse req body = do 
         let query = queryToQueryText $ queryString req
-        body <- strictRequestBody req
         case pathInfo req of
             ["users"] -> if requestMethod req == "POST"
-                then User.createUser query (toStrict body)
+                then User.createUser query body
                 else return $ responseLBS status400 [] "No token"
             ["tokens"] -> User.getNewToken query
             ["images"] -> case requestMethod req of 
@@ -102,11 +104,12 @@ makeNoTokenResponse req = do
 main :: IO ()
 main = run 3000 $ \req f -> do
     let query = queryToQueryText $ queryString req
+    body <- toStrict <$> strictRequestBody req
     response <- case join $ lookup "token" query of
         Just t -> do
             isValid <- User.isTokenValid t
             if isValid
-                then makeTokenResponse req t
+                then makeTokenResponse req body t
                 else return $ responseLBS status400 [] "Invalid token"
-        Nothing -> makeNoTokenResponse req
+        Nothing -> makeNoTokenResponse req body
     f response

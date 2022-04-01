@@ -18,3 +18,6 @@ data Filter = Filter {
 }
 
 data Order = ByDate | ByAuthor | ByCategory | ByPhotosNumber | None
+
+type Offset = Integer 
+type Limit = Integer

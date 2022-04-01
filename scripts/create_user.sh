@@ -12,14 +12,16 @@ do
  esac
 done
 
-avatar_base64=( base64 $avatar )
-
-while read name n value
+while read key n value
 do 
-case "$name" in 
+case "$key" in 
  host) host=${value//\"};;
  port) port=$value;;
 esac
 done < ../Server.config
 
-curl "$host:$port/users?name=$name&surname=$surname&login=$login&password=$password" -X POST -d "{\"avatar\" : \"$avatar_base64\", \"image_type\" : \"$avatar_image_type\"}"
+base64 $avatar > "image.dat"
+
+curl "$host:$port/users?name=$name&surname=$surname&login=$login&password=$password&image_type=$avatar_image_type" -X POST -F avatar=@image.dat
+
+rm "image.dat"

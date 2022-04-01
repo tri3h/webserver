@@ -13,20 +13,15 @@ import Types.Image
 
 create :: Draft -> Connection -> IO ()
 create draft conn = do
-    [Only imageId] <- query conn "INSERT INTO images (image) \
-    \VALUES (decode(?,'base64')) RETURNING image_id" (Only $ mainPhoto draft)
+    let (Image image imageType) = mainPhoto draft
+    [Only imageId] <- query conn "INSERT INTO images (image, image_type) \
+    \VALUES (decode(?,'base64'), ?) RETURNING image_id" (image, imageType)
     [Only draftId] <- query conn "INSERT INTO drafts \
     \(category_id, name, text, image_id) VALUES (?,?,?,?) \
     \RETURNING draft_id" (categoryId draft, name draft, description draft, imageId :: Integer)
     let tags = map (\x -> (draftId, x)) $ tagId draft
     executeMany conn "INSERT INTO draft_tags (draft_id, tag_id) \
     \VALUES (?,?)" (tags :: [(Integer,Integer)])
-    let minorPhotos = map Only $ minorPhoto draft
-    mPhotoId <- returning conn "INSERT INTO images (image) VALUES \
-    \(decode(?,'base64')) RETURNING image_id" minorPhotos
-    let mPhotos = map (\(Only x) -> (draftId, x)) mPhotoId
-    executeMany conn "INSERT INTO draft_minor_photos (draft_id, image_id) \
-    \VALUES (?,?)" (mPhotos :: [(Integer,Integer)])
     return ()
 
 get :: DraftId -> Connection -> IO Draft
@@ -89,7 +84,9 @@ deleteMinorPhoto draftId photoId conn = do
 
 addMinorPhoto :: DraftId -> Image -> Connection -> IO ()
 addMinorPhoto draftId photo conn = do 
-    [Only imageId] <- query conn "INSERT INTO images (image) VALUES (?) RETURNING image_id" (Only photo)
+    let (Image image imageType) = photo
+    [Only imageId] <- query conn "INSERT INTO images (image, image_type) \
+    \VALUES (?,?) RETURNING image_id" (image, imageType)
     execute conn "INSERT INTO draft_minor_photos (image_id, draft_id) \
     \VALUES (?,?)" (imageId :: Integer, draftId)
     return ()

@@ -70,6 +70,7 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , base64-bytestring
     , binary
     , bytestring
     , configurator
@@ -94,6 +95,7 @@ executable webserver-exe
   build-depends:
       aeson
     , base >=4.7 && <5
+    , base64-bytestring
     , binary
     , bytestring
     , configurator
@@ -120,6 +122,7 @@ test-suite webserver-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , base64-bytestring
     , binary
     , bytestring
     , configurator

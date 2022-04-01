@@ -6,7 +6,7 @@ import Network.HTTP.Types.Status
 import Network.HTTP.Types.Header
 import Network.HTTP.Types.URI
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
-import Data.Text.Encoding ( decodeUtf8, decodeUtf16BE )
+import Data.Text.Encoding ( decodeUtf8)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text ( Text, unpack )
 import Control.Monad
@@ -30,13 +30,14 @@ createUser query body = do
             \name -> getText query "surname" >>=
             \surname -> getText query "login" >>=
             \login -> getText query "password" >>=
-            \password -> getImage body >>=
-            \avatar -> Right $ UserToCreate {
+            \password -> getText query "image_type" >>=
+            \imageType -> getImage (decodeUtf8 body) "avatar" >>=
+            \image -> Right $ UserToCreate {
                 name = name,
                 surname = surname,
                 login = login,
                 password = password,
-                avatar = avatar
+                avatar = Image image imageType
                 }
     case isUser of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -72,7 +73,7 @@ getNewToken query = do
             \password -> Right (login, password)
     case isData of 
         Right (login, password) -> do
-            result <- Handler.getNewToken handle  login password
+            result <- Handler.getNewToken handle login password
             case result of
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right r -> do

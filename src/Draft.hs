@@ -10,6 +10,7 @@ import Types.Category(CategoryId)
 import Types.Tag(TagId)
 import Types.Post(PostId, Date)
 import Types.User(Token)
+import Types.Image
 import qualified Handler.Draft as Handler
 import qualified Database.Queries.Draft as Db.Draft
 import qualified Database.Queries.Author as Db.Author
@@ -32,8 +33,9 @@ create query body = do
             \categoryId -> getIntegers query "tag_id" >>=
             \tagId -> getText query "name" >>=
             \name -> getText query "description" >>=
-            \description -> getImage body >>=
-            \mainPhoto -> getDescription body >>=
+            \description -> getText query "image_type" >>=
+            \imageType -> getImage (decodeUtf8 body) "main_photo" >>=
+            \image -> getDescription body >>=
             \description -> Right $ Draft {
                 draftId = Nothing,
                 postId = Nothing,
@@ -42,7 +44,7 @@ create query body = do
                 tagId = tagId,
                 name = name,
                 description = description,
-                mainPhoto = mainPhoto,
+                mainPhoto = Image image imageType,
                 minorPhoto = []
                 }
     case isDraft of
@@ -87,12 +89,19 @@ edit query body = do
                     eTagId = getMaybeIntegers query "tag_id",
                     eName = getMaybeText query "name",
                     eDescription = getMaybeDescription body,
-                    eMainPhoto = getMaybeImage body
+                    eMainPhoto = getMainPhoto query body
                     }
             result <- Handler.edit handle draftId token editParams
             case result of 
                 Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
                 Right _ -> return $ responseLBS status201 [] ""
+    where getMainPhoto query body = let imageType = getMaybeText query "image_type";
+                                        image = getMaybeImage (decodeUtf8 body) "main_photo"
+                                    in case imageType of 
+                                            Nothing -> Nothing 
+                                            Just t -> case image of 
+                                                    Nothing -> Nothing 
+                                                    Just i -> Just $ Image i t
 
 publish :: QueryText -> IO Response
 publish query = do 
@@ -110,11 +119,12 @@ addMinorPhoto :: QueryText -> ByteString -> IO Response
 addMinorPhoto query body = do 
     case getInteger query "draft_id" >>=
         \draftId -> getText query "token" >>=
-        \token -> getImage body >>=
-        \image -> Right (draftId, token, image) of 
+        \token -> getText query "image_type" >>=
+        \imageType -> getImage (decodeUtf8 body) "minor_photo" >>=
+        \minorPhoto -> Right (draftId, token, minorPhoto, imageType) of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-        Right (draftId, token, image) -> do 
-            Handler.addMinorPhoto handle draftId token image
+        Right (draftId, token, minorPhoto, imageType) -> do 
+            Handler.addMinorPhoto handle draftId token (Image minorPhoto imageType)
             return $ responseLBS status201 [] ""
 
 deleteMinorPhoto :: QueryText -> IO Response

@@ -1,0 +1,1 @@
+ALTER TABLE images ADD COLUMN image_type TEXT;

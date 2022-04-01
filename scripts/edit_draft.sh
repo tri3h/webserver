@@ -13,8 +13,6 @@ do
  esac
 done
 
-main_photo_base64=( base64 $main_photo )
-
 while read name n value
 do 
 case "$name" in 
@@ -23,4 +21,8 @@ case "$name" in
 esac
 done < ../Server.config
 
-curl "$host:$port/drafts?token=$token&draft_id=$draft_id&category_id=$category_id&tag_id=$tag_id&name=$name&description=$description" -X PUT -d "{\"main_photo\" : \"$main_photo_base64\", \"description\": \"$description\"}"
+base64 $main_photo > "image.dat"
+
+curl "$host:$port/drafts?token=$token&draft_id=$draft_id&category_id=$category_id&tag_id=$tag_id&name=$name&description=$description&image_type=$main_photo_image_type" -X PUT -F main_photo=@image.dat
+
+rm "image.dat"

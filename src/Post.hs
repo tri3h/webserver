@@ -44,14 +44,21 @@ get query = do
             Just "by_category" -> F.ByCategory 
             Just "by_photos_number" -> F.ByPhotosNumber
             _ -> F.None
-    posts <- Handler.getPost handle filter order
+    let limit = case getMaybeInteger query "limit" of 
+                    Nothing -> postsOnPage 
+                    Just x -> if x <= postsOnPage then x else postsOnPage 
+    let offset = case getMaybeInteger query "offset" of 
+                    Nothing -> 0 
+                    Just x -> x
+    posts <- Handler.getPost handle filter order limit offset
     case posts of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right r -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode r
 
 handle :: Handler.Handle IO
 handle = Handler.Handle {
-    Handler.get = manage . Db.get,
+    Handler.get = \a b c -> manage $ Db.get a b c,
+    Handler.getAll = manage Db.getAll,
     Handler.getMinorPhotos = manage . Db.getMinorPhotos,
     Handler.getAuthor = manage . AuthorDb.get,
     Handler.getUser = manage . UserDb.getByUserId,

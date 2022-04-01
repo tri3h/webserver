@@ -21,9 +21,6 @@ data Handle m = Handle {
     updateToken :: Login -> Token -> m Bool
 }
 
-hashPassword :: Password -> Password
-hashPassword p = pack . show . hashWith SHA256 $ encodeUtf8 p
-
 createUser :: Monad m => Handle m -> User -> m (Either Text Text)
 createUser handle recUser = do 
     isUnique <- isLoginUnique handle $ login recUser
@@ -48,6 +45,9 @@ createUser handle recUser = do
                 then return $ Right token
                 else return $ Left "Failed to create user"
         else return $ Left "Login is already taken"
+
+hashPassword :: Password -> Password
+hashPassword p = pack . show . hashWith SHA256 $ encodeUtf8 p
 
 deleteUser :: Monad m => Handle m -> UserId -> m (Either Text ())
 deleteUser handle user_id = do 
