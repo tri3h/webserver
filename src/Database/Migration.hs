@@ -1,7 +1,11 @@
 module Database.Migration where
 
 import Database.PostgreSQL.Simple.Migration
-import Database.Connection
+    ( MigrationResult,
+      runMigration,
+      MigrationCommand(MigrationDirectory, MigrationInitialization),
+      MigrationContext(MigrationContext) )
+import Database.Connection ( open )
 import Database.PostgreSQL.Simple (withTransaction)
 
 execute :: IO (MigrationResult String)

@@ -1,42 +1,48 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Types.Post where
 
-import Data.Text
+import Data.Text ( Text )
 import Data.Aeson
-import GHC.Generics
-import Types.Author 
-import Types.Category 
-import Types.User 
-import Types.Tag
-import Types.Comment
+    ( defaultOptions,
+      genericToEncoding,
+      SumEncoding(UntaggedValue),
+      Options(sumEncoding),
+      ToJSON(toEncoding) )
+import GHC.Generics ( Generic )
+import Types.Author ( Author ) 
+import Types.Category ( Category ) 
+import Types.User ( User ) 
+import Types.Tag ( Tag )
+import Types.Comment ( Comment )
+import Types.Image ( Image )
 
 postsOnPage :: Integer
 postsOnPage = 10
 
-data Post = PostFromDatabase {
+type PostId = Integer
+type Date = Text
+
+data Post = ShortPost {
     postId :: Integer,
     authorId :: Integer,
     categoryId :: Integer,
     name :: Text,
     date :: Text,
     text :: Text,
-    mainPhoto :: Text
-} | PostToGet {
+    mainPhoto :: Image
+} | FullPost {
     postId :: Integer,
-    author :: Author,
-    user :: User,
+    author :: Maybe Author,
+    user :: Maybe User,
     category :: [Category],
     tag :: [Tag],
     comment :: [Comment],
     name :: Text,
     date :: Text,
     text :: Text,
-    mainPhoto :: Text,
-    minorPhoto :: [Text]
+    mainPhoto :: Image,
+    minorPhoto :: [Image]
 } deriving (Show, Generic)
 
 instance ToJSON Post where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
-
-type PostId = Integer
-type Date = Text

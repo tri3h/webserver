@@ -7,8 +7,6 @@ import Types.Image ( Image(..) )
 import Network.HTTP.Types.URI ( QueryText )
 import Control.Monad ( join )
 import Data.ByteString(ByteString)
-import Data.Aeson
-import Types.Draft ( Description(..) )
 
 getText :: QueryText -> Text -> Either Text Text
 getText query name = case join $ lookup name query of
@@ -37,13 +35,9 @@ err name = Left $ "No " `append` name `append` " specified"
 getImage :: Text -> Text -> Either Text Text
 getImage body name = let hasImage = ("name=\"" `append` name) `isInfixOf` body
                 in if hasImage 
-                    then Right $ replace "\n" "" $ head $ tail $ dropWhile (/="") $ splitOn "\r\n" body 
+                    then Right $ replace "\n" "" $ head $ tail 
+                        $ dropWhile (/="") $ splitOn "\r\n" body 
                     else Left "No image with such name"
-
-getDescription :: ByteString -> Either Text Description
-getDescription bs = case decodeStrict bs :: (Maybe Description) of
-    Nothing -> Left "No description specified"
-    Just x -> Right x
 
 getMaybeText :: QueryText -> Text -> Maybe Text
 getMaybeText query name = case join $ lookup name query of 
@@ -62,13 +56,9 @@ getMaybeIntegers query name = case join $ lookup name query of
         then Nothing 
         else Just $ map (\x -> read $ unpack x :: Integer) $ splitOn "," xs
 
-getMaybeDescription :: ByteString -> Maybe Description
-getMaybeDescription bs = case decodeStrict bs :: (Maybe Description) of 
-    descr@(Just (Description x)) -> if null x then Nothing else descr
-    _ -> Nothing 
-
 getMaybeImage :: Text -> Text -> Maybe Text
 getMaybeImage body name = let hasImage = ("name=\"" `append` name) `isInfixOf` body
                 in if hasImage 
-                    then Just $ replace "\n" "" $ head $ tail $ dropWhile (/="") $ splitOn "\r\n" body 
+                    then Just $ replace "\n" "" $ head $ tail 
+                        $ dropWhile (/="") $ splitOn "\r\n" body 
                     else Nothing

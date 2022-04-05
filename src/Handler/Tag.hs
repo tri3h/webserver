@@ -1,49 +1,37 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Handler.Tag where
 
-import Types.Tag
-import Data.Text
+import Types.Tag ( Name, Tag(tagId), TagId )
+import Data.Text ( Text )
 
 data Handle m = Handle {
-    create :: Name -> m Bool,
-    get :: TagId -> m Tag,
-    delete :: TagId -> m Bool,
-    edit :: Tag -> m Bool,
-    doesExist :: TagId -> m Bool
+    hCreate :: Name -> m (),
+    hGet :: TagId -> m Tag,
+    hDelete :: TagId -> m (),
+    hEdit :: Tag -> m (),
+    hDoesExist :: TagId -> m (Either Text ())
 }
 
-createTag :: Monad m => Handle m -> Name -> m (Either Text Text)
-createTag handle name = do 
-        res <- create handle name
-        if res
-            then return $ Right "Tag was created"
-            else return $ Left "Failed to create tag"
+create :: Monad m => Handle m -> Name -> m (Either Text ())
+create handle name = Right <$> hCreate handle name
 
-getTag :: Monad m => Handle m -> TagId -> m (Either Text Tag)
-getTag handle tagId = do 
-    exist <- doesExist handle tagId
-    if exist
-        then Right <$> get handle tagId
-        else return $ Left "Tag with such id doesn't exist"
+get :: Monad m => Handle m -> TagId -> m (Either Text Tag)
+get handle tagId = do 
+    exist <- hDoesExist handle tagId
+    case exist of 
+        Right _ -> Right <$> hGet handle tagId
+        Left l -> return $ Left l
 
-editTag :: Monad m => Handle m -> Tag -> m (Either Text ())
-editTag handle tag =  do 
-    exist <- doesExist handle $ tagId tag
-    if exist 
-        then do 
-            res <- edit handle tag 
-            if res 
-                then return $ Right ()
-                else return $ Left "Failed to edit tag"
-        else return $ Left "Tag with such id doesn't exist"
+edit :: Monad m => Handle m -> Tag -> m (Either Text ())
+edit handle tag =  do 
+    exist <- hDoesExist handle $ tagId tag
+    case exist of 
+        Right _ -> Right <$> hEdit handle tag
+        Left l -> return $ Left l 
 
-deleteTag :: Monad m => Handle m -> TagId -> m (Either Text ())
-deleteTag handle tagId = do
-    exist <- doesExist handle tagId
-    if exist 
-        then do 
-            res <- delete handle tagId
-            if res 
-                then return $ Right ()
-                else return $ Left "Failed to delete tag"
-        else return $ Left "Tag with such id doesn't exist"
+delete :: Monad m => Handle m -> TagId -> m (Either Text ())
+delete handle tagId = do
+    exist <- hDoesExist handle tagId
+    case exist of 
+        Right _ -> Right <$> hDelete handle tagId
+        Left l -> return $ Left l 

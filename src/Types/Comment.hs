@@ -1,9 +1,16 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Types.Comment where
 
-import Data.Text
+import Data.Text ( Text )
 import Data.Aeson
-import GHC.Generics
+    ( defaultOptions,
+      genericToEncoding,
+      SumEncoding(UntaggedValue),
+      Options(sumEncoding),
+      ToJSON(toEncoding) )
+import GHC.Generics ( Generic )
+
+type CommentId = Integer
 
 data Comment = CommentToCreate {
     postId :: Integer,
@@ -14,8 +21,6 @@ data Comment = CommentToCreate {
     userId :: Integer,
     text :: Text
 } deriving (Show, Generic)
-
-type CommentId = Integer
 
 instance ToJSON Comment where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}

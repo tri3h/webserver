@@ -1,19 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Handler.Draft(Handle(..), create, get, edit, delete, publish, addMinorPhoto, deleteMinorPhoto) where
+{-# LANGUAGE LambdaCase #-}
+module Handler.Draft(Handle(..), create, get, edit,
+delete, publish, addMinorPhoto, deleteMinorPhoto, isAuthor, getAuthorIdByToken) where
 
-import Prelude hiding (words)
 import Data.Text (Text, unpack, words)
+import Prelude hiding (words)
 import Types.Draft
-import Types.Image
-import Types.Author(AuthorId)
+    ( Description,
+      Draft (mainPhoto, minorPhoto, categoryId, authorId, tagId),
+      DraftId,
+      EditParams(eCategoryId, eTagId, eName, eDescription, eMainPhoto),
+      Name )
+import Types.Image ( Image (Image, Link), ImageId )
+import Types.Author(AuthorId, Author)
 import Types.Category(CategoryId)
 import Types.Tag(TagId)
 import Types.Post(PostId, Date)
 import Types.User(Token)
 import Network.HTTP.Types.URI ( Query )
-import Utility
-import Control.Monad
-import Data.Text.Encoding (decodeUtf8)
+import Data.Foldable ( forM_ )
 
 data Handle m = Handle {
     hCreate :: Draft -> m (),
@@ -22,118 +27,151 @@ data Handle m = Handle {
     hEditName :: DraftId -> Name -> m (),
     hEditDescription :: DraftId -> Description -> m (),
     hEditMainPhoto :: DraftId -> Image -> m (),
-    hDoesExist :: DraftId -> m Bool,
+    hDelete :: DraftId -> m (),
+    hAddMinorPhoto :: DraftId -> Image -> m (),
+    hDeleteMinorPhoto :: DraftId -> ImageId -> m (),
     hIsAuthor :: Token -> m Bool,
     hHasPost :: DraftId -> m Bool,
-    hDelete :: DraftId -> m (),
     hGetCurrentDate :: m String,
     hGet :: DraftId -> m Draft,
     hGetAuthor :: DraftId -> m AuthorId,
-    hPublish :: Draft -> String -> m PostId,
-    hUpdate :: Draft -> m PostId,
+    hPublish :: Draft -> String -> m (),
+    hUpdate :: Draft -> m (),
     hGetAuthorIdByToken :: Token -> m AuthorId,
-    hAddMinorPhoto :: DraftId -> Image -> m (),
-    hDeleteMinorPhoto :: DraftId -> ImageId -> m ()
+    hDoesExist :: DraftId -> m (Either Text ()),
+    hDoesAuthorExist :: AuthorId -> m (Either Text ()),
+    hDoesCategoryExist :: CategoryId -> m (Either Text ()),
+    hDoesTagExist :: TagId -> m (Either Text ())
 }
 
-create :: Monad m => Handle m -> Draft -> m ()
-create = hCreate
+create :: Monad m => Handle m -> Draft -> m (Either Text ())
+create handle draft = do
+    authorExist <- hDoesAuthorExist handle $ authorId draft 
+    categoryExist <- hDoesCategoryExist handle $ categoryId draft 
+    tagExist <- foldl1 (>>) $ map (hDoesTagExist handle) $ tagId draft
+    case authorExist >> categoryExist >> tagExist of 
+        Right _ -> do 
+            case mainPhoto draft of
+                Image {} -> Right <$> hCreate handle draft
+                _ -> return $ Left "Malformed image"
+        Left l -> return $ Left l 
 
 get :: Monad m => Handle m -> DraftId -> Token -> m (Either Text Draft)
 get handle draftId token = do
-    hasRights <- hasRights handle draftId token
-    case hasRights of
+    canAccess <- canAccess handle draftId token
+    case canAccess of
         Left l -> return $ Left l
-        Right _ -> Right <$> hGet handle draftId
+        Right _ -> do
+            draft <- hGet handle draftId
+            let isMinorPhotoCorrect = all (\case Link {} -> True; _ -> False) (minorPhoto draft)
+            let isMainPhotoCorrect = case mainPhoto draft of Link {} -> True; _ -> False
+            if isMinorPhotoCorrect && isMainPhotoCorrect
+            then return $ Right draft
+            else return $ Left "Malformed images"
 
 edit :: Monad m => Handle m -> DraftId -> Token -> EditParams -> m (Either Text ())
 edit handle draftId token params = do
-    hasRights <- hasRights handle draftId token
-    case hasRights of
-        Left l -> return $ Left l 
+    canAccess <- canAccess handle draftId token
+    case canAccess of
+        Left l -> return $ Left l
         Right _ -> do
-            case eCategoryId params of
-                Just x -> hEditCategoryId handle draftId x
-                _ -> return ()
-            case eTagId params of
-                Just x -> hEditTagId handle draftId x
-                _ -> return ()
-            case eName params of
-                Just x -> hEditName handle draftId x
-                _ -> return ()
-            case eDescription params of
-                Just x -> hEditDescription handle draftId x
-                _ -> return ()
-            case eMainPhoto params of
-                Just x -> hEditMainPhoto handle draftId x
-                _ -> return ()
-            return $ Right ()
+            forM_ (eName params) (hEditName handle draftId)
+            forM_ (eDescription params) (hEditDescription handle draftId)
+            case eCategoryId params of 
+                Nothing -> return $ Right ()
+                Just categoryId -> editCategoryId handle draftId categoryId
+            case eTagId params of 
+                Nothing -> return $ Right ()
+                Just tagId -> editTagId handle draftId tagId
+            editPhoto handle draftId params
+
+editPhoto :: Monad m => Handle m -> DraftId -> EditParams -> m (Either Text ())
+editPhoto handle draftId params = 
+    case eMainPhoto params of
+        Just x -> case x of
+            Image {} -> Right <$> hEditMainPhoto handle draftId x
+            _ -> return $ Left "Malformed image"
+        _ -> return $ Right ()
+            
+editCategoryId :: Monad m => Handle m -> DraftId -> CategoryId -> m (Either Text ())
+editCategoryId handle draftId categoryId = do 
+    exist <- hDoesCategoryExist handle categoryId 
+    case exist of 
+        Left l -> return $ Left l 
+        Right _ -> Right <$> hEditCategoryId handle draftId categoryId
+
+editTagId :: Monad m => Handle m -> DraftId -> [TagId] -> m (Either Text ())
+editTagId handle draftId tagId = do 
+    exist <- foldl1 (>>) $ map (hDoesTagExist handle) tagId
+    case exist of 
+        Left l -> return $ Left l 
+        Right _ -> Right <$> hEditTagId handle draftId tagId
 
 delete :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
 delete handle draftId token = do
-                hasRights <- hasRights handle draftId token
-                hasPost <- hHasPost handle draftId
-                let canDelete = if hasPost then Left "No rights to delete" else Right ()
-                case hasRights >> canDelete of
-                    Left l -> return $ Left l
-                    Right _ -> do
-                        hDelete handle draftId
-                        return $ Right ()
+    canAccess <- canAccess handle draftId token
+    hasPost <- hHasPost handle draftId
+    let canDelete = if hasPost then Left "Impossible to delete: has post" else Right ()
+    case canAccess >> canDelete of
+        Left l -> return $ Left l
+        Right _ -> Right <$> hDelete handle draftId
 
-publish :: Monad m => Handle m -> DraftId -> Token -> m (Either Text PostId)
+publish :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
 publish handle draftId token = do
-    hasRights <- hasRights handle draftId token
-    case hasRights of
+    canAccess <- canAccess handle draftId token
+    case canAccess of
         Left l -> return $ Left l
         Right _ -> do
             hasPost <- hHasPost handle draftId
             draft <- hGet handle draftId
             if hasPost
-                then Right <$> hUpdate handle draft
-                else do
-                    date <- hGetCurrentDate handle
-                    Right <$> hPublish handle draft date
+            then Right <$> hUpdate handle draft
+            else do
+                date <- hGetCurrentDate handle
+                Right <$> hPublish handle draft date
 
 addMinorPhoto :: Monad m => Handle m -> DraftId -> Token -> Image -> m (Either Text ())
-addMinorPhoto handle draftId token image = do 
-    hasRights <- hasRights handle draftId token 
-    case hasRights of 
-        Left l -> return $ Left l
-        Right _ -> Right <$> hAddMinorPhoto handle draftId image
+addMinorPhoto handle draftId token image = do
+    case image of
+        Image {} -> do
+            canAccess <- canAccess handle draftId token
+            case canAccess of
+                Left l -> return $ Left l
+                Right _ -> Right <$> hAddMinorPhoto handle draftId image
+        _ -> return $ Left "Malformed image"
 
 deleteMinorPhoto :: Monad m => Handle m -> DraftId -> Token -> ImageId -> m (Either Text ())
-deleteMinorPhoto handle draftId token imageId = do 
-    hasRights <- hasRights handle draftId token 
-    case hasRights of 
+deleteMinorPhoto handle draftId token imageId = do
+    canAccess <- canAccess handle draftId token
+    case canAccess of
         Left l -> return $ Left l
         Right _ -> Right <$> hDeleteMinorPhoto handle draftId imageId
 
-hasRights :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
-hasRights handle draftId token = do
-    exist <- doesExist handle draftId 
-    case exist of 
-        Left l -> return $ Left l 
-        Right _ -> do 
+canAccess :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
+canAccess handle draftId token = do
+    exist <- hDoesExist handle draftId
+    case exist of
+        Left l -> return $ Left l
+        Right _ -> do
             author <- isAuthor handle draftId token
-            case author of 
-                Left l -> return $ Left l 
+            case author of
+                Left l -> return $ Left l
                 Right _ -> return $ Right ()
 
 isAuthor :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
 isAuthor handle draftId token = do
-    isAuthor <- hIsAuthor handle token
-    if isAuthor
-        then do
-            authorId <- hGetAuthorIdByToken handle token
+    author <- getAuthorIdByToken handle token
+    case author of 
+        Right authorId -> do 
             realAuthorId <- hGetAuthor handle draftId
             if authorId == realAuthorId
-                then return $ Right ()
-                else return $ Left "This author isn't author of the draft"
-        else return $ Left "The user isn't author"
+            then return $ Right ()
+            else return $ Left "This author isn't author of the draft"
+        Left l -> return $ Left l 
 
-doesExist :: Monad m => Handle m -> DraftId -> m (Either Text ())
-doesExist handle draftId = do 
-    exist <- hDoesExist handle draftId 
-    if exist 
-        then return $ Right ()
-        else return $ Left "Draft with such id doesn't exist"
+getAuthorIdByToken :: Monad m => Handle m -> Token -> m (Either Text AuthorId)
+getAuthorIdByToken handle token = do 
+    isAuthor <- hIsAuthor handle token
+    if isAuthor
+    then Right <$> hGetAuthorIdByToken handle token
+    else return $ Left "The user isn't author"

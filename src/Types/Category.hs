@@ -1,11 +1,19 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Types.Category where
 
-import Data.Text
+import Data.Text ( Text )
 import Data.Aeson
-import GHC.Generics
+    ( defaultOptions,
+      genericToEncoding,
+      SumEncoding(UntaggedValue),
+      Options(sumEncoding),
+      ToJSON(toEncoding) )
+import GHC.Generics ( Generic )
 
-data Category = CategoryToGet {
+type CategoryId = Integer
+type Name = Text
+
+data Category = Category {
     categoryId :: Integer,
     name :: Text,
     parentId :: Maybe Integer
@@ -16,6 +24,3 @@ data Category = CategoryToGet {
 
 instance ToJSON Category where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
-
-type CategoryId = Integer
-type Name = Text

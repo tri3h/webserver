@@ -1,20 +1,24 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Types.Draft where
 
-import Database.PostgreSQL.Simple.ToField
-import Data.Text
+import Database.PostgreSQL.Simple.ToField ()
+import Data.Text ( Text )
 import Data.Aeson
-import GHC.Generics
+    ( defaultOptions,
+      genericToEncoding,
+      SumEncoding(UntaggedValue),
+      Options(sumEncoding),
+      ToJSON(toEncoding) )
+import GHC.Generics ( Generic )
 import Types.Author (AuthorId)
 import Types.Category (CategoryId)
 import Types.Tag (TagId)
 import Types.Post (PostId)
-import Types.Image
+import Types.Image ( Image )
 
 type DraftId = Integer
 type Name = Text
-newtype Description = Description Text deriving (Show, Generic)
+type Description = Text
 
 data Draft = Draft {
     draftId :: Maybe DraftId,
@@ -23,7 +27,7 @@ data Draft = Draft {
     categoryId :: CategoryId,
     tagId :: [TagId],
     name :: Name,
-    description :: Description,
+    description :: Text,
     mainPhoto :: Image,
     minorPhoto :: [Image] 
 } deriving (Show, Generic)
@@ -32,20 +36,9 @@ data EditParams = EditParams {
     eCategoryId :: Maybe CategoryId,
     eTagId :: Maybe [TagId],
     eName :: Maybe Name,
-    eDescription :: Maybe Description,
+    eDescription :: Maybe Text,
     eMainPhoto :: Maybe Image
 }
-
-instance ToJSON Description where
-    toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
-
-instance FromJSON Description where 
-    parseJSON = withObject "Draft description" $ \obj -> do 
-        descr <- obj .: "description"
-        return $ Description descr
-
-instance ToField Description where 
-    toField (Description x) = toField x 
 
 instance ToJSON Draft where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}

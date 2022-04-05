@@ -2,8 +2,14 @@
 module Database.Connection (manage, open, serverAddress) where
 
 import Database.PostgreSQL.Simple
+    ( Connection,
+      close,
+      connect,
+      defaultConnectInfo,
+      ConnectInfo(connectHost, connectPort, connectUser, connectPassword,
+                  connectDatabase) )
 import qualified Data.Configurator as Config
-import Data.Text
+import Data.Text ( Text, pack, append )
 
 open :: IO Connection
 open = do

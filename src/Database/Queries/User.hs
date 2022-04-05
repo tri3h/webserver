@@ -1,85 +1,114 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Database.Queries.User where
 
 import Database.PostgreSQL.Simple
+    ( Connection, execute, query, Only(Only) )
 import Database.PostgreSQL.Simple.Time (Date)
-import Data.Text
 import Types.User
-import Types.Image
-import Database.Connection
+    ( Password,
+      UserId,
+      Token,
+      Login,
+      User(UserToGet, password, admin, token, userId, name, surname,
+           avatar, login, date) )
+import Types.Image ( Image(Link, Image) )
+import Database.Connection ( serverAddress )
+import Data.Text
 
 isLoginUnique :: Login -> Connection ->  IO Bool
 isLoginUnique login conn = do
-    [Only n] <- query conn "SELECT COUNT(login) FROM users WHERE users.login = ?" (Only login)
+    [Only n] <- query conn "SELECT COUNT(login) FROM users \
+        \WHERE users.login = ?" (Only login)
     return $ (n :: Integer) == 0
 
 isTokenUnique :: Token -> Connection-> IO Bool
 isTokenUnique token conn = do
-    [Only n] <- query conn "SELECT COUNT(token) FROM users WHERE users.token = ?" (Only token)
+    [Only n] <- query conn "SELECT COUNT(token) FROM users \
+        \WHERE users.token = ?" (Only token)
     return $ (n :: Integer) == 0
 
 isTokenValid :: Token -> Connection -> IO Bool
 isTokenValid token conn = do
-    [Only n] <- query conn "SELECT COUNT(token) FROM users WHERE users.token = ?" (Only token)
+    [Only n] <- query conn "SELECT COUNT(token) FROM users \
+        \WHERE users.token = ?" (Only token)
     return $ (n :: Integer) == 1
 
 isLoginValid :: Login -> Connection -> IO Bool
 isLoginValid login conn = do
-    [Only n] <- query conn "SELECT COUNT(login) FROM users WHERE users.login = ?" (Only login)
+    [Only n] <- query conn "SELECT COUNT(login) FROM users \
+        \WHERE users.login = ?" (Only login)
     return $ (n :: Integer) == 1
 
 isAdmin :: Token -> Connection -> IO Bool
 isAdmin token conn = do
-    [Only admin] <- query conn "SELECT admin FROM users WHERE users.token = ?" (Only token)
+    [Only admin] <- query conn "SELECT admin FROM users \
+        \WHERE users.token = ?" (Only token)
     return admin
 
-create :: User -> Connection -> IO Bool
+create :: User -> Connection -> IO ()
 create user conn = do
     let (Image image imageType) = avatar user
     [Only imageId] <- query conn "INSERT INTO images (image, image_type) \
-    \VALUES (decode(?,'base64'), ?) \
-    \RETURNING image_id" (image, imageType)
-    n <- execute conn "INSERT INTO users (name, surname, image_id, \
-    \login, password, registration_date, admin, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        (name user, surname user, imageId :: Integer, login user, password user, date user, admin user, token user)
-    return $ n == 1
+        \VALUES (decode(?,'base64'), ?) \
+    \   RETURNING image_id" (image, imageType)
+    execute conn "INSERT INTO users (name, surname, image_id, \
+        \login, password, registration_date, admin, token) \
+        \VALUES (?, ?, ?, ?, ?, ?, ?, ?)" (name user, surname user,
+        imageId :: Integer, login user, password user, date user, admin user, token user)
+    return ()
 
-delete :: UserId -> Connection -> IO Bool
+delete :: UserId -> Connection -> IO ()
 delete userId conn = do
-    n <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
-    return $ n == 1
+    execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
+    return ()
 
 get :: Token -> Connection -> IO User
 get token conn = do
     server <- serverAddress
     [(userId, name, surname, imageId, login, regDate)] <- query conn
-        "SELECT user_id, name, surname, image_id, login, registration_date FROM users \
-        \ WHERE users.token = ?" (Only token)
-    return UserToGet { userId = userId,
-                name = name,
-                surname = surname,
-                avatar = Link $ server `append` "/images?image_id=" `append` pack (show (imageId :: Integer)),
-                login = login,
-                date = pack $ show (regDate :: Date)
-                }
+        "SELECT user_id, name, surname, image_id, login, registration_date \
+        \FROM users WHERE users.token = ?" (Only token)
+    return UserToGet {
+                avatar = Link $ server `append` "/images?image_id="
+                    `append` pack (show (imageId :: Integer)),
+                date = pack $ show (regDate :: Date),
+                .. }
 
 getByUserId :: UserId -> Connection -> IO User
-getByUserId userId conn = do 
+getByUserId userId conn = do
     server <- serverAddress
     [(userId, name, surname, imageId, login, regDate)] <- query conn
-        "SELECT user_id, name, surname, image_id, login, registration_date FROM users \
-        \ WHERE users.user_id = ?" (Only userId)
-    return UserToGet { userId = userId,
-                name = name,
-                surname = surname,
-                avatar = Link $ server `append` "/images?image_id=" `append` pack (show (imageId :: Integer)),
-                login = login,
-                date = pack $ show (regDate :: Date)}
+        "SELECT user_id, name, surname, image_id, login, registration_date \
+        \FROM users WHERE users.user_id = ?" (Only userId)
+    return UserToGet {
+                avatar = Link $ server `append` "/images?image_id="
+                    `append` pack (show (imageId :: Integer)),
+                date = pack $ show (regDate :: Date),
+                .. }
 
-doesExist :: UserId -> Connection -> IO Bool
+getMaybeByUserId :: UserId -> Connection -> IO (Maybe User)
+getMaybeByUserId userId conn = do
+    server <- serverAddress
+    x <- query conn
+        "SELECT user_id, name, surname, image_id, login, registration_date \
+        \FROM users WHERE users.user_id = ?" (Only userId)
+    case x of
+        [(userId, name, surname, imageId, login, regDate)] ->
+            return $ Just UserToGet {
+                avatar = Link $ server `append` "/images?image_id="
+                    `append` pack (show (imageId :: Integer)),
+                date = pack $ show (regDate :: Date),
+                .. }
+        _ -> return Nothing
+
+doesExist :: UserId -> Connection -> IO (Either Text ())
 doesExist userId conn = do
-    [Only n] <- query conn "SELECT COUNT(user_id) FROM users WHERE users.user_id = ?" (Only userId)
-    return $ (n :: Integer) == 1
+    [Only n] <- query conn "SELECT COUNT(user_id) FROM users \
+        \WHERE users.user_id = ?" (Only userId)
+    if (n :: Integer) == 1
+    then return $ Right ()
+    else return $ Left "User with such id doesn't exist"
 
 findPassword :: Login -> Connection -> IO Password
 findPassword login conn = do
@@ -87,8 +116,8 @@ findPassword login conn = do
         "SELECT password FROM users WHERE users.login = ?" (Only login)
     return password
 
-updateToken :: Login -> Token -> Connection -> IO Bool
+updateToken :: Login -> Token -> Connection -> IO ()
 updateToken login token conn = do
-    n <- execute conn
+    execute conn
         "UPDATE users SET token = ? WHERE login = ?" (token, login)
-    return $ n == 1
+    return ()

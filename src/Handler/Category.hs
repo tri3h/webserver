@@ -2,56 +2,87 @@
 module Handler.Category where
 
 import Types.Category
-import Data.Text
+    ( Category(parentId, categoryId, Category, CategoryToCreate), CategoryId )
+import Data.Text ( Text )
 
 data Handle m = Handle {
-    create :: Category -> m Bool,
-    get :: CategoryId -> m Category,
-    delete :: CategoryId -> m Bool,
-    edit :: Category -> m Bool,
-    doesExist :: CategoryId -> m Bool,
-    getChildren :: CategoryId -> m [CategoryId]
+    hCreate :: Category -> m (),
+    hGet :: CategoryId -> m Category,
+    hDelete :: CategoryId -> m (),
+    hEdit :: Category -> m (),
+    hDoesExist :: CategoryId -> m (Either Text ()),
+    hGetChildren :: CategoryId -> m [CategoryId]
 }
 
-createCategory :: Monad m => Handle m -> Category -> m (Either Text Text)
-createCategory handle cat = do 
-        a <- case parentId cat of
-                Nothing -> return True
-                Just b -> doesExist handle b
-        if a 
-            then do 
-            res <- create handle cat 
-            if res 
-                then return $ Right "Category was created"
-                else return $ Left "Failed to create category"
+create :: Monad m => Handle m -> Category -> m (Either Text ())
+create handle categ = do
+    let isFormatCorrect = case categ of CategoryToCreate {} -> True; _ -> False
+    if isFormatCorrect
+    then do
+        correct <- isParentCorrect handle categ
+        if correct
+        then do
+            hCreate handle categ
+            return $ Right ()
         else return $ Left "Invalid parent id"
-
-getCategory :: Monad m => Handle m -> CategoryId -> m (Either Text Category)
-getCategory handle catId = do 
-    a <- doesExist handle catId 
-    if a
-        then Right <$> get handle catId
-        else return . Left $ "Such category doesn't exist"
-
-deleteCategory :: Monad m => Handle m -> CategoryId -> m (Either Text ())
-deleteCategory handle catId = do
-        res <- delete handle catId
-        if res 
-            then return $ Right ()
-            else return $ Left "Failed to delete category"
-
-editCategory :: Monad m => Handle m -> Category -> m (Either Text ())
-editCategory handle cat = do 
-        a <- case parentId cat of
+    else return $ Left "Malformed category"
+    where isParentCorrect handle categ =
+            case parentId categ of
                 Nothing -> return True
-                Just b -> do 
-                    doesExist <- doesExist handle b
-                    children <- getChildren handle $ categoryId cat
-                    return $ doesExist && (b `notElem` children)
-        if a 
-            then do 
-            res <- edit handle cat 
-            if res 
-                then return $ Right ()
-                else return $ Left "Failed to edit category"
-        else return $ Left "Invalid parent id"
+                Just b -> do
+                    exist <- hDoesExist handle b
+                    return $ case exist of
+                        Right () -> True
+                        _ -> False
+
+get :: Monad m => Handle m -> CategoryId -> m (Either Text Category)
+get handle categId = do
+    exist <- hDoesExist handle categId
+    case exist of
+        Right _ -> do
+            categ <- hGet handle categId
+            let isFormatCorrect = case categ of Category {} -> True; _ -> False
+            if isFormatCorrect
+            then return $ Right categ
+            else return $ Left "Malformed category"
+        Left l -> return $ Left l
+
+delete :: Monad m => Handle m -> CategoryId -> m (Either Text ())
+delete handle categId = do
+    exist <- hDoesExist handle categId
+    case exist of
+        Right _ -> do
+            children <- hGetChildren handle categId
+            if null children 
+            then do
+                Right <$> hDelete handle categId
+            else return $ Left "Impossible to delete: the category has children"
+        Left l -> return $ Left l
+
+edit :: Monad m => Handle m -> Category -> m (Either Text ())
+edit handle categ = do
+    canEdit <- canEdit handle categ
+    case canEdit of
+        Right _ -> do
+            isParentCorrect <- do
+                case parentId categ of
+                    Nothing -> return True
+                    Just b -> do
+                        existParent <- hDoesExist handle b
+                        let doesExist = case existParent of Right _ -> True; Left _ -> False
+                        children <- hGetChildren handle $ categoryId categ
+                        return $ doesExist && (b `notElem` children)
+            if isParentCorrect
+            then do
+                hEdit handle categ
+                return $ Right ()
+            else return $ Left "Invalid parent id"
+        Left l -> return $ Left l
+    where canEdit :: Monad m => Handle m -> Category -> m (Either Text ())
+          canEdit handle categ =
+            let isFormatCorrect = case categ of Category {} -> True; _ -> False
+            in if isFormatCorrect
+                then hDoesExist handle $ categoryId categ
+                else return $ Left "Malformed category"
+
+          

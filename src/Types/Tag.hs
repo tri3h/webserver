@@ -1,9 +1,17 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Types.Tag where
 
-import Data.Text
+import Data.Text ( Text )
 import Data.Aeson
-import GHC.Generics
+    ( defaultOptions,
+      genericToEncoding,
+      SumEncoding(UntaggedValue),
+      Options(sumEncoding),
+      ToJSON(toEncoding) )
+import GHC.Generics ( Generic )
+
+type TagId = Integer
+type Name = Text
 
 data Tag = Tag {
     tagId :: Integer,
@@ -12,6 +20,3 @@ data Tag = Tag {
 
 instance ToJSON Tag where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
-
-type TagId = Integer
-type Name = Text

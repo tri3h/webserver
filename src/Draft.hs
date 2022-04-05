@@ -1,138 +1,175 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Draft where
 
 import Prelude hiding (words)
 import Data.Text (Text, unpack, words)
-import Data.Aeson
+import Data.Aeson ( encode )
 import Types.Draft
+    ( Draft(Draft, draftId, postId, authorId, categoryId, tagId, name,
+            description, mainPhoto, minorPhoto),
+      EditParams(EditParams, eCategoryId, eTagId, eName, eDescription,
+                 eMainPhoto) )
 import Types.Author(AuthorId)
 import Types.Category(CategoryId)
 import Types.Tag(TagId)
 import Types.Post(PostId, Date)
 import Types.User(Token)
-import Types.Image
+import Types.Image ( Image(Image) )
 import qualified Handler.Draft as Handler
 import qualified Database.Queries.Draft as Db.Draft
 import qualified Database.Queries.Author as Db.Author
-import Database.Connection
-import Data.Time.Clock
+import qualified Database.Queries.Category as Db.Category 
+import qualified Database.Queries.Tag as Db.Tag
+import Database.Connection ( manage )
+import Data.Time.Clock ( getCurrentTime )
 import Network.HTTP.Types.URI ( QueryText )
-import Control.Monad
-import Network.Wai
+import Network.Wai ( Response, responseLBS )
 import Network.HTTP.Types.Status
-import Network.HTTP.Types.Header
+    ( status200, status201, status204, status400 )
+import Network.HTTP.Types.Header ( hContentType )
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text.Encoding ( decodeUtf8, decodeUtf16BE )
 import qualified Data.Text.Lazy as LazyText
 import Utility
+    ( getText,
+      getInteger,
+      getIntegers,
+      getImage,
+      getMaybeText,
+      getMaybeInteger,
+      getMaybeIntegers,
+      getMaybeImage )
 import Data.ByteString ( ByteString )
 
-create :: QueryText -> ByteString -> IO Response
-create query body = do 
-    let isDraft = getInteger query "category_id" >>= 
-            \categoryId -> getIntegers query "tag_id" >>=
-            \tagId -> getText query "name" >>=
-            \name -> getText query "description" >>=
-            \description -> getText query "image_type" >>=
-            \imageType -> getImage (decodeUtf8 body) "main_photo" >>=
-            \image -> getDescription body >>=
-            \description -> Right $ Draft {
-                draftId = Nothing,
-                postId = Nothing,
-                authorId = undefined,
-                categoryId = categoryId,
-                tagId = tagId,
-                name = name,
-                description = description,
-                mainPhoto = Image image imageType,
-                minorPhoto = []
-                }
-    case isDraft of
-        Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-        Right draft -> do 
-            Handler.create handle draft
-            return $ responseLBS status201 [] ""
+create :: QueryText -> ByteString -> Token -> IO Response
+create query body token = do 
+    author <- Handler.getAuthorIdByToken handle token
+    case author of 
+        Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
+        Right authorId -> do
+            let info = do 
+                    categoryId <- getInteger query "category_id" 
+                    tagId <- getIntegers query "tag_id"
+                    name <- getText query "name"
+                    description <- getText query "description"
+                    imageType <- getText query "image_type"
+                    image <- getImage (decodeUtf8 body) "main_photo"
+                    Right $ Draft {
+                        draftId = Nothing,
+                        postId = Nothing,
+                        mainPhoto = Image image imageType,
+                        minorPhoto = [],
+                        .. }
+            case info of
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
+                Right draft -> do 
+                    Handler.create handle draft
+                    return $ responseLBS status201 [] ""
 
 get :: QueryText -> IO Response
 get query = do 
-    case getInteger query "draft_id" >>=
-        \draftId -> getText query "token" >>=
-        \token -> Right (draftId, token) of 
+    let info = do 
+            draftId <- getInteger query "draft_id"
+            token <- getText query "token"
+            Right (draftId, token)
+    case info of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token) -> do
             result <- Handler.get handle draftId token
             case result of 
-                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                Right draft -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode draft
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
+                Right draft -> return $ responseLBS status200 
+                    [(hContentType, "application/json")] $ encode draft
 
 delete :: QueryText -> IO Response
 delete query = do 
-    case getInteger query "draft_id" >>=
-        \draftId -> getText query "token" >>=
-        \token -> Right (draftId, token) of
+    let info = do 
+            draftId <- getInteger query "draft_id"
+            token <- getText query "token"
+            Right (draftId, token)
+    case info of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token) -> do 
             result <- Handler.delete handle draftId token
             case result of
-                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
                 Right _ -> return $ responseLBS status204 [] ""
             
 edit :: QueryText -> ByteString -> IO Response
 edit query body = do 
-    case getText query "token" >>=
-        \token -> getInteger query "draft_id" >>=
-        \draftId -> Right (token, draftId) of 
+    let info = do 
+            token <- getText query "token"
+            draftId <- getInteger query "draft_id"
+            Right (token, draftId)
+    case info of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (token, draftId) -> do 
             let editParams = EditParams {
                     eCategoryId = getMaybeInteger query "category_id" ,
                     eTagId = getMaybeIntegers query "tag_id",
                     eName = getMaybeText query "name",
-                    eDescription = getMaybeDescription body,
+                    eDescription = getMaybeText query "description",
                     eMainPhoto = getMainPhoto query body
                     }
             result <- Handler.edit handle draftId token editParams
             case result of 
-                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
                 Right _ -> return $ responseLBS status201 [] ""
-    where getMainPhoto query body = let imageType = getMaybeText query "image_type";
-                                        image = getMaybeImage (decodeUtf8 body) "main_photo"
-                                    in case imageType of 
-                                            Nothing -> Nothing 
-                                            Just t -> case image of 
-                                                    Nothing -> Nothing 
-                                                    Just i -> Just $ Image i t
+
+getMainPhoto :: QueryText -> ByteString -> Maybe Image
+getMainPhoto query body = 
+    let imageType = getMaybeText query "image_type"
+        image = getMaybeImage (decodeUtf8 body) "main_photo"
+    in case imageType of 
+        Nothing -> Nothing 
+        Just t -> case image of 
+            Nothing -> Nothing 
+            Just i -> Just $ Image i t
 
 publish :: QueryText -> IO Response
 publish query = do 
-    case getInteger query "draft_id" >>=
-        \draftId -> getText query "token" >>=
-        \token -> Right (draftId, token) of
+    let info = do 
+            draftId <- getInteger query "draft_id"
+            token <- getText query "token"
+            Right (draftId, token)
+    case info of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token) -> do 
             result <- Handler.publish handle draftId token
             case result of
-                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-                Right postId -> return $ responseLBS status201 [(hContentType, "application/json")] $ encode postId
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
+                Right postId -> return $ responseLBS status201 
+                    [(hContentType, "application/json")] $ encode postId
 
 addMinorPhoto :: QueryText -> ByteString -> IO Response
 addMinorPhoto query body = do 
-    case getInteger query "draft_id" >>=
-        \draftId -> getText query "token" >>=
-        \token -> getText query "image_type" >>=
-        \imageType -> getImage (decodeUtf8 body) "minor_photo" >>=
-        \minorPhoto -> Right (draftId, token, minorPhoto, imageType) of 
+    let info = do 
+            draftId <- getInteger query "draft_id"
+            token <- getText query "token"
+            imageType <- getText query "image_type"
+            image <- getImage (decodeUtf8 body) "minor_photo"
+            Right (draftId, token, image, imageType)
+    case info of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-        Right (draftId, token, minorPhoto, imageType) -> do 
-            Handler.addMinorPhoto handle draftId token (Image minorPhoto imageType)
+        Right (draftId, token, image, imageType) -> do 
+            Handler.addMinorPhoto handle draftId token (Image image imageType)
             return $ responseLBS status201 [] ""
 
 deleteMinorPhoto :: QueryText -> IO Response
 deleteMinorPhoto query = do 
-    case getInteger query "draft_id" >>=
-        \draftId -> getText query "token" >>=
-        \token -> getInteger query "minor_photo_id" >>=
-        \imageId -> Right (draftId, token, imageId) of 
+    let info = do 
+            draftId <- getInteger query "draft_id"
+            token <- getText query "token"
+            imageId <- getInteger query "minor_photo_id"
+            Right (draftId, token, imageId)
+    case info of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token, imageId) -> do 
             Handler.deleteMinorPhoto handle draftId token imageId
@@ -158,5 +195,8 @@ handle = Handler.Handle {
     Handler.hUpdate = manage . Db.Draft.update,
     Handler.hGetAuthorIdByToken = manage . Db.Author.getByToken,
     Handler.hAddMinorPhoto = \a b -> manage $ Db.Draft.addMinorPhoto a b,
-    Handler.hDeleteMinorPhoto = \a b -> manage $ Db.Draft.deleteMinorPhoto a b
+    Handler.hDeleteMinorPhoto = \a b -> manage $ Db.Draft.deleteMinorPhoto a b,
+    Handler.hDoesAuthorExist = manage . Db.Author.doesExist,
+    Handler.hDoesCategoryExist = manage . Db.Category.doesExist,
+    Handler.hDoesTagExist = manage . Db.Tag.doesExist
 }

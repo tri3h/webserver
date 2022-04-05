@@ -1,6 +1,9 @@
 module Types.Filter where
 
-import Data.Text
+import Data.Text ( Text )
+
+type Offset = Integer 
+type Limit = Integer
 
 data Filter = Filter {
     dateAfter :: Maybe Text,
@@ -18,6 +21,3 @@ data Filter = Filter {
 }
 
 data Order = ByDate | ByAuthor | ByCategory | ByPhotosNumber | None
-
-type Offset = Integer 
-type Limit = Integer

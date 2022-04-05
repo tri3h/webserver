@@ -1,12 +1,24 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Types.User where
 
-import Data.Text
+import Data.Text ( Text )
 import Data.Aeson
-import GHC.Generics
-import Types.Image
+    ( defaultOptions,
+      genericToEncoding,
+      SumEncoding(UntaggedValue),
+      Options(sumEncoding),
+      ToJSON(toEncoding) )
+import GHC.Generics ( Generic )
+import Types.Image ( Image )
 
-data User = UserToDatabase {
+type Login = Text
+type Token = Text 
+type UserId = Integer
+type Password = Text
+type Name = Text
+type Surname = Text 
+
+data User = User {
     name :: Text,
     surname :: Text,
     avatar :: Image,
@@ -29,13 +41,6 @@ data User = UserToDatabase {
     password :: Text,
     avatar :: Image
 } deriving (Show, Generic)
-
-type Login = Text
-type Token = Text 
-type UserId = Integer
-type Password = Text
-type Name = Text
-type Surname = Text 
 
 instance ToJSON User where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}

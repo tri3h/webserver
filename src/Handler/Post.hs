@@ -1,7 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Handler.Post where
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
+module Handler.Post(get, Handle (..), FilterHandle(..), OrderHandle (..)) where
 
 import Types.Post
+    ( Post(FullPost, ShortPost, authorId, categoryId, author, user, category, tag,
+           comment, minorPhoto, postId, name, date, text, mainPhoto),
+      PostId )
 import Types.Tag(Tag, TagId)
 import Types.Comment(Comment, CommentId)
 import Types.User(User,UserId)
@@ -9,97 +14,111 @@ import Types.Category(Category,CategoryId)
 import qualified Types.Author as A
 import qualified Types.Filter as F
 import Data.Text ( Text )
-import Control.Monad
-import Data.Maybe
+import Control.Monad ( void )
 import Data.List(zipWith7)
+import Types.Image (Image(Link))
 
 data Handle m = Handle {
-    get :: [PostId] -> F.Offset -> F.Limit -> m [Post],
-    getAll :: m [PostId],
-    getMinorPhotos :: PostId -> m [Text],
-    getAuthor :: A.AuthorId -> m A.Author,
-    getUser :: UserId -> m User,
-    getCategory :: CategoryId -> m [Category],
-    getTag :: PostId -> m [Tag],
-    getComment :: PostId -> m [Comment],
-    filterByDateBefore :: Text -> m [PostId],
-    filterByDateAfter :: Text -> m [PostId],
-    filterByDateAt :: Text -> m [PostId],
-    filterByAuthorName :: Text -> m [PostId],
-    filterByCategoryId :: Integer -> m [PostId],
-    filterByTagId :: TagId -> m [PostId],
-    filterByTag :: Text -> m [PostId],
-    filterByOneOfTags :: [TagId] -> m [PostId],
-    filterByAllOfTags :: [TagId] -> m [PostId],
-    filterByPostName :: Text -> m [PostId],
-    filterByText :: Text -> m [PostId],
-    filterBySubstring :: Text -> m [PostId],
-    orderByDate :: [PostId] -> m [PostId],
-    orderByAuthor :: [PostId] -> m [PostId],
-    orderByCategory :: [PostId] -> m [PostId],
-    orderByPhotosNumber :: [PostId] -> m [PostId]
+    hFilterHandle :: FilterHandle m,
+    hOrderHandle :: OrderHandle m,
+    hGet :: [PostId] -> F.Offset -> F.Limit -> m [Post],
+    hGetAll :: m [PostId],
+    hGetMinorPhotos :: PostId -> m [Image],
+    hGetAuthor :: A.AuthorId -> m (Maybe A.Author),
+    hGetUser :: UserId -> m (Maybe User),
+    hGetCategory :: CategoryId -> m [Category],
+    hGetTag :: PostId -> m [Tag],
+    hGetComment :: PostId -> m [Comment]
 }
 
-getPost :: Monad m => Handle m -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Text [Post])
-getPost handle params order limit offset = do
+data FilterHandle m = FilterHandle {
+    hByDateBefore :: Text -> m [PostId],
+    hByDateAfter :: Text -> m [PostId],
+    hByDateAt :: Text -> m [PostId],
+    hByAuthorName :: Text -> m [PostId],
+    hByCategoryId :: Integer -> m [PostId],
+    hByTagId :: TagId -> m [PostId],
+    hByTag :: Text -> m [PostId],
+    hByOneOfTags :: [TagId] -> m [PostId],
+    hByAllOfTags :: [TagId] -> m [PostId],
+    hByPostName :: Text -> m [PostId],
+    hByText :: Text -> m [PostId],
+    hBySubstring :: Text -> m [PostId]
+}
+
+data OrderHandle m = OrderHandle {
+    hByDate :: [PostId] -> m [PostId],
+    hByAuthor :: [PostId] -> m [PostId],
+    hByCategory :: [PostId] -> m [PostId],
+    hByPhotosNumber :: [PostId] -> m [PostId]
+}
+
+get :: Monad m => Handle m -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Text [Post])
+get handle params order limit offset = do
     orderedCommon <- getOrderedCommon handle params order
-    posts <- get handle orderedCommon offset limit
-    authors <- mapM (getAuthor handle . authorId) posts
-    users <- mapM (getUser handle . A.userId) authors
-    categories <- mapM (getCategory handle . categoryId) posts
-    tags <- mapM (getTag handle . postId) posts
-    comments <- mapM (getComment handle . postId) posts
-    minorPhotos <- mapM (getMinorPhotos handle . postId) posts
-    let fullPosts = zipWith7 (\p a u cat t com mp ->
-            PostToGet {
-                author = a,
-                user = u,
-                category = cat,
-                tag = t,
-                comment = com,
-                minorPhoto = mp,
-                postId = postId p,
-                name = name p,
-                date = date p,
-                text = text p,
-                mainPhoto = mainPhoto p
-            } ) posts authors users categories tags comments minorPhotos
-    if null orderedCommon
-        then return $ Left "No posts with such parameters"
-        else return $ Right fullPosts
+    posts <- hGet handle orderedCommon offset limit
+    let isFormatCorrect = all (\case ShortPost {} -> True; _ -> False) posts
+    if isFormatCorrect
+    then do
+        authors <- mapM (hGetAuthor handle . authorId) posts
+        users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle $ A.userId a) authors
+        categories <- mapM (hGetCategory handle . categoryId) posts
+        tags <- mapM (hGetTag handle . postId) posts
+        comments <- mapM (hGetComment handle . postId) posts
+        minorPhotos <- mapM (hGetMinorPhotos handle . postId) posts
+        let isMainPhotoCorrect = all (\x -> case mainPhoto x of Link {} -> True; _ -> False) posts
+        let isMinorPhotoCorrect = all (all (\case Link {} -> True; _ -> False)) minorPhotos
+        if isMainPhotoCorrect && isMinorPhotoCorrect 
+        then do 
+            let fullPosts = zipWith7 (\post author user category tag comment minorPhoto ->
+                    FullPost {
+                        postId = postId post,
+                        name = name post,
+                        date = date post,
+                        text = text post,
+                        mainPhoto = mainPhoto post,
+                        ..} ) posts authors users categories tags comments minorPhotos
+            if null orderedCommon
+            then return $ Left "No posts with such parameters"
+            else return $ Right fullPosts
+        else return $ Left "Malformed images" 
+    else return $ Left "Malformed posts"
 
 getOrderedCommon :: Monad m => Handle m -> F.Filter -> F.Order -> m [PostId]
-getOrderedCommon handle params order = do 
-    let isFiltersEmpty = all (==Nothing) [void $ F.dateAfter params, void $ F.dateBefore params, void $ F.dateAt params, 
-            void $ F.authorName params, void $ F.categoryId params, void $ F.tagId params, 
-            void $ F.tag params, void $ F.tagIn params, void $ F.tagAll params, 
-            void $ F.postName params, void $ F.text params, void $ F.substring params]
+getOrderedCommon handle params order = do
+    let isFiltersEmpty = all (==Nothing) [void $ F.dateAfter params,
+            void $ F.dateBefore params, void $ F.dateAt params,
+            void $ F.authorName params, void $ F.categoryId params,
+            void $ F.tagId params, void $ F.tag params, void $ F.tagIn params,
+            void $ F.tagAll params, void $ F.postName params,
+            void $ F.text params, void $ F.substring params]
     common <- if isFiltersEmpty
-                then getAll handle
-                else chooseFiltered handle params
+            then hGetAll handle
+            else chooseFiltered handle params
     case order of
-        F.ByAuthor -> orderByAuthor handle common
-        F.ByCategory -> orderByCategory handle common 
-        F.ByDate -> orderByDate handle common 
-        F.ByPhotosNumber -> orderByPhotosNumber handle common
-        _ -> return common 
+        F.ByAuthor -> hByAuthor (hOrderHandle handle) common
+        F.ByCategory -> hByCategory (hOrderHandle handle) common
+        F.ByDate -> hByDate (hOrderHandle handle) common
+        F.ByPhotosNumber -> hByPhotosNumber (hOrderHandle handle) common
+        _ -> return common
 
 chooseFiltered :: Monad m => Handle m -> F.Filter -> m [PostId]
-chooseFiltered handle params= do 
-    filtered <- sequence 
-                    [applyFilter (F.dateAfter params) (filterByDateAfter handle),
-                    applyFilter (F.dateBefore params) (filterByDateBefore handle),
-                    applyFilter (F.dateAt params) (filterByDateAt handle),
-                    applyFilter (F.authorName params) (filterByAuthorName handle),
-                    applyFilter (F.categoryId params) (filterByCategoryId handle),
-                    applyFilter (F.tagId params) (filterByTagId handle),
-                    applyFilter (F.tag params) (filterByTag handle),
-                    applyFilter (F.tagIn params) (filterByOneOfTags handle),
-                    applyFilter (F.tagAll params) (filterByAllOfTags handle),
-                    applyFilter (F.postName params) (filterByPostName handle),
-                    applyFilter (F.text params) (filterByText handle),
-                    applyFilter (F.substring params) (filterBySubstring handle)]
-    return . chooseCommon $ filter (not . null) filtered
+chooseFiltered handle params= do
+    filtered <- sequence
+        [applyFilter (F.dateAfter params) (hByDateAfter $ hFilterHandle handle),
+        applyFilter (F.dateBefore params) (hByDateBefore $ hFilterHandle handle),
+        applyFilter (F.dateAt params) (hByDateAt $ hFilterHandle handle),
+        applyFilter (F.authorName params) (hByAuthorName $ hFilterHandle handle),
+        applyFilter (F.categoryId params) (hByCategoryId $ hFilterHandle handle),
+        applyFilter (F.tagId params) (hByTagId $ hFilterHandle handle),
+        applyFilter (F.tag params) (hByTag $ hFilterHandle handle),
+        applyFilter (F.tagIn params) (hByOneOfTags $ hFilterHandle handle),
+        applyFilter (F.tagAll params) (hByAllOfTags $ hFilterHandle handle),
+        applyFilter (F.postName params) (hByPostName $ hFilterHandle handle),
+        applyFilter (F.text params) (hByText $ hFilterHandle handle),
+        applyFilter (F.substring params) (hBySubstring $ hFilterHandle handle)]
+    let notNull = filter (not . null) filtered
+    return $ chooseCommon notNull
 
 applyFilter :: Monad m => Maybe t -> (t -> m [a]) -> m [a]
 applyFilter Nothing _ = return []
@@ -108,5 +127,3 @@ applyFilter (Just x) f = f x
 chooseCommon :: Eq a => [[a]] -> [a]
 chooseCommon [] = []
 chooseCommon xs = foldl1 (\a b -> filter (`elem` b) a) xs
-
-isJust = undefined

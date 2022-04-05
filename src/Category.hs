@@ -1,16 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Category where
 
-import Utility
+import Utility ( getText, getInteger, getMaybeInteger )
 import Types.Category
+    ( Category(Category, CategoryToCreate, categoryId, name,
+               parentId) )
 import qualified Handler.Category as Handler
 import qualified Database.Queries.Category as Db
-import Database.Connection
-import Data.Aeson
-import Network.Wai
+import Database.Connection ( manage )
+import Data.Aeson ( encode )
+import Network.Wai ( Response, responseLBS )
 import Network.HTTP.Types.Status
-import Network.HTTP.Types.Header
-import Network.HTTP.Types.URI
+    ( status200, status201, status204, status400 )
+import Network.HTTP.Types.Header ( hContentType )
+import Network.HTTP.Types.URI ( QueryText )
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
@@ -19,60 +23,64 @@ create :: QueryText -> IO Response
 create query = do
     case getText query "name" of
         Right name ->  do
-            let categ = CategoryToCreate {
-                name = name,
-                parentId = getMaybeInteger query "parent_id"
-            }
-            result <- Handler.createCategory handle categ
+            let category = CategoryToCreate {
+                parentId = getMaybeInteger query "parent_id",
+                .. }
+            result <- Handler.create handle category
             case result of
-                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
                 Right r -> return $ responseLBS status201 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 get :: QueryText -> IO Response
 get query = do
     case getInteger query "category_id" of
-        Right categId -> do
-            res' <- Handler.getCategory handle categId
-            case res' of
-                Right r' -> return $ responseLBS status200 [(hContentType, "application/json")] $ encode r'
-                Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
+        Right categoryId -> do
+            result <- Handler.get handle categoryId
+            case result of
+                Right r -> return $ responseLBS status200 
+                    [(hContentType, "application/json")] $ encode r
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 edit :: QueryText -> IO Response
 edit query = do
-    let isData = getInteger query "category_id" >>=
-            \categId -> getText query "name" >>=
-            \name -> Right (categId, name)
-    case isData of
-        Right (categId, name) -> do
-            let categ = CategoryToGet {
-                categoryId = categId,
-                name = name,
-                parentId = getMaybeInteger query "parent_id"
+    let info = do 
+            categoryId <- getInteger query "category_id"
+            name <- getText query "name"
+            Right (categoryId, name)
+    case info of
+        Right (categoryId, name) -> do
+            let category = Category {
+                parentId = getMaybeInteger query "parent_id",
+                ..
             }
-            res' <- Handler.editCategory handle categ
-            case res' of
-                Right r' -> return $ responseLBS status201 [] ""
-                Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
+            result <- Handler.edit handle category
+            case result of
+                Right _ -> return $ responseLBS status201 [] ""
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 delete :: QueryText -> IO Response
 delete query = do
     case getInteger query "category_id" of
-        Right categId -> do
-            res' <- Handler.deleteCategory handle categId
-            case res' of
-                Right r' -> return $ responseLBS status204 [] ""
-                Left l' -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l'
+        Right categoryId -> do
+            result <- Handler.delete handle categoryId
+            case result of
+                Right _ -> return $ responseLBS status204 [] ""
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 handle :: Handler.Handle IO
 handle = Handler.Handle {
-    Handler.create = manage . Db.create,
-    Handler.get = manage . Db.get,
-    Handler.delete = manage . Db.delete,
-    Handler.edit = manage . Db.edit,
-    Handler.doesExist = manage . Db.doesExist,
-    Handler.getChildren = manage . Db.getChildren
+    Handler.hCreate = manage . Db.create,
+    Handler.hGet = manage . Db.get,
+    Handler.hDelete = manage . Db.delete,
+    Handler.hEdit = manage . Db.edit,
+    Handler.hDoesExist = manage . Db.doesExist,
+    Handler.hGetChildren = manage . Db.getChildren
 }

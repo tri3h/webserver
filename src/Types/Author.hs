@@ -1,9 +1,17 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Types.Author where
 
-import Data.Text
+import Data.Text ( Text )
 import Data.Aeson
-import GHC.Generics
+    ( defaultOptions,
+      genericToEncoding,
+      SumEncoding(UntaggedValue),
+      Options(sumEncoding),
+      ToJSON(toEncoding),
+      FromJSON )
+import GHC.Generics ( Generic )
+
+type AuthorId = Integer
 
 data Author = AuthorToGet {
     authorId :: Integer,
@@ -16,8 +24,6 @@ data Author = AuthorToGet {
     userId :: Integer,
     description :: Text
 } deriving (Show, Generic)
-
-type AuthorId = Integer
 
 instance ToJSON Author where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}

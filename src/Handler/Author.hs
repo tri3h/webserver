@@ -1,55 +1,64 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Handler.Author where
 
-import Types.Author
-import Types.User (UserId)
-import Data.Text
+import Types.Author ( Author(userId, authorId, AuthorToCreate, 
+    AuthorToGet, AuthorToEdit), AuthorId )
+import Types.User ( UserId )
+import Data.Text ( Text )
 
 data Handle m = Handle {
-    create :: Author -> m Bool,
-    get :: AuthorId -> m Author,
-    delete :: AuthorId -> m Bool,
-    edit :: Author -> m Bool,
-    doesExist :: AuthorId -> m Bool,
-    doesUserExist :: UserId -> m Bool
+    hCreate :: Author -> m (),
+    hGet :: AuthorId -> m Author,
+    hDelete :: AuthorId -> m (),
+    hEdit :: Author -> m (),
+    hDoesExist :: AuthorId -> m (Either Text ()),
+    hDoesUserExist :: UserId -> m (Either Text ())
 }
 
-createAuthor :: Monad m => Handle m -> Author -> m (Either Text Text)
-createAuthor handle author = do
-    exist <- doesUserExist handle $ userId author
-    if exist
-        then do
-            res <- create handle author
-            if res
-                then return $ Right "Author was created"
-                else return $ Left "Author was not created"
-        else return $ Left "User with such id doesn't exist"
+create :: Monad m => Handle m -> Author -> m (Either Text ())
+create handle author = do
+    let isFormatCorrect = case author of AuthorToCreate {} -> True; _ -> False 
+    if isFormatCorrect
+    then do
+        exist <- hDoesUserExist handle $ userId author
+        case exist of 
+            Right () -> do
+                hCreate handle author
+                return $ Right ()
+            Left l -> return $ Left l
+    else return $ Left "Malformed author"
 
-getAuthor :: Monad m => Handle m -> AuthorId -> m (Either Text Author)
-getAuthor handle authorId = do
-    exist <- doesExist handle authorId
-    if exist
-        then Right <$> get handle authorId
-        else return $ Left "Author with such id doesn't exist"
+get :: Monad m => Handle m -> AuthorId -> m (Either Text Author)
+get handle authorId = do
+    exist <-hDoesExist handle authorId
+    case exist of 
+        Right _ -> do 
+            author <- hGet handle authorId
+            let isFormatCorrect = case author of AuthorToGet {} -> True; _ -> False 
+            if isFormatCorrect
+            then return $ Right author
+            else return $ Left "Malformed author"
+        Left l -> return $ Left l
 
-deleteAuthor :: Monad m => Handle m -> AuthorId -> m (Either Text ())
-deleteAuthor handle authorId = do
-    exist <- doesExist handle authorId
-    if exist 
-        then do 
-            res <- delete handle authorId
-            if res 
-                then return $ Right ()
-                else return $ Left "Failed to delete author"
-        else return $ Left "Author with such id doesn't exist"
+delete :: Monad m => Handle m -> AuthorId -> m (Either Text ())
+delete handle authorId = do
+    exist <- hDoesExist handle authorId
+    case exist of
+        Right () -> do 
+            hDelete handle authorId
+            return $ Right ()
+        Left l -> return $ Left l
 
-editAuthor :: Monad m => Handle m -> Author -> m (Either Text ())
-editAuthor handle author = do 
-    exist <- doesExist handle $ authorId author
-    if exist 
-        then do 
-            res <- edit handle author 
-            if res 
-                then return $ Right ()
-                else return $ Left "Failed to edit author"
-        else return $ Left "Author with such id doesn't exist"
+edit :: Monad m => Handle m -> Author -> m (Either Text ())
+edit handle author = do 
+    let isFormatCorrect = case author of AuthorToEdit {} -> True; _ -> False 
+    if isFormatCorrect
+    then do 
+        exist <- hDoesExist handle $ authorId author
+        case exist of
+            Right () -> do 
+                hEdit handle author 
+                return $ Right ()
+            Left l -> return $ Left l
+    else return $ Left "Malformed author"
+
