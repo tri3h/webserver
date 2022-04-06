@@ -19,12 +19,34 @@ import Data.Text.Encoding ( decodeUtf8, decodeUtf16BE )
 import qualified Data.Text.Lazy as LazyText
 import Data.Text (unpack)
 import Data.Aeson ( encode )
+import qualified Handler.Logger as Logger
 
-get :: QueryText -> IO Response
-get query = do 
-    case getInteger query "post_id" of 
+create :: Logger.Handle IO -> QueryText -> IO Response
+create logger query = do 
+    let info = do 
+            postId <- getInteger query "post_id"
+            userId <- getInteger query "user_id" 
+            text <- getText query "text" 
+            Right CommentToCreate { .. }
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of
+        Right comment -> do 
+            result <- Handler.create handle comment 
+            Logger.debug logger $ "Tried to create comment and got: " ++ show result
+            case result of 
+                Right _ -> return $ responseLBS status201 [] ""
+                Left l -> return $ responseLBS status400 
+                    [] . encodeUtf8 $ LazyText.fromStrict l
+        Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+
+get :: Logger.Handle IO -> QueryText -> IO Response
+get logger query = do 
+    let info = getInteger query "post_id"
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of 
         Right postId -> do 
             result <- Handler.get handle postId
+            Logger.debug logger $ "Tried to get comment and got: " ++ show result
             case result of 
                 Right r -> return $ responseLBS status200 
                     [(hContentType, "application/json")] $ encode r
@@ -32,27 +54,14 @@ get query = do
                     [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-create :: QueryText -> IO Response
-create query = do 
-    let info = do 
-            postId <- getInteger query "post_id"
-            userId <- getInteger query "user_id" 
-            text <- getText query "text" 
-            Right CommentToCreate { .. }
-    case info of
-        Right comment -> do 
-            result <- Handler.create handle comment 
-            case result of 
-                Right _ -> return $ responseLBS status201 [] ""
-                Left l -> return $ responseLBS status400 
-                    [] . encodeUtf8 $ LazyText.fromStrict l
-        Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-
-delete :: QueryText -> IO Response
-delete query = do 
-    case getInteger query "comment_id" of 
+delete :: Logger.Handle IO -> QueryText -> IO Response
+delete logger query = do 
+    let info = getInteger query "comment_id"
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of 
         Right commentId -> do 
             result <- Handler.delete handle commentId
+            Logger.debug logger $ "Tried to delete comment and got: " ++ show result
             case result of 
                 Right _ -> return $ responseLBS status204 [] ""
                 Left l -> return $ responseLBS status400 

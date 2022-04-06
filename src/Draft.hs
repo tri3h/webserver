@@ -41,71 +41,80 @@ import Utility
       getMaybeIntegers,
       getMaybeImage )
 import Data.ByteString ( ByteString )
+import qualified Handler.Logger as Logger
 
-create :: QueryText -> ByteString -> Token -> IO Response
-create query body token = do 
+create :: Logger.Handle IO -> QueryText -> ByteString -> Token -> IO Response
+create logger query body token = do 
     author <- Handler.getAuthorIdByToken handle token
-    case author of 
+    let info = do 
+            categoryId <- getInteger query "category_id" 
+            tagId <- getIntegers query "tag_id"
+            name <- getText query "name"
+            description <- getText query "description"
+            imageType <- getText query "image_type"
+            image <- getImage (decodeUtf8 body) "main_photo"
+            authorId <- author
+            Right $ Draft {
+                draftId = Nothing,
+                postId = Nothing,
+                mainPhoto = Image image imageType,
+                minorPhoto = [],
+                .. }
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of
         Left l -> return $ responseLBS status400 
-                    [] . encodeUtf8 $ LazyText.fromStrict l
-        Right authorId -> do
-            let info = do 
-                    categoryId <- getInteger query "category_id" 
-                    tagId <- getIntegers query "tag_id"
-                    name <- getText query "name"
-                    description <- getText query "description"
-                    imageType <- getText query "image_type"
-                    image <- getImage (decodeUtf8 body) "main_photo"
-                    Right $ Draft {
-                        draftId = Nothing,
-                        postId = Nothing,
-                        mainPhoto = Image image imageType,
-                        minorPhoto = [],
-                        .. }
-            case info of
+            [] . encodeUtf8 $ LazyText.fromStrict l
+        Right draft -> do 
+            result <- Handler.create handle draft
+            Logger.debug logger $ "Tried to create draft and got: " ++ show result
+            case result of 
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
-                Right draft -> do 
-                    Handler.create handle draft
-                    return $ responseLBS status201 [] ""
+                Right _ -> return $ responseLBS status201 [] ""
+            
 
-get :: QueryText -> IO Response
-get query = do 
+get :: Logger.Handle IO -> QueryText -> IO Response
+get logger query = do 
     let info = do 
             draftId <- getInteger query "draft_id"
             token <- getText query "token"
             Right (draftId, token)
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token) -> do
             result <- Handler.get handle draftId token
+            Logger.debug logger $ "Tried to get draft and got: " ++ show result
             case result of 
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
                 Right draft -> return $ responseLBS status200 
                     [(hContentType, "application/json")] $ encode draft
 
-delete :: QueryText -> IO Response
-delete query = do 
+delete :: Logger.Handle IO -> QueryText -> IO Response
+delete logger query = do 
     let info = do 
             draftId <- getInteger query "draft_id"
             token <- getText query "token"
             Right (draftId, token)
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token) -> do 
             result <- Handler.delete handle draftId token
+            Logger.debug logger $ "Tried to delete draft and got: " ++ show result
             case result of
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
                 Right _ -> return $ responseLBS status204 [] ""
             
-edit :: QueryText -> ByteString -> IO Response
-edit query body = do 
+edit :: Logger.Handle IO -> QueryText -> ByteString -> IO Response
+edit logger query body = do 
     let info = do 
             token <- getText query "token"
             draftId <- getInteger query "draft_id"
             Right (token, draftId)
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (token, draftId) -> do 
@@ -117,6 +126,7 @@ edit query body = do
                     eMainPhoto = getMainPhoto query body
                     }
             result <- Handler.edit handle draftId token editParams
+            Logger.debug logger $ "Tried to edit draft and got: " ++ show result
             case result of 
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
@@ -132,48 +142,58 @@ getMainPhoto query body =
             Nothing -> Nothing 
             Just i -> Just $ Image i t
 
-publish :: QueryText -> IO Response
-publish query = do 
+publish :: Logger.Handle IO -> QueryText -> IO Response
+publish logger query = do 
     let info = do 
             draftId <- getInteger query "draft_id"
             token <- getText query "token"
             Right (draftId, token)
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token) -> do 
             result <- Handler.publish handle draftId token
+            Logger.debug logger $ "Tried to publish draft and got: " ++ show result
             case result of
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
                 Right postId -> return $ responseLBS status201 
                     [(hContentType, "application/json")] $ encode postId
 
-addMinorPhoto :: QueryText -> ByteString -> IO Response
-addMinorPhoto query body = do 
+addMinorPhoto :: Logger.Handle IO -> QueryText -> ByteString -> IO Response
+addMinorPhoto logger query body = do 
     let info = do 
             draftId <- getInteger query "draft_id"
             token <- getText query "token"
             imageType <- getText query "image_type"
             image <- getImage (decodeUtf8 body) "minor_photo"
             Right (draftId, token, image, imageType)
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token, image, imageType) -> do 
-            Handler.addMinorPhoto handle draftId token (Image image imageType)
-            return $ responseLBS status201 [] ""
+            result <- Handler.addMinorPhoto handle draftId token (Image image imageType)
+            Logger.debug logger $ "Tried to add minor photo to draft and got: " ++ show result
+            case result of 
+                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                Right _ -> return $ responseLBS status201 [] ""
 
-deleteMinorPhoto :: QueryText -> IO Response
-deleteMinorPhoto query = do 
+deleteMinorPhoto :: Logger.Handle IO -> QueryText -> IO Response
+deleteMinorPhoto logger query = do 
     let info = do 
             draftId <- getInteger query "draft_id"
             token <- getText query "token"
             imageId <- getInteger query "minor_photo_id"
             Right (draftId, token, imageId)
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of 
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right (draftId, token, imageId) -> do 
-            Handler.deleteMinorPhoto handle draftId token imageId
-            return $ responseLBS status204 [] ""
+            result <- Handler.deleteMinorPhoto handle draftId token imageId
+            Logger.debug logger $ "Tried to delete minor photo to draft and got: " ++ show result
+            case result of 
+                Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+                Right _ -> return $ responseLBS status204 [] ""
 
 handle :: Handler.Handle IO
 handle = Handler.Handle {

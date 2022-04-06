@@ -21,28 +21,34 @@ import qualified Data.Text.Lazy as LazyText
 import Data.Text ( Text, unpack )
 import Data.ByteString.Lazy ( append )
 import Utility ( getText, getInteger )
+import qualified Handler.Logger as Logger
 
-create :: QueryText -> IO Response
-create query = do
+create :: Logger.Handle IO -> QueryText -> IO Response
+create logger query = do
     let info = do 
             userId <- getInteger query "user_id"
             description <- getText query "description"
             Right (userId, description) 
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of 
         Right (userId, description) ->  do
             let author = AuthorToCreate { .. }
             result <- Handler.create handle author
+            Logger.debug logger $ "Tried to create author and got: " ++ show result
             case result of
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
                 Right r -> return $ responseLBS status201 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: QueryText -> IO Response
-get query = do 
-    case getInteger query "author_id" of 
+get :: Logger.Handle IO -> QueryText -> IO Response
+get logger query = do
+    let info =  getInteger query "author_id"
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of 
         Right authorId -> do 
             result <- Handler.get handle authorId
+            Logger.debug logger $ "Tried to get author and got: " ++ show result
             case result of 
                 Right r -> return $ responseLBS status200 
                     [(hContentType, "application/json")] $ encode r
@@ -50,26 +56,31 @@ get query = do
                     [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-edit :: QueryText -> IO Response
-edit query = do 
+edit :: Logger.Handle IO -> QueryText -> IO Response
+edit logger query = do 
     let info = do 
             authorId <- getInteger query "author_id"
             description <- getText query "description"
             Right $ AuthorToEdit { .. }
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of 
         Right author -> do 
             result <- Handler.edit handle author
+            Logger.debug logger $ "Tried to edit author and got: " ++ show result
             case result of 
                 Right _ -> return $ responseLBS status201 [] ""
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: QueryText -> IO Response
-delete query = do 
-    case getInteger query "author_id" of 
+delete :: Logger.Handle IO -> QueryText -> IO Response
+delete logger query = do 
+    let info = getInteger query "author_id"
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of 
         Right authorId -> do 
             result <- Handler.delete handle authorId
+            Logger.debug logger $ "Tried to delete author and got: " ++ show result
             case result of
                 Right _ -> return $ responseLBS status204 [] ""
                 Left l -> return $ responseLBS status400 

@@ -21,9 +21,10 @@ import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
 import Data.Maybe ( fromMaybe )
+import qualified Handler.Logger as Logger
 
-get :: QueryText -> IO Response
-get query = do
+get :: Logger.Handle IO -> QueryText -> IO Response
+get logger query = do
     let filter = F.Filter {
         F.dateAfter = getMaybeText query "date_after",
         F.dateBefore = getMaybeText query "date_before",
@@ -38,17 +39,20 @@ get query = do
         F.text = getMaybeText query "text",
         F.substring = getMaybeText query "substring"
     }
+    Logger.debug logger $ "Tried to parse query and got filters: " ++ show filter
     let order = case getMaybeText query "sort_by" of
             Just "by_date" -> F.ByDate
             Just "by_author" -> F.ByAuthor
             Just "by_category" -> F.ByCategory
             Just "by_photos_number" -> F.ByPhotosNumber
             _ -> F.None
+    Logger.debug logger $ "Tried to parse query and got order: " ++ show order
     let limit = case getMaybeInteger query "limit" of
                     Nothing -> postsOnPage
                     Just x -> if x <= postsOnPage then x else postsOnPage
     let offset = fromMaybe 0 (getMaybeInteger query "offset")
     posts <- Handler.get handle filter order limit offset
+    Logger.debug logger $ "Tried to get posts and got: " ++ show posts
     case posts of
         Left l -> return $ responseLBS status400
             [] . encodeUtf8 $ LazyText.fromStrict l

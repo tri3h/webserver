@@ -75,6 +75,7 @@ library
     , bytestring
     , configurator
     , cryptonite
+    , hspec
     , http-types
     , postgresql-simple
     , postgresql-simple-migration
@@ -100,6 +101,7 @@ executable webserver-exe
     , bytestring
     , configurator
     , cryptonite
+    , hspec
     , http-types
     , postgresql-simple
     , postgresql-simple-migration
@@ -127,6 +129,7 @@ test-suite webserver-test
     , bytestring
     , configurator
     , cryptonite
+    , hspec
     , http-types
     , postgresql-simple
     , postgresql-simple-migration

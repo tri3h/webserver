@@ -18,26 +18,33 @@ import Network.HTTP.Types.URI ( QueryText )
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
+import qualified Handler.Logger as Logger
 
-create :: QueryText -> IO Response
-create query = do
-    case getText query "name" of
+create :: Logger.Handle IO -> QueryText -> IO Response
+create logger query = do
+    let info = getText query "name"
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of
         Right name ->  do
             let category = CategoryToCreate {
                 parentId = getMaybeInteger query "parent_id",
                 .. }
             result <- Handler.create handle category
+            Logger.debug logger $ "Tried to create category and got: " ++ show result
             case result of
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
                 Right r -> return $ responseLBS status201 [] ""
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: QueryText -> IO Response
-get query = do
-    case getInteger query "category_id" of
+get :: Logger.Handle IO -> QueryText -> IO Response
+get logger query = do
+    let info = getInteger query "category_id"
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of
         Right categoryId -> do
             result <- Handler.get handle categoryId
+            Logger.debug logger $ "Tried to get category and got: " ++ show result
             case result of
                 Right r -> return $ responseLBS status200 
                     [(hContentType, "application/json")] $ encode r
@@ -45,12 +52,13 @@ get query = do
                     [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-edit :: QueryText -> IO Response
-edit query = do
+edit :: Logger.Handle IO -> QueryText -> IO Response
+edit logger query = do
     let info = do 
             categoryId <- getInteger query "category_id"
             name <- getText query "name"
             Right (categoryId, name)
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of
         Right (categoryId, name) -> do
             let category = Category {
@@ -58,17 +66,21 @@ edit query = do
                 ..
             }
             result <- Handler.edit handle category
+            Logger.debug logger $ "Tried to edit category and got: " ++ show result
             case result of
                 Right _ -> return $ responseLBS status201 [] ""
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: QueryText -> IO Response
-delete query = do
-    case getInteger query "category_id" of
+delete :: Logger.Handle IO -> QueryText -> IO Response
+delete logger query = do
+    let info = getInteger query "category_id"
+    Logger.debug logger $ "Tried to parse query and got: " ++ show info
+    case info of
         Right categoryId -> do
             result <- Handler.delete handle categoryId
+            Logger.debug logger $ "Tried to delete category and got: " ++ show result
             case result of
                 Right _ -> return $ responseLBS status204 [] ""
                 Left l -> return $ responseLBS status400 

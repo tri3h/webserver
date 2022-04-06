@@ -18,6 +18,6 @@ data Filter = Filter {
     postName :: Maybe Text,
     text :: Maybe Text,
     substring :: Maybe Text
-}
+} deriving Show
 
-data Order = ByDate | ByAuthor | ByCategory | ByPhotosNumber | None
+data Order = ByDate | ByAuthor | ByCategory | ByPhotosNumber | None deriving Show

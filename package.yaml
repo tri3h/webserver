@@ -35,6 +35,7 @@ dependencies:
 - binary
 - postgresql-simple-migration
 - base64-bytestring
+- hspec
 
 library:
   source-dirs: src

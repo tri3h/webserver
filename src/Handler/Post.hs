@@ -55,37 +55,6 @@ data OrderHandle m = OrderHandle {
 
 get :: Monad m => Handle m -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Text [Post])
 get handle params order limit offset = do
-    orderedCommon <- getOrderedCommon handle params order
-    posts <- hGet handle orderedCommon offset limit
-    let isFormatCorrect = all (\case ShortPost {} -> True; _ -> False) posts
-    if isFormatCorrect
-    then do
-        authors <- mapM (hGetAuthor handle . authorId) posts
-        users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle $ A.userId a) authors
-        categories <- mapM (hGetCategory handle . categoryId) posts
-        tags <- mapM (hGetTag handle . postId) posts
-        comments <- mapM (hGetComment handle . postId) posts
-        minorPhotos <- mapM (hGetMinorPhotos handle . postId) posts
-        let isMainPhotoCorrect = all (\x -> case mainPhoto x of Link {} -> True; _ -> False) posts
-        let isMinorPhotoCorrect = all (all (\case Link {} -> True; _ -> False)) minorPhotos
-        if isMainPhotoCorrect && isMinorPhotoCorrect 
-        then do 
-            let fullPosts = zipWith7 (\post author user category tag comment minorPhoto ->
-                    FullPost {
-                        postId = postId post,
-                        name = name post,
-                        date = date post,
-                        text = text post,
-                        mainPhoto = mainPhoto post,
-                        ..} ) posts authors users categories tags comments minorPhotos
-            if null orderedCommon
-            then return $ Left "No posts with such parameters"
-            else return $ Right fullPosts
-        else return $ Left "Malformed images" 
-    else return $ Left "Malformed posts"
-
-getOrderedCommon :: Monad m => Handle m -> F.Filter -> F.Order -> m [PostId]
-getOrderedCommon handle params order = do
     let isFiltersEmpty = all (==Nothing) [void $ F.dateAfter params,
             void $ F.dateBefore params, void $ F.dateAt params,
             void $ F.authorName params, void $ F.categoryId params,
@@ -94,16 +63,50 @@ getOrderedCommon handle params order = do
             void $ F.text params, void $ F.substring params]
     common <- if isFiltersEmpty
             then hGetAll handle
-            else chooseFiltered handle params
-    case order of
-        F.ByAuthor -> hByAuthor (hOrderHandle handle) common
-        F.ByCategory -> hByCategory (hOrderHandle handle) common
-        F.ByDate -> hByDate (hOrderHandle handle) common
-        F.ByPhotosNumber -> hByPhotosNumber (hOrderHandle handle) common
-        _ -> return common
+            else getFiltered handle params
+    orderedCommon <- getOrdered handle common order
+    if null orderedCommon
+    then return $ Left "No posts with such parameters"
+    else do 
+        posts <- hGet handle orderedCommon offset limit
+        let isFormatCorrect = all (\case ShortPost {} -> True; _ -> False) posts
+        if isFormatCorrect
+        then makeFullPost handle posts 
+        else return $ Left "Malformed posts"
 
-chooseFiltered :: Monad m => Handle m -> F.Filter -> m [PostId]
-chooseFiltered handle params= do
+makeFullPost :: Monad m => Handle m -> [Post] -> m (Either Text [Post])
+makeFullPost handle posts = do 
+    authors <- mapM (hGetAuthor handle . authorId) posts
+    users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle $ A.userId a) authors
+    categories <- mapM (hGetCategory handle . categoryId) posts
+    tags <- mapM (hGetTag handle . postId) posts
+    comments <- mapM (hGetComment handle . postId) posts
+    minorPhotos <- mapM (hGetMinorPhotos handle . postId) posts
+    let isMainPhotoCorrect = all (\x -> case mainPhoto x of Link {} -> True; _ -> False) posts
+    let isMinorPhotoCorrect = all (all (\case Link {} -> True; _ -> False)) minorPhotos
+    if isMainPhotoCorrect && isMinorPhotoCorrect 
+    then return . Right $ 
+        zipWith7 (\post author user category tag comment minorPhoto ->
+            FullPost {
+                postId = postId post,
+                name = name post,
+                date = date post,
+                text = text post,
+                mainPhoto = mainPhoto post,
+                ..} ) posts authors users categories tags comments minorPhotos
+    else return $ Left "Malformed images" 
+
+getOrdered :: Monad m => Handle m -> [PostId] -> F.Order -> m [PostId]
+getOrdered handle posts order = 
+    case order of
+        F.ByAuthor -> hByAuthor (hOrderHandle handle) posts
+        F.ByCategory -> hByCategory (hOrderHandle handle) posts
+        F.ByDate -> hByDate (hOrderHandle handle) posts
+        F.ByPhotosNumber -> hByPhotosNumber (hOrderHandle handle) posts
+        _ -> return posts
+
+getFiltered :: Monad m => Handle m -> F.Filter -> m [PostId]
+getFiltered handle params = do
     filtered <- sequence
         [applyFilter (F.dateAfter params) (hByDateAfter $ hFilterHandle handle),
         applyFilter (F.dateBefore params) (hByDateBefore $ hFilterHandle handle),

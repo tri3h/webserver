@@ -22,32 +22,36 @@ import qualified Data.ByteString as BS
 import Data.ByteString.Lazy (toStrict, fromStrict)
 import Network.HTTP.Types (queryToQueryText, QueryText)
 import qualified Image
+import qualified Handler.Logger
 
-makeAdminResponse :: Request -> IO Response
-makeAdminResponse req = do
+main :: IO ()
+main = run 3000 $ \req f -> do
+    let query = queryToQueryText $ queryString req
+    Handler.Logger.debug logger $ "Received query: " ++ show query
+    body <- toStrict <$> strictRequestBody req
+    Handler.Logger.debug logger $ "Received body: " ++ show body
+    response <- case join $ lookup "token" query of
+        Just t -> do
+            isValid <- User.isTokenValid t
+            if isValid
+            then makeTokenResponse req body t
+            else do 
+                let err = "Invalid token"
+                Handler.Logger.debug logger $ show err
+                return $ responseLBS status400 [] err
+        Nothing -> makeNoTokenResponse req body
+    f response
+
+makeNoTokenResponse :: Request -> BS.ByteString -> IO Response
+makeNoTokenResponse req body = do 
     let query = queryToQueryText $ queryString req
     case pathInfo req of
-        ["users"] -> case requestMethod req of
-            "DELETE" -> User.delete query
-            _ -> return $ responseLBS status404 [] ""
-        ["authors"] -> case requestMethod req of 
-            "POST" -> Author.create query 
-            "PUT" -> Author.edit query 
-            "GET" -> Author.get query
-            "DELETE" -> Author.delete query 
-            _ -> return $ responseLBS status404 [] ""
-        ["tags"] -> case requestMethod req of 
-            "POST" -> Tag.create query 
-            "PUT" -> Tag.edit query 
-            "DELETE" -> Tag.delete query 
-            _ -> return $ responseLBS status404 [] ""
-        ["categories"] -> case requestMethod req of 
-            "POST" -> Category.create query 
-            "PUT" -> Category.edit query 
-            "DELETE" -> Category.delete query 
-            _ -> return $ responseLBS status404 [] ""
-        ["comments"] -> case requestMethod req of 
-            "DELETE" -> Comment.delete query
+        ["users"] -> if requestMethod req == "POST"
+            then User.create logger query body
+            else return $ responseLBS status400 [] "No token"
+        ["tokens"] -> User.getNewToken logger query
+        ["images"] -> case requestMethod req of 
+            "GET" -> Image.get logger query
             _ -> return $ responseLBS status404 [] ""
         _ -> return $ responseLBS status404 [] ""
 
@@ -57,59 +61,67 @@ makeTokenResponse req body token = do
     let query = queryToQueryText $ queryString req
     case pathInfo req of
         ["users"] -> case requestMethod req of
-            "GET" -> User.get query token
+            "GET" -> User.get logger query token
             _ -> chooseResponse isAdmin
         ["tags"] -> case requestMethod req of 
-            "GET" -> Tag.get query
+            "GET" -> Tag.get logger query
             _ -> chooseResponse isAdmin
         ["categories"] -> case requestMethod req of 
-            "GET" -> Category.get query
+            "GET" -> Category.get logger query
             _ -> chooseResponse isAdmin
         ["posts"] -> case requestMethod req of 
-            "GET" -> Post.get query
+            "GET" -> Post.get logger query
             _ -> chooseResponse isAdmin
         ["comments"] -> case requestMethod req of 
-            "GET" -> Comment.get query
-            "POST" -> Comment.create query 
+            "GET" -> Comment.get logger query
+            "POST" -> Comment.create logger query 
             _ -> chooseResponse isAdmin
         ["drafts"] -> case requestMethod req of 
-            "GET" -> Draft.get query
-            "POST" -> Draft.create query body token
-            "PUT" -> Draft.edit query body
-            "DELETE" -> Draft.delete query
+            "GET" -> Draft.get logger query
+            "POST" -> Draft.create logger query body token
+            "PUT" -> Draft.edit logger query body
+            "DELETE" -> Draft.delete logger query
             _ -> return $ responseLBS status404 [] ""
         ["drafts","minor_photo"] -> case requestMethod req of 
-            "POST" -> Draft.addMinorPhoto query body
-            "DELETE" -> Draft.deleteMinorPhoto query
+            "POST" -> Draft.addMinorPhoto logger query body
+            "DELETE" -> Draft.deleteMinorPhoto logger query
             _ -> return $ responseLBS status404 [] ""
-        ["publish"] -> Draft.publish query
+        ["publish"] -> Draft.publish logger query
         _ -> chooseResponse isAdmin
         where chooseResponse isAdmin = if isAdmin
                 then makeAdminResponse req
                 else return $ responseLBS status404 [] ""
 
-makeNoTokenResponse :: Request -> BS.ByteString -> IO Response
-makeNoTokenResponse req body = do 
+makeAdminResponse :: Request -> IO Response
+makeAdminResponse req = do
     let query = queryToQueryText $ queryString req
     case pathInfo req of
-        ["users"] -> if requestMethod req == "POST"
-            then User.create query body
-            else return $ responseLBS status400 [] "No token"
-        ["tokens"] -> User.getNewToken query
-        ["images"] -> case requestMethod req of 
-            "GET" -> Image.get query
+        ["users"] -> case requestMethod req of
+            "DELETE" -> User.delete logger query
+            _ -> return $ responseLBS status404 [] ""
+        ["authors"] -> case requestMethod req of 
+            "POST" -> Author.create logger query
+            "PUT" -> Author.edit logger query 
+            "GET" -> Author.get logger query
+            "DELETE" -> Author.delete logger query 
+            _ -> return $ responseLBS status404 [] ""
+        ["tags"] -> case requestMethod req of 
+            "POST" -> Tag.create logger query 
+            "PUT" -> Tag.edit logger query 
+            "DELETE" -> Tag.delete logger query 
+            _ -> return $ responseLBS status404 [] ""
+        ["categories"] -> case requestMethod req of 
+            "POST" -> Category.create logger query 
+            "PUT" -> Category.edit logger query 
+            "DELETE" -> Category.delete logger query 
+            _ -> return $ responseLBS status404 [] ""
+        ["comments"] -> case requestMethod req of 
+            "DELETE" -> Comment.delete logger query
             _ -> return $ responseLBS status404 [] ""
         _ -> return $ responseLBS status404 [] ""
 
-main :: IO ()
-main = run 3000 $ \req f -> do
-    let query = queryToQueryText $ queryString req
-    body <- toStrict <$> strictRequestBody req
-    response <- case join $ lookup "token" query of
-        Just t -> do
-            isValid <- User.isTokenValid t
-            if isValid
-            then makeTokenResponse req body t
-            else return $ responseLBS status400 [] "Invalid token"
-        Nothing -> makeNoTokenResponse req body
-    f response
+logger :: Handler.Logger.Handle IO
+logger = Handler.Logger.Handle { 
+    Handler.Logger.hWriteLog = putStrLn,
+    Handler.Logger.hVerbosity = Handler.Logger.DEBUG
+} 
