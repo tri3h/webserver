@@ -120,6 +120,7 @@ test-suite webserver-test
       AuthorSpec
       CategorySpec
       CommentSpec
+      DraftSpec
       PostSpec
       TagSpec
       UserSpec

@@ -4,7 +4,7 @@ module CategorySpec where
 import Test.Hspec ( hspec, describe, it, shouldBe )
 import Data.Functor.Identity (Identity (Identity))
 import qualified Handler.Category as H
-import Types.Category ( Category(..), malformedCategory, categoryNotExist, impossibleDelete, invalidParent )
+import Types.Category ( Category(..), malformedCategory, categoryNotExist, noDeleteHasChildren, invalidParent )
 import Data.Text ( Text )
 
 main :: IO ()
@@ -56,7 +56,7 @@ main = hspec $ do
                 H.hGetChildren = \_ ->  return [2]
             }
             let result = H.delete handleCase 1 
-            result `shouldBe` return (Left impossibleDelete)
+            result `shouldBe` return (Left noDeleteHasChildren)
     describe "Testing edit category" $ do
         it "Should successfully edit" $ do
             let result = H.edit handle category

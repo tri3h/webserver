@@ -35,5 +35,5 @@ invalidParent = "Invalid parent id"
 malformedCategory :: Text 
 malformedCategory = "Malformed category"
 
-impossibleDelete :: Text 
-impossibleDelete = "Impossible to delete: the category has children"
+noDeleteHasChildren :: Text 
+noDeleteHasChildren = "Impossible to delete: the category has children"

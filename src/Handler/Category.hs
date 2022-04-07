@@ -2,7 +2,7 @@
 module Handler.Category where
 
 import Types.Category
-    ( Category(parentId, categoryId, Category, CategoryToCreate), CategoryId, invalidParent, malformedCategory, impossibleDelete )
+    ( Category(parentId, categoryId, Category, CategoryToCreate), CategoryId, invalidParent, malformedCategory, noDeleteHasChildren )
 import Data.Text ( Text )
 
 data Handle m = Handle {
@@ -54,7 +54,7 @@ delete handle categId = do
             if null children 
             then do
                 Right <$> hDelete handle categId
-            else return $ Left impossibleDelete
+            else return $ Left noDeleteHasChildren
         Left l -> return $ Left l
 
 edit :: Monad m => Handle m -> Category -> m (Either Text ())

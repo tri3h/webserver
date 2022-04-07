@@ -5,6 +5,7 @@ import qualified CategorySpec
 import qualified TagSpec
 import qualified CommentSpec
 import qualified PostSpec
+import qualified DraftSpec
 
 main :: IO ()
 main = do 
@@ -14,3 +15,4 @@ main = do
     TagSpec.main
     CommentSpec.main
     PostSpec.main
+    DraftSpec.main

@@ -10,10 +10,10 @@ import Types.Draft
       Draft (mainPhoto, minorPhoto, categoryId, authorId, tagId),
       DraftId,
       EditParams(eCategoryId, eTagId, eName, eDescription, eMainPhoto),
-      Name )
-import Types.Image ( Image (Image, Link), ImageId )
+      Name, noDraftAuthor, userNotAuthor, noDeleteHasPost )
+import Types.Image ( Image (Image, Link), ImageId, malformedImage )
 import Types.Author(AuthorId, Author)
-import Types.Category(CategoryId)
+import Types.Category(CategoryId, noDeleteHasChildren)
 import Types.Tag(TagId)
 import Types.Post(PostId, Date)
 import Types.User(Token)
@@ -53,7 +53,7 @@ create handle draft = do
         Right _ -> do 
             case mainPhoto draft of
                 Image {} -> Right <$> hCreate handle draft
-                _ -> return $ Left "Malformed image"
+                _ -> return $ Left malformedImage
         Left l -> return $ Left l 
 
 get :: Monad m => Handle m -> DraftId -> Token -> m (Either Text Draft)
@@ -67,7 +67,7 @@ get handle draftId token = do
             let isMainPhotoCorrect = case mainPhoto draft of Link {} -> True; _ -> False
             if isMinorPhotoCorrect && isMainPhotoCorrect
             then return $ Right draft
-            else return $ Left "Malformed images"
+            else return $ Left malformedImage
 
 edit :: Monad m => Handle m -> DraftId -> Token -> EditParams -> m (Either Text ())
 edit handle draftId token params = do
@@ -77,20 +77,21 @@ edit handle draftId token params = do
         Right _ -> do
             forM_ (eName params) (hEditName handle draftId)
             forM_ (eDescription params) (hEditDescription handle draftId)
-            case eCategoryId params of 
+            resCateg <- case eCategoryId params of 
                 Nothing -> return $ Right ()
                 Just categoryId -> editCategoryId handle draftId categoryId
-            case eTagId params of 
+            resTag <- case eTagId params of 
                 Nothing -> return $ Right ()
                 Just tagId -> editTagId handle draftId tagId
-            editPhoto handle draftId params
+            resPhoto <- editPhoto handle draftId params
+            return (resCateg >> resTag >> resPhoto)
 
 editPhoto :: Monad m => Handle m -> DraftId -> EditParams -> m (Either Text ())
 editPhoto handle draftId params = 
     case eMainPhoto params of
         Just x -> case x of
             Image {} -> Right <$> hEditMainPhoto handle draftId x
-            _ -> return $ Left "Malformed image"
+            _ -> return $ Left malformedImage
         _ -> return $ Right ()
             
 editCategoryId :: Monad m => Handle m -> DraftId -> CategoryId -> m (Either Text ())
@@ -111,7 +112,7 @@ delete :: Monad m => Handle m -> DraftId -> Token -> m (Either Text ())
 delete handle draftId token = do
     canAccess <- canAccess handle draftId token
     hasPost <- hHasPost handle draftId
-    let canDelete = if hasPost then Left "Impossible to delete: has post" else Right ()
+    let canDelete = if hasPost then Left noDeleteHasPost else Right ()
     case canAccess >> canDelete of
         Left l -> return $ Left l
         Right _ -> Right <$> hDelete handle draftId
@@ -138,7 +139,7 @@ addMinorPhoto handle draftId token image = do
             case canAccess of
                 Left l -> return $ Left l
                 Right _ -> Right <$> hAddMinorPhoto handle draftId image
-        _ -> return $ Left "Malformed image"
+        _ -> return $ Left malformedImage
 
 deleteMinorPhoto :: Monad m => Handle m -> DraftId -> Token -> ImageId -> m (Either Text ())
 deleteMinorPhoto handle draftId token imageId = do
@@ -166,7 +167,7 @@ isAuthor handle draftId token = do
             realAuthorId <- hGetAuthor handle draftId
             if authorId == realAuthorId
             then return $ Right ()
-            else return $ Left "This author isn't author of the draft"
+            else return $ Left noDraftAuthor
         Left l -> return $ Left l 
 
 getAuthorIdByToken :: Monad m => Handle m -> Token -> m (Either Text AuthorId)
@@ -174,4 +175,4 @@ getAuthorIdByToken handle token = do
     isAuthor <- hIsAuthor handle token
     if isAuthor
     then Right <$> hGetAuthorIdByToken handle token
-    else return $ Left "The user isn't author"
+    else return $ Left userNotAuthor

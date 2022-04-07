@@ -43,3 +43,15 @@ data EditParams = EditParams {
 
 instance ToJSON Draft where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+
+draftNotExist :: Text
+draftNotExist = "Draft with such id doesn't exist"
+
+noDeleteHasPost :: Text
+noDeleteHasPost = "Impossible to delete: has post"
+
+noDraftAuthor :: Text
+noDraftAuthor = "This author isn't author of the draft"
+
+userNotAuthor :: Text
+userNotAuthor = "The user isn't author"

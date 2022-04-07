@@ -7,7 +7,7 @@ import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.Time (Date)
 import Database.Connection ( serverAddress )
 import Data.Text(Text, append, pack)
-import Types.Draft ( Description, Draft(..), DraftId, Name )
+import Types.Draft ( Description, Draft(..), DraftId, Name, draftNotExist )
 import Types.Post (PostId)
 import Types.Category(CategoryId)
 import Types.Tag(TagId)
@@ -133,4 +133,4 @@ doesExist draftId conn = do
     [Only n] <- query conn "SELECT COUNT(draft_id) FROM drafts WHERE draft_id = ?" (Only draftId)
     if (n :: Integer) == 1
     then return $ Right ()
-    else return $ Left "Draft with such id doesn't exist"
+    else return $ Left draftNotExist
