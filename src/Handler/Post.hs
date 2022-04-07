@@ -6,7 +6,7 @@ module Handler.Post(get, Handle (..), FilterHandle(..), OrderHandle (..)) where
 import Types.Post
     ( Post(FullPost, ShortPost, authorId, categoryId, author, user, category, tag,
            comment, minorPhoto, postId, name, date, text, mainPhoto),
-      PostId )
+      PostId, noPost, malformedPost )
 import Types.Tag(Tag, TagId)
 import Types.Comment(Comment, CommentId)
 import Types.User(User,UserId)
@@ -16,7 +16,7 @@ import qualified Types.Filter as F
 import Data.Text ( Text )
 import Control.Monad ( void )
 import Data.List(zipWith7)
-import Types.Image (Image(Link))
+import Types.Image (Image(Link), malformedImage)
 
 data Handle m = Handle {
     hFilterHandle :: FilterHandle m,
@@ -66,13 +66,13 @@ get handle params order limit offset = do
             else getFiltered handle params
     orderedCommon <- getOrdered handle common order
     if null orderedCommon
-    then return $ Left "No posts with such parameters"
+    then return $ Left noPost
     else do 
         posts <- hGet handle orderedCommon offset limit
         let isFormatCorrect = all (\case ShortPost {} -> True; _ -> False) posts
         if isFormatCorrect
         then makeFullPost handle posts 
-        else return $ Left "Malformed posts"
+        else return $ Left malformedPost
 
 makeFullPost :: Monad m => Handle m -> [Post] -> m (Either Text [Post])
 makeFullPost handle posts = do 
@@ -94,7 +94,7 @@ makeFullPost handle posts = do
                 text = text post,
                 mainPhoto = mainPhoto post,
                 ..} ) posts authors users categories tags comments minorPhotos
-    else return $ Left "Malformed images" 
+    else return $ Left malformedImage
 
 getOrdered :: Monad m => Handle m -> [PostId] -> F.Order -> m [PostId]
 getOrdered handle posts order = 

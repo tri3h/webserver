@@ -4,7 +4,7 @@ module Database.Queries.Tag where
 
 import Database.PostgreSQL.Simple
     ( Connection, execute, query, Only(Only) )
-import Types.Tag ( Name, Tag(..), TagId )
+import Types.Tag ( Name, Tag(..), TagId, tagNotExist )
 import Types.Post(PostId)
 import Data.Text(Text)
 
@@ -44,4 +44,4 @@ doesExist tagId conn = do
         \WHERE tags.tag_id = ?" (Only tagId)
     if (n :: Integer) == 1
     then return $ Right ()
-    else return $ Left "Tag with such id doesn't exist"
+    else return $ Left tagNotExist

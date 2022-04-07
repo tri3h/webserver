@@ -8,7 +8,7 @@ import qualified Database.PostgreSQL.Simple.Time as Time
 import Types.Post
     ( Post(ShortPost, postId, authorId, categoryId, name, date, text,
            mainPhoto),
-      PostId )
+      PostId, postNotExist )
 import Types.Filter(Offset, Limit)
 import qualified Types.Tag as Tag
 import qualified Types.Author as Author
@@ -156,4 +156,4 @@ doesExist postId conn = do
         \WHERE posts.post_id = ?" (Only postId)
     if (n :: Integer) == 1
     then return $ Right ()
-    else return $ Left "Post with such id doesn't exist"
+    else return $ Left postNotExist

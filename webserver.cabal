@@ -119,6 +119,9 @@ test-suite webserver-test
   other-modules:
       AuthorSpec
       CategorySpec
+      CommentSpec
+      PostSpec
+      TagSpec
       UserSpec
       Paths_webserver
   hs-source-dirs:

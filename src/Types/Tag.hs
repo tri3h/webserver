@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.Tag where
 
 import Data.Text ( Text )
@@ -20,3 +21,6 @@ data Tag = Tag {
 
 instance ToJSON Tag where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+
+tagNotExist :: Text
+tagNotExist = "Tag with such id doesn't exist"

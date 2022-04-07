@@ -6,7 +6,7 @@ import Database.PostgreSQL.Simple
     ( Connection, execute, query, Only(Only) )
 import Types.Comment
     ( Comment(CommentToGet, postId, commentId, userId, text),
-      CommentId )
+      CommentId, commentNotExist )
 import Types.Post(PostId)
 import Data.Text ( Text )
 import Data.Maybe ( fromMaybe )
@@ -36,4 +36,4 @@ doesExist commId conn = do
         \WHERE comments.comment_id = ?" (Only commId)
     if (n :: Integer) == 1
     then return $ Right ()
-    else return $ Left "Comment with such id doesn't exist"
+    else return $ Left commentNotExist

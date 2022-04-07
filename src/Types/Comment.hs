@@ -25,3 +25,9 @@ data Comment = CommentToCreate {
 
 instance ToJSON Comment where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+
+commentNotExist :: Text
+commentNotExist = "Comment with such id doesn't exist"
+
+malformedComment :: Text
+malformedComment = "Malformed comments"

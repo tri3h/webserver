@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.Post where
 
 import Data.Text ( Text )
@@ -46,3 +47,12 @@ data Post = ShortPost {
 
 instance ToJSON Post where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+
+postNotExist :: Text
+postNotExist = "Post with such id doesn't exist"
+
+malformedPost :: Text
+malformedPost = "Malformed posts"
+
+noPost :: Text
+noPost = "No posts with such parameters"
