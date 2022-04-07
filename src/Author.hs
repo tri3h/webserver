@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Author where
 
-import qualified Handler.Author as Handler
+import qualified Handlers.Author as Handler
 import Types.Author
     ( Author(AuthorToEdit, AuthorToCreate, userId, authorId,
              description) )
@@ -21,7 +21,7 @@ import qualified Data.Text.Lazy as LazyText
 import Data.Text ( Text, unpack )
 import Data.ByteString.Lazy ( append )
 import Utility ( getText, getInteger )
-import qualified Handler.Logger as Logger
+import qualified Handlers.Logger as Logger
 
 create :: Logger.Handle IO -> QueryText -> IO Response
 create logger query = do

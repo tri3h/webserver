@@ -4,7 +4,7 @@ module Post where
 import Utility ( getMaybeText, getMaybeInteger, getMaybeIntegers )
 import Types.Post ( postsOnPage )
 import qualified Types.Filter as F
-import qualified Handler.Post as Handler
+import qualified Handlers.Post as Handler
 import qualified Database.Queries.Post as Db
 import qualified Database.Queries.Author as AuthorDb
 import qualified Database.Queries.User as UserDb
@@ -21,7 +21,7 @@ import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
 import Data.Maybe ( fromMaybe )
-import qualified Handler.Logger as Logger
+import qualified Handlers.Logger as Logger
 
 get :: Logger.Handle IO -> QueryText -> IO Response
 get logger query = do

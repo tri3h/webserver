@@ -13,9 +13,9 @@ do
  esac
 done
 
-while read name n value
+while read name_ n value
 do 
-case "$name" in 
+case "$name_" in 
  host) host=${value//\"};;
  port) port=$value;;
 esac
@@ -23,6 +23,6 @@ done < ../Server.config
 
 base64 $main_photo > "image.dat"
 
-curl "$host:$port/drafts?token=$token&category_id=$category_id&tag_id=$tag_id&name=$name&image_type=$main_photo_image_type" -X POST -F main_photo=@image.dat
+curl "$host:$port/drafts?token=$token&category_id=$category_id&description=$description&tag_id=$tag_id&name=$name&image_type=$main_photo_image_type" -X POST -F main_photo=@image.dat
 
 rm "image.dat"

@@ -20,8 +20,8 @@ create draft conn = do
     [Only imageId] <- query conn "INSERT INTO images (image, image_type) \
         \VALUES (decode(?,'base64'), ?) RETURNING image_id" (image, imageType)
     [Only draftId] <- query conn "INSERT INTO drafts \
-        \(category_id, name, text, image_id) VALUES (?,?,?,?) \
-        \RETURNING draft_id" (categoryId draft, name draft, description draft, imageId :: Integer)
+        \(category_id, name, text, image_id, author_id) VALUES (?,?,?,?,?) \
+        \RETURNING draft_id" (categoryId draft, name draft, description draft, imageId :: Integer, authorId draft)
     let tags = map (\x -> (draftId, x)) $ tagId draft
     executeMany conn "INSERT INTO draft_tags (draft_id, tag_id) \
         \VALUES (?,?)" (tags :: [(Integer,Integer)])

@@ -4,7 +4,7 @@ module PostSpec where
 import Prelude hiding (filter)
 import Test.Hspec ( hspec, describe, it, shouldBe )
 import Data.Functor.Identity (Identity (Identity))
-import qualified Handler.Post as H
+import qualified Handlers.Post as H
 import Types.Post ( Post(..), malformedPost )
 import qualified Types.Filter as F
 import Types.Image ( Image(..), malformedImage )

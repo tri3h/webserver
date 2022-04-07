@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-module Handler.User(Login, Token, UserId, Handle(..), create, get, delete, getNewToken, generateToken, hashPassword) where
+module Handlers.User(Login, Token, UserId, Handle(..), create, get, delete, getNewToken, generateToken, hashPassword) where
 
 import Data.Text ( Text, pack, unpack )
 import Types.User

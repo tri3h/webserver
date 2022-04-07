@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module Handler.Comment where
+module Handlers.Comment where
 
 import Types.Comment ( Comment (CommentToGet, CommentToCreate, postId), CommentId, malformedComment )
 import Types.Post (PostId)

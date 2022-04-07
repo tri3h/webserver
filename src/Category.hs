@@ -2,11 +2,11 @@
 {-# LANGUAGE RecordWildCards #-}
 module Category where
 
-import Utility ( getText, getInteger, getMaybeInteger )
+import Utility ( getText, getInteger, getMaybeInteger, getMaybeText )
 import Types.Category
     ( Category(Category, CategoryToCreate, categoryId, name,
                parentId) )
-import qualified Handler.Category as Handler
+import qualified Handlers.Category as Handler
 import qualified Database.Queries.Category as Db
 import Database.Connection ( manage )
 import Data.Aeson ( encode )
@@ -18,7 +18,7 @@ import Network.HTTP.Types.URI ( QueryText )
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
-import qualified Handler.Logger as Logger
+import qualified Handlers.Logger as Logger
 
 create :: Logger.Handle IO -> QueryText -> IO Response
 create logger query = do
@@ -54,18 +54,13 @@ get logger query = do
 
 edit :: Logger.Handle IO -> QueryText -> IO Response
 edit logger query = do
-    let info = do 
-            categoryId <- getInteger query "category_id"
-            name <- getText query "name"
-            Right (categoryId, name)
+    let info = getInteger query "category_id"
     Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of
-        Right (categoryId, name) -> do
-            let category = Category {
-                parentId = getMaybeInteger query "parent_id",
-                ..
-            }
-            result <- Handler.edit handle category
+        Right categoryId -> do
+            let parentId = getMaybeInteger query "parent_id"
+            let name = getMaybeText query "name"
+            result <- Handler.edit handle categoryId name parentId
             Logger.debug logger $ "Tried to edit category and got: " ++ show result
             case result of
                 Right _ -> return $ responseLBS status201 [] ""
@@ -92,7 +87,8 @@ handle = Handler.Handle {
     Handler.hCreate = manage . Db.create,
     Handler.hGet = manage . Db.get,
     Handler.hDelete = manage . Db.delete,
-    Handler.hEdit = manage . Db.edit,
+    Handler.hEditName = \a b -> manage $ Db.editName a b,
+    Handler.hEditParent = \a b -> manage $ Db.editParent a b,
     Handler.hDoesExist = manage . Db.doesExist,
     Handler.hGetChildren = manage . Db.getChildren
 }

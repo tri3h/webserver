@@ -17,7 +17,7 @@ import System.Random ( randomIO )
 import Data.Time.Clock ( getCurrentTime )
 import Types.User
     ( User(UserToCreate, name, surname, login, password, avatar) )
-import qualified Handler.User as Handler
+import qualified Handlers.User as Handler
 import qualified Database.Queries.User as Db
 import Database.Connection ( manage )
 import qualified Data.ByteString as BS
@@ -25,7 +25,7 @@ import qualified Data.Text as Text
 import Types.Image ( Image(Image) )
 import Utility ( getText, getInteger, getImage )
 import Data.ByteString(ByteString)
-import qualified Handler.Logger as Logger
+import qualified Handlers.Logger as Logger
 
 create :: Logger.Handle IO -> QueryText -> ByteString -> IO Response
 create logger query body = do

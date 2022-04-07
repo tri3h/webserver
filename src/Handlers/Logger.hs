@@ -1,4 +1,4 @@
-module Handler.Logger(Handle(..), Verbosity(..), debug, warning, error) where
+module Handlers.Logger(Handle(..), Verbosity(..), debug, warning, error) where
 
 import Prelude hiding (log, error)
 import Control.Monad ( when )

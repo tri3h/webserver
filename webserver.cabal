@@ -39,14 +39,14 @@ library
       Database.Queries.Tag
       Database.Queries.User
       Draft
-      Handler.Author
-      Handler.Category
-      Handler.Comment
-      Handler.Draft
-      Handler.Logger
-      Handler.Post
-      Handler.Tag
-      Handler.User
+      Handlers.Author
+      Handlers.Category
+      Handlers.Comment
+      Handlers.Draft
+      Handlers.Logger
+      Handlers.Post
+      Handlers.Tag
+      Handlers.User
       Image
       Lib
       Post

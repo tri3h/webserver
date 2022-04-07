@@ -16,7 +16,7 @@ import Types.Tag(TagId)
 import Types.Post(PostId, Date)
 import Types.User(Token)
 import Types.Image ( Image(Image) )
-import qualified Handler.Draft as Handler
+import qualified Handlers.Draft as Handler
 import qualified Database.Queries.Draft as Db.Draft
 import qualified Database.Queries.Author as Db.Author
 import qualified Database.Queries.Category as Db.Category 
@@ -41,7 +41,7 @@ import Utility
       getMaybeIntegers,
       getMaybeImage )
 import Data.ByteString ( ByteString )
-import qualified Handler.Logger as Logger
+import qualified Handlers.Logger as Logger
 
 create :: Logger.Handle IO -> QueryText -> ByteString -> Token -> IO Response
 create logger query body token = do 

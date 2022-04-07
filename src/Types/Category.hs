@@ -13,6 +13,7 @@ import GHC.Generics ( Generic )
 
 type CategoryId = Integer
 type Name = Text
+type ParentId = Integer
 
 data Category = Category {
     categoryId :: Integer,

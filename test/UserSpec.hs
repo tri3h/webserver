@@ -3,7 +3,7 @@ module UserSpec where
 
 import Test.Hspec ( hspec, describe, it, shouldBe )
 import Data.Functor.Identity (Identity (Identity))
-import qualified Handler.User as H
+import qualified Handlers.User as H
 import Types.User
     ( User(UserToCreate, User, UserToGet, admin, token, userId, date,
            name, surname, login, password, avatar),

@@ -22,14 +22,14 @@ import qualified Data.ByteString as BS
 import Data.ByteString.Lazy (toStrict, fromStrict)
 import Network.HTTP.Types (queryToQueryText, QueryText)
 import qualified Image
-import qualified Handler.Logger
+import qualified Handlers.Logger
 
 main :: IO ()
 main = run 3000 $ \req f -> do
     let query = queryToQueryText $ queryString req
-    Handler.Logger.debug logger $ "Received query: " ++ show query
+    Handlers.Logger.debug logger $ "Received query: " ++ show query
     body <- toStrict <$> strictRequestBody req
-    Handler.Logger.debug logger $ "Received body: " ++ show body
+    Handlers.Logger.debug logger $ "Received body: " ++ show body
     response <- case join $ lookup "token" query of
         Just t -> do
             isValid <- User.isTokenValid t
@@ -37,7 +37,7 @@ main = run 3000 $ \req f -> do
             then makeTokenResponse req body t
             else do 
                 let err = "Invalid token"
-                Handler.Logger.debug logger $ show err
+                Handlers.Logger.debug logger $ show err
                 return $ responseLBS status400 [] err
         Nothing -> makeNoTokenResponse req body
     f response
@@ -120,8 +120,8 @@ makeAdminResponse req = do
             _ -> return $ responseLBS status404 [] ""
         _ -> return $ responseLBS status404 [] ""
 
-logger :: Handler.Logger.Handle IO
-logger = Handler.Logger.Handle { 
-    Handler.Logger.hWriteLog = putStrLn,
-    Handler.Logger.hVerbosity = Handler.Logger.DEBUG
+logger :: Handlers.Logger.Handle IO
+logger = Handlers.Logger.Handle { 
+    Handlers.Logger.hWriteLog = putStrLn,
+    Handlers.Logger.hVerbosity = Handlers.Logger.DEBUG
 } 

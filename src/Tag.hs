@@ -4,7 +4,7 @@ module Tag where
 
 import Utility ( getText, getInteger )
 import Types.Tag ( Tag(Tag, tagId, name) )
-import qualified Handler.Tag as Handler
+import qualified Handlers.Tag as Handler
 import qualified Database.Queries.Tag as Db
 import Database.Connection ( manage )
 import Data.Aeson ( encode )
@@ -16,7 +16,7 @@ import Network.HTTP.Types.URI ( QueryText )
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding ( encodeUtf8 )
 import Data.Text ( Text, unpack )
-import qualified Handler.Logger as Logger
+import qualified Handlers.Logger as Logger
 
 create :: Logger.Handle IO -> QueryText -> IO Response
 create logger query = do

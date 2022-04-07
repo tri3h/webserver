@@ -3,7 +3,7 @@ module TagSpec where
 
 import Test.Hspec ( hspec, describe, it, shouldBe )
 import Data.Functor.Identity (Identity (Identity))
-import qualified Handler.Tag as H
+import qualified Handlers.Tag as H
 import Types.Tag ( Tag(Tag, name, tagId), tagNotExist )
 import Data.Text ( Text )
 

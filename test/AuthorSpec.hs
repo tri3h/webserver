@@ -3,7 +3,7 @@ module AuthorSpec where
 
 import Test.Hspec ( hspec, describe, it, shouldBe )
 import Data.Functor.Identity (Identity (Identity))
-import qualified Handler.Author as H
+import qualified Handlers.Author as H
 import Types.Author ( Author(..), malformedAuthor, authorNotExist )
 import Types.User ( userNotExist )
 import Data.Text ( Text )

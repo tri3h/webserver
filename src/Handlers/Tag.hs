@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Handler.Tag where
+module Handlers.Tag where
 
 import Types.Tag ( Name, Tag(tagId), TagId )
 import Data.Text ( Text )

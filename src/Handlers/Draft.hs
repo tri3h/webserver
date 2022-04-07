@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module Handler.Draft(Handle(..), create, get, edit,
+module Handlers.Draft(Handle(..), create, get, edit,
 delete, publish, addMinorPhoto, deleteMinorPhoto, isAuthor, getAuthorIdByToken) where
 
 import Data.Text (Text, unpack, words)

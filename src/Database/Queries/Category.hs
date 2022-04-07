@@ -5,7 +5,7 @@ module Database.Queries.Category where
 import Database.PostgreSQL.Simple
     ( Connection, execute, query, Only(Only, fromOnly) )
 import Types.Category
-    ( Category(Category, name, parentId, categoryId), CategoryId, categoryNotExist )
+    ( Category(Category, name, parentId, categoryId), CategoryId, categoryNotExist, Name, ParentId )
 import Data.Text ( Text )
 
 create :: Category -> Connection -> IO ()
@@ -27,14 +27,16 @@ get catId conn = do
         \WHERE categories.category_id = ?" (Only catId)
     return Category { .. }
 
-edit :: Category -> Connection -> IO ()
-edit cat conn = do 
-    case parentId cat of 
-        Nothing -> execute conn "UPDATE categories SET name = ? \
-            \WHERE categories.category_id = ?"  (name cat, categoryId cat)
-        _ -> execute conn "UPDATE categories SET name = ?, \
-            \parent_id = ? WHERE categories.category_id = ?"  
-            (name cat, parentId cat, categoryId cat)
+editName :: CategoryId -> Name -> Connection -> IO ()
+editName categoryId name conn = do 
+    execute conn "UPDATE categories SET name = ? \
+        \WHERE categories.category_id = ?"  (name, categoryId)
+    return ()
+
+editParent :: CategoryId -> ParentId -> Connection -> IO ()
+editParent categoryId parentId conn = do 
+    execute conn "UPDATE categories SET parent_id = ? \
+            \WHERE categories.category_id = ?"  (parentId, categoryId)
     return ()
 
 doesExist :: CategoryId -> Connection -> IO (Either Text ())

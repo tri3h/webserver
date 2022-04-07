@@ -3,7 +3,7 @@ module CommentSpec where
 
 import Test.Hspec ( hspec, describe, it, shouldBe )
 import Data.Functor.Identity (Identity (Identity))
-import qualified Handler.Comment as H
+import qualified Handlers.Comment as H
 import Types.Comment ( Comment(..), malformedComment, commentNotExist )
 import Types.Post ( postNotExist )
 import Data.Text ( Text )

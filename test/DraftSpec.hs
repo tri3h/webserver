@@ -3,7 +3,7 @@ module DraftSpec where
     
 import Test.Hspec ( hspec, describe, it, shouldBe )
 import Data.Functor.Identity (Identity (Identity))
-import qualified Handler.Draft as H
+import qualified Handlers.Draft as H
 import Types.Draft ( Draft(..), EditParams(..), draftNotExist, noDeleteHasPost, noDraftAuthor, userNotAuthor ) 
 import Types.Image ( Image(..), malformedImage )
 import Data.Text ( Text )

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Handler.Author where
+module Handlers.Author where
 
 import Types.Author ( Author(userId, authorId, AuthorToCreate, 
     AuthorToGet, AuthorToEdit), AuthorId, malformedAuthor )

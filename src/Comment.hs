@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Comment where
 
-import qualified Handler.Comment as Handler
+import qualified Handlers.Comment as Handler
 import Database.Connection ( manage )
 import qualified Database.Queries.Comment as Db
 import qualified Database.Queries.Post as Db.Post
@@ -19,7 +19,7 @@ import Data.Text.Encoding ( decodeUtf8, decodeUtf16BE )
 import qualified Data.Text.Lazy as LazyText
 import Data.Text (unpack)
 import Data.Aeson ( encode )
-import qualified Handler.Logger as Logger
+import qualified Handlers.Logger as Logger
 
 create :: Logger.Handle IO -> QueryText -> IO Response
 create logger query = do 

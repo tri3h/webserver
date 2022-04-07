@@ -14,7 +14,7 @@ import Data.Text.Encoding ( decodeUtf8, encodeUtf8 )
 import Network.HTTP.Types (queryToQueryText, hContentType)
 import Data.Binary.Builder (fromByteString)
 import Data.ByteString.Base64 (decode)
-import qualified Handler.Logger as Logger
+import qualified Handlers.Logger as Logger
 
 get :: Logger.Handle IO -> QueryText -> IO Response
 get logger query = do

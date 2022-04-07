@@ -1,18 +1,18 @@
 #! /bin/sh
 
-while getopts t:c:n:p flag
+while getopts t:c:n:p: flag
 do
  case "$flag" in
   t) token=${OPTARG};;
   c) category_id=${OPTARG};;
-  p) parent_d=${OPTARG};;
+  p) parent_id=${OPTARG};;
   n) name=${OPTARG// /+};;
  esac
 done
 
-while read name n value
+while read name_ n value
 do 
-case "$name" in 
+case "$name_" in 
  host) host=${value//\"};;
  port) port=$value;;
 esac

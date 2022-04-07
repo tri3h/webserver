@@ -12,9 +12,9 @@ do
  esac
 done
 
-while read key n value
+while read name_ n value
 do 
-case "$key" in 
+case "$name_" in 
  host) host=${value//\"};;
  port) port=$value;;
 esac

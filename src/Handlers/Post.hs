@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
-module Handler.Post(get, Handle (..), FilterHandle(..), OrderHandle (..)) where
+module Handlers.Post(get, Handle (..), FilterHandle(..), OrderHandle (..)) where
 
 import Types.Post
     ( Post(FullPost, ShortPost, authorId, categoryId, author, user, category, tag,
