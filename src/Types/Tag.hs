@@ -16,7 +16,7 @@ type Name = Text
 data Tag = Tag {
     tagId :: Integer,
     name :: Text
-} deriving (Show, Generic)
+} deriving (Show, Eq, Generic)
 
 instance ToJSON Tag where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}

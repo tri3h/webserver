@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.Draft where
 
 import Database.PostgreSQL.Simple.ToField ()
@@ -30,7 +31,7 @@ data Draft = Draft {
     description :: Text,
     mainPhoto :: Image,
     minorPhoto :: [Image] 
-} deriving (Show, Generic)
+} deriving (Show, Eq, Generic)
 
 data EditParams = EditParams {
     eCategoryId :: Maybe CategoryId,

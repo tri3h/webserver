@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.Image where
 
-import Data.Text ( Text ) 
 import GHC.Generics ( Generic )
 import Data.Aeson
     ( defaultOptions,
@@ -10,12 +10,13 @@ import Data.Aeson
       Options(sumEncoding),
       ToJSON(toEncoding) )
 import Database.PostgreSQL.Simple.ToField ( ToField(..) )
+import Data.Text ( Text )
 
 type ImageId = Integer
 type ImageType = Text
 
 data Image = Link Text | Image Text ImageType
-    deriving (Show, Read, Generic)
+    deriving (Show, Eq, Read, Generic)
 
 instance ToJSON Image where 
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
@@ -23,3 +24,6 @@ instance ToJSON Image where
 instance ToField Image where 
     toField (Image image imageType) = toField image
     toField (Link x) = toField x
+
+malformedImage :: Text
+malformedImage = "Malformed image"

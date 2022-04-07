@@ -11,7 +11,7 @@ import Types.User
       Token,
       Login,
       User(UserToGet, password, admin, token, userId, name, surname,
-           avatar, login, date) )
+           avatar, login, date), userNotExist )
 import Types.Image ( Image(Link, Image) )
 import Database.Connection ( serverAddress )
 import Data.Text
@@ -108,7 +108,7 @@ doesExist userId conn = do
         \WHERE users.user_id = ?" (Only userId)
     if (n :: Integer) == 1
     then return $ Right ()
-    else return $ Left "User with such id doesn't exist"
+    else return $ Left userNotExist
 
 findPassword :: Login -> Connection -> IO Password
 findPassword login conn = do

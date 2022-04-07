@@ -2,7 +2,7 @@
 module Handler.Author where
 
 import Types.Author ( Author(userId, authorId, AuthorToCreate, 
-    AuthorToGet, AuthorToEdit), AuthorId )
+    AuthorToGet, AuthorToEdit), AuthorId, malformedAuthor )
 import Types.User ( UserId )
 import Data.Text ( Text )
 
@@ -26,7 +26,7 @@ create handle author = do
                 hCreate handle author
                 return $ Right ()
             Left l -> return $ Left l
-    else return $ Left "Malformed author"
+    else return $ Left malformedAuthor
 
 get :: Monad m => Handle m -> AuthorId -> m (Either Text Author)
 get handle authorId = do
@@ -37,7 +37,7 @@ get handle authorId = do
             let isFormatCorrect = case author of AuthorToGet {} -> True; _ -> False 
             if isFormatCorrect
             then return $ Right author
-            else return $ Left "Malformed author"
+            else return $ Left malformedAuthor
         Left l -> return $ Left l
 
 delete :: Monad m => Handle m -> AuthorId -> m (Either Text ())
@@ -60,5 +60,5 @@ edit handle author = do
                 hEdit handle author 
                 return $ Right ()
             Left l -> return $ Left l
-    else return $ Left "Malformed author"
+    else return $ Left malformedAuthor
 

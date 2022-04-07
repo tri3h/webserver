@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-module Handler.User(Login, Token, UserId, Handle(..), create, get, delete, getNewToken) where
+module Handler.User(Login, Token, UserId, Handle(..), create, get, delete, getNewToken, generateToken, hashPassword) where
 
 import Data.Text ( Text, pack, unpack )
 import Types.User
@@ -9,11 +9,11 @@ import Types.User
       Token,
       Login,
       User(User, password, date, admin, token, name, surname, avatar,
-           login, UserToCreate, UserToGet) )
+           login, UserToCreate, UserToGet), loginTaken, malformedUser, invalidData )
 import Crypto.Hash ( hashWith, SHA256(SHA256) )
 import Data.Text.Encoding ( encodeUtf8 )
 import qualified Data.ByteString.Char8 as Char8
-import Types.Image ( Image(Image, Link) )
+import Types.Image ( Image(Image, Link), malformedImage )
 
 data Handle m = Handle {
     hIsLoginUnique :: Login -> m Bool,
@@ -35,7 +35,7 @@ create handle partUser@UserToCreate {} = do
     if isUnique
     then do
         case avatar partUser of 
-            Link _ -> return $ Left "Malformed image"
+            Link _ -> return $ Left malformedImage
             Image _ _ -> do 
                 token <- generateToken handle
                 time <- hGetCurrentTime handle
@@ -51,8 +51,8 @@ create handle partUser@UserToCreate {} = do
                         .. }
                 hCreate handle user
                 return $ Right token
-    else return $ Left "Login is already taken"
-create _ _ = return $ Left "Malformed user"
+    else return $ Left loginTaken 
+create _ _ = return $ Left malformedUser 
 
 get :: Monad m => Handle m -> Token -> m (Either Text User)
 get handle token = do 
@@ -61,8 +61,8 @@ get handle token = do
         u@UserToGet {} -> do 
             case avatar user of 
                 Link _ -> return $ Right user
-                Image _ _ -> return $ Left "Malformed image"
-        _ -> return $ Left "Malformed user"
+                Image _ _ -> return $ Left malformedImage
+        _ -> return $ Left malformedUser
 
 delete :: Monad m => Handle m -> UserId -> m (Either Text ())
 delete handle userId = do
@@ -74,7 +74,7 @@ delete handle userId = do
 hashPassword :: Password -> Password
 hashPassword p = pack . show . hashWith SHA256 $ encodeUtf8 p
 
-getNewToken :: Monad m => Handle m -> Password -> Login -> m (Either Text Token)
+getNewToken :: Monad m => Handle m -> Login -> Password -> m (Either Text Token)
 getNewToken handle login password = do
     isValid <- hIsLoginValid handle login
     if isValid
@@ -86,8 +86,8 @@ getNewToken handle login password = do
             newToken <- generateToken handle
             hUpdateToken handle login newToken
             return $ Right newToken
-        else return $ Left "Invalid data"
-    else return $ Left "Invalid data"
+        else return $ Left invalidData
+    else return $ Left invalidData 
 
 generateToken :: Monad m => Handle m -> m Text
 generateToken handle = do

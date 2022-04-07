@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.Category where
 
 import Data.Text ( Text )
@@ -20,7 +21,19 @@ data Category = Category {
 } | CategoryToCreate {
     name :: Text,
     parentId :: Maybe Integer
-} deriving (Show, Generic)
+} deriving (Show, Eq, Generic)
 
 instance ToJSON Category where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+
+categoryNotExist :: Text
+categoryNotExist = "Category with such id doesn't exist"
+
+invalidParent :: Text
+invalidParent = "Invalid parent id"
+
+malformedCategory :: Text 
+malformedCategory = "Malformed category"
+
+impossibleDelete :: Text 
+impossibleDelete = "Impossible to delete: the category has children"

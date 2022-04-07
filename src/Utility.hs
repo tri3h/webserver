@@ -10,34 +10,31 @@ import Data.ByteString(ByteString)
 
 getText :: QueryText -> Text -> Either Text Text
 getText query name = case join $ lookup name query of
-    Nothing -> err name
+    Nothing -> noSpecified name
     Just x -> if null x
-        then err name
+        then noSpecified name
         else Right x
 
 getInteger :: QueryText -> Text -> Either Text Integer
 getInteger query name = case join $ lookup name query of
-    Nothing -> err name
+    Nothing -> noSpecified name
     Just x -> if null x
-        then err name
+        then noSpecified name
         else Right (read $ unpack x :: Integer)
 
 getIntegers :: QueryText -> Text -> Either Text [Integer]
 getIntegers query name = case join $ lookup name query of
-    Nothing -> err name
+    Nothing -> noSpecified name
     Just xs -> if null xs
-        then err name
+        then noSpecified name
         else Right $ map (\x -> read $ unpack x :: Integer) (splitOn "," xs)
-
-err :: Text -> Either Text b
-err name = Left $ "No " `append` name `append` " specified"
 
 getImage :: Text -> Text -> Either Text Text
 getImage body name = let hasImage = ("name=\"" `append` name) `isInfixOf` body
                 in if hasImage 
                     then Right $ replace "\n" "" $ head $ tail 
                         $ dropWhile (/="") $ splitOn "\r\n" body 
-                    else Left "No image with such name"
+                    else Left noImage
 
 getMaybeText :: QueryText -> Text -> Maybe Text
 getMaybeText query name = case join $ lookup name query of 
@@ -62,3 +59,9 @@ getMaybeImage body name = let hasImage = ("name=\"" `append` name) `isInfixOf` b
                     then Just $ replace "\n" "" $ head $ tail 
                         $ dropWhile (/="") $ splitOn "\r\n" body 
                     else Nothing
+
+noSpecified :: Text -> Either Text b
+noSpecified name = Left $ "No " `append` name `append` " specified"
+
+noImage :: Text 
+noImage = "No image with such name"

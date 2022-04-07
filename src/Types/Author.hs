@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.Author where
 
 import Data.Text ( Text )
@@ -23,9 +24,15 @@ data Author = AuthorToGet {
 } | AuthorToCreate {
     userId :: Integer,
     description :: Text
-} deriving (Show, Generic)
+} deriving (Show, Eq, Generic)
 
 instance ToJSON Author where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
 
 instance FromJSON Author where
+
+authorNotExist :: Text
+authorNotExist = "Author with such id doesn't exist"
+
+malformedAuthor :: Text
+malformedAuthor = "Malformed author"

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.Comment where
 
 import Data.Text ( Text )
@@ -20,7 +21,7 @@ data Comment = CommentToCreate {
     commentId :: Integer,
     userId :: Integer,
     text :: Text
-} deriving (Show, Generic)
+} deriving (Show, Eq, Generic)
 
 instance ToJSON Comment where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}

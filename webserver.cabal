@@ -117,6 +117,9 @@ test-suite webserver-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      AuthorSpec
+      CategorySpec
+      UserSpec
       Paths_webserver
   hs-source-dirs:
       test

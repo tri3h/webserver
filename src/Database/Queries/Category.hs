@@ -5,7 +5,7 @@ module Database.Queries.Category where
 import Database.PostgreSQL.Simple
     ( Connection, execute, query, Only(Only, fromOnly) )
 import Types.Category
-    ( Category(Category, name, parentId, categoryId), CategoryId )
+    ( Category(Category, name, parentId, categoryId), CategoryId, categoryNotExist )
 import Data.Text ( Text )
 
 create :: Category -> Connection -> IO ()
@@ -43,7 +43,7 @@ doesExist catId conn = do
         \WHERE categories.category_id = ?" (Only catId)
     if (n :: Integer) == 1
     then return $ Right ()
-    else return $ Left "Category with such id doesn't exist"
+    else return $ Left categoryNotExist
 
 getParents :: CategoryId -> Connection -> IO [CategoryId]
 getParents catId conn = do 

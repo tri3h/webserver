@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Types.User where
 
 import Data.Text ( Text )
@@ -40,7 +41,19 @@ data User = User {
     login :: Text,
     password :: Text,
     avatar :: Image
-} deriving (Show, Generic)
+} deriving (Show, Eq, Generic)
 
 instance ToJSON User where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+
+userNotExist :: Text
+userNotExist = "User with such id doesn't exist"
+
+loginTaken :: Text
+loginTaken = "Login is already taken"
+
+malformedUser :: Text
+malformedUser = "Malformed user"
+
+invalidData :: Text 
+invalidData = "Invalid data"

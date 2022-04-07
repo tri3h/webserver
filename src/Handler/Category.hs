@@ -2,7 +2,7 @@
 module Handler.Category where
 
 import Types.Category
-    ( Category(parentId, categoryId, Category, CategoryToCreate), CategoryId )
+    ( Category(parentId, categoryId, Category, CategoryToCreate), CategoryId, invalidParent, malformedCategory, impossibleDelete )
 import Data.Text ( Text )
 
 data Handle m = Handle {
@@ -21,11 +21,9 @@ create handle categ = do
     then do
         correct <- isParentCorrect handle categ
         if correct
-        then do
-            hCreate handle categ
-            return $ Right ()
-        else return $ Left "Invalid parent id"
-    else return $ Left "Malformed category"
+        then Right <$> hCreate handle categ
+        else return $ Left invalidParent
+    else return $ Left malformedCategory
     where isParentCorrect handle categ =
             case parentId categ of
                 Nothing -> return True
@@ -44,7 +42,7 @@ get handle categId = do
             let isFormatCorrect = case categ of Category {} -> True; _ -> False
             if isFormatCorrect
             then return $ Right categ
-            else return $ Left "Malformed category"
+            else return $ Left malformedCategory
         Left l -> return $ Left l
 
 delete :: Monad m => Handle m -> CategoryId -> m (Either Text ())
@@ -56,7 +54,7 @@ delete handle categId = do
             if null children 
             then do
                 Right <$> hDelete handle categId
-            else return $ Left "Impossible to delete: the category has children"
+            else return $ Left impossibleDelete
         Left l -> return $ Left l
 
 edit :: Monad m => Handle m -> Category -> m (Either Text ())
@@ -73,16 +71,14 @@ edit handle categ = do
                         children <- hGetChildren handle $ categoryId categ
                         return $ doesExist && (b `notElem` children)
             if isParentCorrect
-            then do
-                hEdit handle categ
-                return $ Right ()
-            else return $ Left "Invalid parent id"
+            then Right <$> hEdit handle categ
+            else return $ Left invalidParent
         Left l -> return $ Left l
     where canEdit :: Monad m => Handle m -> Category -> m (Either Text ())
           canEdit handle categ =
             let isFormatCorrect = case categ of Category {} -> True; _ -> False
             in if isFormatCorrect
                 then hDoesExist handle $ categoryId categ
-                else return $ Left "Malformed category"
+                else return $ Left malformedCategory
 
           

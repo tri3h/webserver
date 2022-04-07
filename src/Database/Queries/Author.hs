@@ -5,7 +5,7 @@ module Database.Queries.Author where
 import Database.PostgreSQL.Simple
     ( Connection, execute, query, Only(Only) )
 import Types.Author
-    ( Author(AuthorToGet, userId, description, authorId), AuthorId )
+    ( Author(AuthorToGet, userId, description, authorId), AuthorId, authorNotExist )
 import Types.Post (PostId)
 import Types.Draft (DraftId)
 import Types.User(Token)
@@ -54,7 +54,7 @@ doesExist authorId conn = do
         \WHERE authors.author_id = ?" (Only authorId)
     if (n :: Integer) == 1
     then return $ Right ()
-    else return $ Left "Author with such id doesn't exist"
+    else return $ Left authorNotExist
 
 getByPostId :: PostId -> Connection -> IO AuthorId
 getByPostId postId conn = do

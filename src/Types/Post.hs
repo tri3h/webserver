@@ -42,7 +42,7 @@ data Post = ShortPost {
     text :: Text,
     mainPhoto :: Image,
     minorPhoto :: [Image]
-} deriving (Show, Generic)
+} deriving (Show, Eq, Generic)
 
 instance ToJSON Post where
     toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
