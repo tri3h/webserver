@@ -22,37 +22,38 @@ import Types.User (Token)
 
 create :: Author -> Connection -> IO ()
 create author conn = do
-  execute
-    conn
-    "INSERT INTO authors (user_id, description) \
-    \VALUES (?,?)"
-    (userId author, description author)
+  _ <-
+    execute
+      conn
+      "INSERT INTO authors (user_id, description) \
+      \VALUES (?,?)"
+      (userId author, description author)
   return ()
 
 delete :: AuthorId -> Connection -> IO ()
 delete authorId conn = do
-  execute conn "DELETE FROM authors WHERE authors.author_id = ?" (Only authorId)
+  _ <- execute conn "DELETE FROM authors WHERE authors.author_id = ?" (Only authorId)
   return ()
 
 get :: AuthorId -> Connection -> IO Author
-get authorId conn = do
+get authId conn = do
   [(authorId, maybeUserId, description)] <-
     query
       conn
       "SELECT author_id, user_id, description FROM authors \
       \WHERE authors.author_id = ?"
-      (Only authorId)
+      (Only authId)
   let userId = fromMaybe 0 maybeUserId
   return AuthorToGet {..}
 
 getMaybe :: AuthorId -> Connection -> IO (Maybe Author)
-getMaybe authorId conn = do
+getMaybe authId conn = do
   x <-
     query
       conn
       "SELECT author_id, user_id, description FROM authors \
       \WHERE authors.author_id = ?"
-      (Only authorId)
+      (Only authId)
   case x of
     [(authorId, maybeUserId, description)] -> do
       let userId = fromMaybe 0 maybeUserId
@@ -61,11 +62,12 @@ getMaybe authorId conn = do
 
 edit :: Author -> Connection -> IO ()
 edit author conn = do
-  execute
-    conn
-    "UPDATE authors SET description = ? \
-    \WHERE authors.author_id = ?"
-    (description author, authorId author)
+  _ <-
+    execute
+      conn
+      "UPDATE authors SET description = ? \
+      \WHERE authors.author_id = ?"
+      (description author, authorId author)
   return ()
 
 doesExist :: AuthorId -> Connection -> IO (Either Text ())

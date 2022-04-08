@@ -1,12 +1,12 @@
-module Handlers.Logger(Handle(..), Verbosity(..), debug, warning, error) where
+module Handlers.Logger (Handle (..), Verbosity (..), debug, warning, error) where
 
-import Prelude hiding (log, error)
-import Control.Monad ( when )
+import Control.Monad (when)
+import Prelude hiding (error, log)
 
-data Handle m = Handle {
-    hWriteLog :: String -> m (),
+data Handle m = Handle
+  { hWriteLog :: String -> m (),
     hVerbosity :: Verbosity
-}
+  }
 
 data Verbosity = DEBUG | WARNING | ERROR deriving (Eq, Ord, Show)
 

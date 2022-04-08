@@ -1,28 +1,32 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Types.Draft where
 
-import Database.PostgreSQL.Simple.ToField ()
-import Data.Text ( Text )
 import Data.Aeson
-    ( defaultOptions,
-      genericToEncoding,
-      SumEncoding(UntaggedValue),
-      Options(sumEncoding),
-      ToJSON(toEncoding) )
-import GHC.Generics ( Generic )
+  ( Options (sumEncoding),
+    SumEncoding (UntaggedValue),
+    ToJSON (toEncoding),
+    defaultOptions,
+    genericToEncoding,
+  )
+import Data.Text (Text)
+import Database.PostgreSQL.Simple.ToField ()
+import GHC.Generics (Generic)
 import Types.Author (AuthorId)
 import Types.Category (CategoryId)
-import Types.Tag (TagId)
+import Types.Image (Image)
 import Types.Post (PostId)
-import Types.Image ( Image )
+import Types.Tag (TagId)
 
 type DraftId = Integer
+
 type Name = Text
+
 type Description = Text
 
-data Draft = Draft {
-    draftId :: Maybe DraftId,
+data Draft = Draft
+  { draftId :: Maybe DraftId,
     postId :: Maybe PostId,
     authorId :: AuthorId,
     categoryId :: CategoryId,
@@ -30,19 +34,20 @@ data Draft = Draft {
     name :: Name,
     description :: Text,
     mainPhoto :: Image,
-    minorPhoto :: [Image] 
-} deriving (Show, Eq, Generic)
+    minorPhoto :: [Image]
+  }
+  deriving (Show, Eq, Generic)
 
-data EditParams = EditParams {
-    eCategoryId :: Maybe CategoryId,
+data EditParams = EditParams
+  { eCategoryId :: Maybe CategoryId,
     eTagId :: Maybe [TagId],
     eName :: Maybe Name,
     eDescription :: Maybe Text,
     eMainPhoto :: Maybe Image
-}
+  }
 
 instance ToJSON Draft where
-    toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+  toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
 
 draftNotExist :: Text
 draftNotExist = "Draft with such id doesn't exist"

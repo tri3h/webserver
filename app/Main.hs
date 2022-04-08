@@ -9,7 +9,7 @@ main = do
   args <- getArgs
   case args of
     ["1"] -> do
-      Database.Migration.execute
+      _ <- Database.Migration.execute
       return ()
     _ -> return ()
   Server.main

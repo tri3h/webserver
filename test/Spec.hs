@@ -1,18 +1,18 @@
-import Test.Hspec
 import qualified AuthorSpec
-import qualified UserSpec
 import qualified CategorySpec
-import qualified TagSpec
 import qualified CommentSpec
-import qualified PostSpec
 import qualified DraftSpec
+import qualified PostSpec
+import qualified TagSpec
+import Test.Hspec
+import qualified UserSpec
 
 main :: IO ()
-main = do 
-    AuthorSpec.main
-    UserSpec.main
-    CategorySpec.main
-    TagSpec.main
-    CommentSpec.main
-    PostSpec.main
-    DraftSpec.main
+main = do
+  AuthorSpec.main
+  UserSpec.main
+  CategorySpec.main
+  TagSpec.main
+  CommentSpec.main
+  PostSpec.main
+  DraftSpec.main

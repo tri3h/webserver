@@ -1,17 +1,21 @@
 module Database.Migration where
 
-import Database.PostgreSQL.Simple.Migration
-    ( MigrationResult,
-      runMigration,
-      MigrationCommand(MigrationDirectory, MigrationInitialization),
-      MigrationContext(MigrationContext) )
-import Database.Connection ( open )
+import Database.Connection (open)
 import Database.PostgreSQL.Simple (withTransaction)
+import Database.PostgreSQL.Simple.Migration
+  ( MigrationCommand (MigrationDirectory, MigrationInitialization),
+    MigrationContext (MigrationContext),
+    MigrationResult,
+    runMigration,
+  )
 
 execute :: IO (MigrationResult String)
-execute = do 
-    conn <- open 
-    withTransaction conn $ runMigration $
+execute = do
+  conn <- open
+  _ <-
+    withTransaction conn $
+      runMigration $
         MigrationContext MigrationInitialization True conn
-    withTransaction conn $ runMigration $
-        MigrationContext (MigrationDirectory "DatabaseMigrations") True conn
+  withTransaction conn $
+    runMigration $
+      MigrationContext (MigrationDirectory "DatabaseMigrations") True conn

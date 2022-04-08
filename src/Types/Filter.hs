@@ -1,12 +1,13 @@
 module Types.Filter where
 
-import Data.Text ( Text )
+import Data.Text (Text)
 
-type Offset = Integer 
+type Offset = Integer
+
 type Limit = Integer
 
-data Filter = Filter {
-    dateAfter :: Maybe Text,
+data Filter = Filter
+  { dateAfter :: Maybe Text,
     dateBefore :: Maybe Text,
     dateAt :: Maybe Text,
     authorName :: Maybe Text,
@@ -18,6 +19,7 @@ data Filter = Filter {
     postName :: Maybe Text,
     text :: Maybe Text,
     substring :: Maybe Text
-} deriving Show
+  }
+  deriving (Show)
 
-data Order = ByDate | ByAuthor | ByCategory | ByPhotosNumber | None deriving Show
+data Order = ByDate | ByAuthor | ByCategory | ByPhotosNumber | None deriving (Show)
