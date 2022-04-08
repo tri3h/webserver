@@ -71,8 +71,9 @@ editDescription draftId descr conn = do
 
 editMainPhoto :: DraftId -> Image -> Connection -> IO ()
 editMainPhoto draftId photo conn = do
-    [Only imageId] <- query conn "INSERT INTO images (image) \
-        \VALUES (decode(?,'base64')) RETURNING image_id" (Only photo)
+    let (Image image imageType) = photo
+    [Only imageId] <- query conn "INSERT INTO images (image, image_type) \
+        \VALUES (decode(?,'base64'), ?) RETURNING image_id" (image, imageType)
     execute conn "UPDATE drafts SET image_id = ? \
         \WHERE draft_id = ?" (imageId :: Integer, draftId)
     return ()
@@ -87,7 +88,7 @@ addMinorPhoto :: DraftId -> Image -> Connection -> IO ()
 addMinorPhoto draftId photo conn = do 
     let (Image image imageType) = photo
     [Only imageId] <- query conn "INSERT INTO images (image, image_type) \
-        \VALUES (?,?) RETURNING image_id" (image, imageType)
+        \VALUES (decode(?,'base64'), ?) RETURNING image_id" (image, imageType)
     execute conn "INSERT INTO draft_minor_photos (image_id, draft_id) \
         \VALUES (?,?)" (imageId :: Integer, draftId)
     return ()

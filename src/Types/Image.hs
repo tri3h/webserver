@@ -27,3 +27,6 @@ instance ToField Image where
 
 malformedImage :: Text
 malformedImage = "Malformed image"
+
+imageNotExist :: Text
+imageNotExist = "Image with such id doesn't exist"

@@ -3,7 +3,8 @@ module Database.Queries.Image where
 
 import Database.PostgreSQL.Simple ( Connection, query, Only(Only) )
 import Database.PostgreSQL.Simple.Time (Date)
-import Types.Image ( Image(Image) )
+import Types.Image ( Image(Image), imageNotExist )
+import Data.Text ( Text )
 
 get :: Integer -> Connection -> IO Image
 get imageId conn = do
@@ -11,3 +12,10 @@ get imageId conn = do
         \E'\n', '') AS image, image_type FROM \
         \images WHERE images.image_id = ?" (Only imageId)
     return (Image image imageType)
+
+doesExist :: Integer -> Connection -> IO (Either Text ())
+doesExist imageId conn = do 
+    [Only n] <- query conn "SELECT COUNT(image_id) FROM images WHERE image_id = ?" (Only imageId)
+    if (n :: Integer) == 1
+    then return $ Right ()
+    else return $ Left imageNotExist

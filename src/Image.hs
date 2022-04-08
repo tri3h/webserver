@@ -22,12 +22,17 @@ get logger query = do
     Logger.debug logger $ "Tried to parse query and got: " ++ show info
     case info of
         Right imageId -> do
-            (Image image imageType) <- manage $ Db.get imageId
-            let decodeImage = decode $ encodeUtf8 image
-            Logger.debug logger $ "Tried to cget image and got: " ++ show decodeImage
-            case decodeImage of
-                Left l -> return $ responseBuilder status400 
-                    [] . fromByteString $ encodeUtf8 $ pack l
-                Right r -> return $ responseBuilder status200 
-                    [(hContentType, encodeUtf8 $ "image/" `append` imageType)] $ fromByteString r
+            doesExist <- manage $ Db.doesExist imageId
+            case doesExist of 
+                Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 l
+                Right _ -> do 
+                    (Image image imageType) <- manage $ Db.get imageId
+                    let decodeImage = decode $ encodeUtf8 image
+                    send decodeImage imageType
         Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 l
+    where send decodeImage imageType = case decodeImage of
+                        Left l -> return $ responseBuilder status400 
+                            [] . fromByteString $ encodeUtf8 $ pack l
+                        Right r -> 
+                            return $ responseBuilder status200 
+                                [(hContentType, encodeUtf8 $ "image/" `append` imageType)] $ fromByteString r
