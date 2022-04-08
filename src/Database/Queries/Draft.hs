@@ -100,9 +100,12 @@ delete draftId conn = do
 publish :: Draft -> String -> Connection -> IO ()
 publish draft date conn = do
     [Only postId] <- query conn "INSERT INTO posts (author_id, category_id, \
-        \name, date, text, image_id) VALUES (?,?,?,?,?,?)" (authorId draft, categoryId draft,
-        name draft, date, description draft, mainPhoto draft)
-    let postPhotos = map (\y -> (postId :: Integer, y)) $ minorPhoto draft
+        \name, date, text) VALUES (?,?,?,?,?) RETURNING post_id" (authorId draft, categoryId draft,
+        name draft, date, description draft)
+    [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ draftId draft)
+    execute conn "UPDATE posts SET image_id = ? WHERE post_id = ?" (mainPhotoId :: Integer, postId)
+    photoIds <- query conn "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?" (Only $ draftId draft)
+    let postPhotos = map (\(Only y) -> (postId :: Integer, y)) (photoIds :: [Only Integer])
     executeMany conn "INSERT INTO post_minor_photos (post_id, image_id) \
         \VALUES (?,?)" postPhotos
     let postTags = map (\x -> (postId, x)) $ tagId draft
@@ -113,14 +116,16 @@ update :: Draft -> Connection -> IO ()
 update draft conn = do
     execute conn "DELETE FROM post_tags WHERE post_id = ?" (Only $ postId draft)
     execute conn "DELETE FROM post_minor_photos WHERE post_id = ?" (Only $ postId draft)
-    let postPhotos = map (\y -> (postId draft, y)) $ minorPhoto draft
+    photoIds <- query conn "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?" (Only $ draftId draft)
+    let postPhotos = map (\(Only y) -> (postId draft, y)) (photoIds :: [Only Integer])
     executeMany conn "INSERT INTO post_minor_photos (post_id, image_id) \
         \VALUES (?,?)" postPhotos
     let postTags = map (\x -> (postId draft, x)) $ tagId draft
     executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
+    [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ draftId draft)
     execute conn "UPDATE posts SET category_id = ?, \
         \name = ?, text = ?, image_id = ? WHERE post_id = ?" 
-        (categoryId draft, name draft, description draft, mainPhoto draft, postId draft)
+        (categoryId draft, name draft, description draft, mainPhotoId :: Integer, postId draft)
     return ()
 
 hasPost :: DraftId -> Connection -> IO Bool

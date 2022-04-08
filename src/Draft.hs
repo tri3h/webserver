@@ -158,7 +158,7 @@ publish logger query = do
                 Left l -> return $ responseLBS status400 
                     [] . encodeUtf8 $ LazyText.fromStrict l
                 Right postId -> return $ responseLBS status201 
-                    [(hContentType, "application/json")] $ encode postId
+                    [] ""
 
 addMinorPhoto :: Logger.Handle IO -> QueryText -> ByteString -> IO Response
 addMinorPhoto logger query body = do 
