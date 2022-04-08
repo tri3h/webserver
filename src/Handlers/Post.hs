@@ -15,13 +15,14 @@ import qualified Types.Author as A
 import qualified Types.Filter as F
 import Data.Text ( Text )
 import Control.Monad ( void )
-import Data.List(zipWith7)
+import Data.List ( zipWith7, elemIndex )
 import Types.Image (Image(Link), malformedImage)
+import Data.Maybe ( fromJust )
 
 data Handle m = Handle {
     hFilterHandle :: FilterHandle m,
     hOrderHandle :: OrderHandle m,
-    hGet :: [PostId] -> F.Offset -> F.Limit -> m [Post],
+    hGet :: [PostId] -> F.Limit -> F.Offset -> m [Post],
     hGetAll :: m [PostId],
     hGetMinorPhotos :: PostId -> m [Image],
     hGetAuthor :: A.AuthorId -> m (Maybe A.Author),
@@ -67,15 +68,21 @@ get handle params order limit offset = do
     orderedCommon <- getOrdered handle common order
     if null orderedCommon
     then return $ Left noPost
-    else do 
-        posts <- hGet handle orderedCommon offset limit
+    else do
+        posts <- hGet handle orderedCommon limit offset
         let isFormatCorrect = all (\case ShortPost {} -> True; _ -> False) posts
         if isFormatCorrect
-        then makeFullPost handle posts 
+        then makeFullPost handle posts orderedCommon
         else return $ Left malformedPost
 
-makeFullPost :: Monad m => Handle m -> [Post] -> m (Either Text [Post])
-makeFullPost handle posts = do 
+orderFullPost :: [PostId] -> [Post] -> [Post]
+orderFullPost orderedId posts =
+    let p = map postId posts
+        index = map (fromJust . (`elemIndex` p)) orderedId
+    in map (posts !!) index
+
+makeFullPost :: Monad m => Handle m -> [Post] -> [PostId] -> m (Either Text [Post])
+makeFullPost handle posts orderedId = do
     authors <- mapM (hGetAuthor handle . authorId) posts
     users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle $ A.userId a) authors
     categories <- mapM (hGetCategory handle . categoryId) posts
@@ -84,20 +91,21 @@ makeFullPost handle posts = do
     minorPhotos <- mapM (hGetMinorPhotos handle . postId) posts
     let isMainPhotoCorrect = all (\x -> case mainPhoto x of Link {} -> True; _ -> False) posts
     let isMinorPhotoCorrect = all (all (\case Link {} -> True; _ -> False)) minorPhotos
-    if isMainPhotoCorrect && isMinorPhotoCorrect 
-    then return . Right $ 
-        zipWith7 (\post author user category tag comment minorPhoto ->
-            FullPost {
-                postId = postId post,
-                name = name post,
-                date = date post,
-                text = text post,
-                mainPhoto = mainPhoto post,
-                ..} ) posts authors users categories tags comments minorPhotos
+    if isMainPhotoCorrect && isMinorPhotoCorrect
+    then do
+        let fullPosts = zipWith7 (\post author user category tag comment minorPhoto ->
+                FullPost {
+                    postId = postId post,
+                    name = name post,
+                    date = date post,
+                    text = text post,
+                    mainPhoto = mainPhoto post,
+                    ..} ) posts authors users categories tags comments minorPhotos
+        return . Right $ orderFullPost orderedId fullPosts
     else return $ Left malformedImage
 
 getOrdered :: Monad m => Handle m -> [PostId] -> F.Order -> m [PostId]
-getOrdered handle posts order = 
+getOrdered handle posts order =
     case order of
         F.ByAuthor -> hByAuthor (hOrderHandle handle) posts
         F.ByCategory -> hByCategory (hOrderHandle handle) posts

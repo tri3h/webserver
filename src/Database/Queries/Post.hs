@@ -19,8 +19,8 @@ import Database.Connection ( serverAddress )
 import Types.Image (Image(Link))
 import Data.Maybe ( fromMaybe )
 
-get :: [PostId] -> Offset -> Limit -> Connection -> IO [Post]
-get postId offset limit conn = do
+get :: [PostId] -> Limit -> Offset -> Connection -> IO [Post]
+get postId limit offset conn = do
     server <- serverAddress
     result <- query conn "SELECT p.post_id, p.author_id, p.category_id, \
         \p.name, p.date, p.text, p.image_id \
@@ -144,9 +144,9 @@ orderByCategory postId conn = do
 orderByPhotosNumber :: [PostId] -> Connection -> IO [PostId]
 orderByPhotosNumber postId conn = do 
     xs <- query conn "WITH count_photos AS (SELECT p.post_id, \
-        \COUNT(minor_photo_id) FROM posts p INNER JOIN minor_photos mp \
+        \COUNT(mp.image_id) FROM posts p INNER JOIN post_minor_photos mp \
         \ON p.post_id = mp.post_id WHERE p.post_id IN ? \
-        \GROUP BY p.post_id ORDER BY COUNT(minor_photo_id)) \
+        \GROUP BY p.post_id ORDER BY COUNT(mp.image_id)) \
         \SELECT post_id FROM count_photos" (Only $ In postId)
     return $ map fromOnly xs
 
