@@ -103,21 +103,26 @@ filterByAllOfTags tagId conn = do
 
 filterByPostName :: Text -> Connection -> IO [PostId]
 filterByPostName name conn = do
-    xs <- query conn "SELECT post_id FROM posts WHERE name LIKE '%?%'" $ Only name
+    let fullName = "%" `append` name `append` "%"
+    xs <- query conn "SELECT post_id FROM posts WHERE name LIKE ?" $ Only fullName
     return $ map fromOnly xs
 
 filterByText :: Text -> Connection -> IO [PostId]
 filterByText name conn = do
-    xs <- query conn "SELECT post_id FROM posts WHERE text LIKE '%?%'" $ Only name
+    let fullName = "%" `append` name `append` "%"
+    xs <- query conn "SELECT post_id FROM posts WHERE text LIKE ?" $ Only fullName
     return $ map fromOnly xs
 
 filterBySubstring :: Text -> Connection -> IO [PostId]
 filterBySubstring s conn = do
-    xs <- query conn "SELECT post_id FROM posts p INNER JOIN authors a \
-        \ON p.author_id = a.author_id INNER JOIN categories c \
-        \ON c.category_id = p.category_id INNER JOIN tags t \
-        \ON t.tag_id = p.tag_id WHERE p.text LIKE '%?%' \
-        \OR a.name LIKE '%?%' OR c.name LIKE '%?%' OR t.name LIKE '%?%'" $ Only s
+    let s' = "%" `append` s `append` "%"
+    xs <- query conn "SELECT p.post_id FROM posts p INNER JOIN authors a \
+        \ON p.author_id = a.author_id INNER JOIN users u \
+        \ON u.user_id = a.user_id INNER JOIN categories c \
+        \ON c.category_id = p.category_id INNER JOIN post_tags pt \
+        \ON pt.post_id = p.post_id INNER JOIN tags t \
+        \ON t.tag_id = pt.tag_id WHERE p.text LIKE ? \
+        \OR u.name LIKE ? OR c.name LIKE ? OR t.name LIKE ?" (s',s',s',s')
     return $ map fromOnly xs
 
 orderByDate :: [PostId] -> Connection -> IO [PostId]
