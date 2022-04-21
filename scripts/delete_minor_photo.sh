@@ -15,6 +15,6 @@ case "$name_" in
  host) host=${value//\"};;
  port) port=$value;;
 esac
-done < ../Server.config
+done < ../Configs/Server.config
 
 curl "$host:$port/drafts/minor_photo?token=$token&draft_id=$draft_id&minor_photo_id=$minor_photo_id" -X DELETE

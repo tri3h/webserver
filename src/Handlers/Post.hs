@@ -10,8 +10,9 @@ import Data.Text (Text)
 import qualified Types.Author as A
 import Types.Category (Category, CategoryId)
 import Types.Comment (Comment)
+import Types.Config (ServerAddress)
 import qualified Types.Filter as F
-import Types.Image (Image (Link), malformedImage)
+import Types.Image (Image)
 import Types.Post
   ( Post
       ( FullPost,
@@ -36,6 +37,7 @@ import Types.Post
   )
 import Types.Tag (Tag, TagId)
 import Types.User (User, UserId)
+import Utility (imagesToLinks)
 
 data Handle m = Handle
   { hFilterHandle :: FilterHandle m,
@@ -72,8 +74,8 @@ data OrderHandle m = OrderHandle
     hByPhotosNumber :: [PostId] -> m [PostId]
   }
 
-get :: Monad m => Handle m -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Text [Post])
-get handle params order limit offset = do
+get :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Text [Post])
+get handle server params order limit offset = do
   let isFiltersEmpty =
         all
           (== Nothing)
@@ -101,7 +103,7 @@ get handle params order limit offset = do
       posts <- hGet handle orderedCommon limit offset
       let isFormatCorrect = all (\case ShortPost {} -> True; _ -> False) posts
       if isFormatCorrect
-        then makeFullPost handle posts orderedCommon
+        then makeFullPost handle server posts orderedCommon
         else return $ Left malformedPost
 
 orderFullPost :: [PostId] -> [Post] -> [Post]
@@ -110,39 +112,43 @@ orderFullPost orderedId posts =
       index = map (fromJust . (`elemIndex` p)) orderedId
    in map (posts !!) index
 
-makeFullPost :: Monad m => Handle m -> [Post] -> [PostId] -> m (Either Text [Post])
-makeFullPost handle posts orderedId = do
+makeFullPost :: Monad m => Handle m -> ServerAddress -> [Post] -> [PostId] -> m (Either Text [Post])
+makeFullPost handle server posts orderedId = do
   authors <- mapM (hGetAuthor handle . authorId) posts
   users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle $ A.userId a) authors
   categories <- mapM (hGetCategory handle . categoryId) posts
   tags <- mapM (hGetTag handle . postId) posts
   comments <- mapM (hGetComment handle . postId) posts
   minorPhotos <- mapM (hGetMinorPhotos handle . postId) posts
-  let isMainPhotoCorrect = all (\x -> case mainPhoto x of Link {} -> True; _ -> False) posts
-  let isMinorPhotoCorrect = all (all (\case Link {} -> True; _ -> False)) minorPhotos
-  if isMainPhotoCorrect && isMinorPhotoCorrect
-    then do
-      let fullPosts =
-            zipWith7
-              ( \post author user category tag comment minorPhoto ->
-                  FullPost
-                    { postId = postId post,
-                      name = name post,
-                      date = date post,
-                      text = text post,
-                      mainPhoto = mainPhoto post,
-                      ..
-                    }
-              )
-              posts
-              authors
-              users
-              categories
-              tags
-              comments
-              minorPhotos
-      return . Right $ orderFullPost orderedId fullPosts
-    else return $ Left malformedImage
+  let mainPhotoLink = imagesToLinks server $ map mainPhoto posts
+  let minorPhotoLink = mapM (imagesToLinks server) minorPhotos
+  case mainPhotoLink of
+    Right mainLinks ->
+      let postsWithLinks = zipWith (\post link -> post {mainPhoto = link}) posts mainLinks
+       in case minorPhotoLink of
+            Right minorLinks -> do
+              let fullPosts =
+                    zipWith7
+                      ( \post author user category tag comment minorPhoto ->
+                          FullPost
+                            { postId = postId post,
+                              name = name post,
+                              date = date post,
+                              text = text post,
+                              mainPhoto = mainPhoto post,
+                              ..
+                            }
+                      )
+                      postsWithLinks
+                      authors
+                      users
+                      categories
+                      tags
+                      comments
+                      minorLinks
+              return . Right $ orderFullPost orderedId fullPosts
+            Left l -> return $ Left l
+    Left l -> return $ Left l
 
 getOrdered :: Monad m => Handle m -> [PostId] -> F.Order -> m [PostId]
 getOrdered handle posts order =

@@ -1,9 +1,10 @@
 # webserver
 
 ## How to run
-Before the first run, 2 config files should be filled. They are both in the main project folder.
+Before the first run, 2 config files should be filled. They are both in the folder **Configs**.
 The first file is **Server.config** that contains information about a port and a host.
 The second file is **Database.config** that contains information about a database.
+Also it may be necessary to use a command stack setup.
 
 After these two files are filled, the project may be started by typing *stack run 1* into command line while being in the project folder. The number 1 is needed to run database migrations that will be executed according to settings in the file Database.config.
 

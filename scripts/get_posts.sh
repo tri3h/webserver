@@ -28,6 +28,6 @@ case "$name_" in
  host) host=${value//\"};;
  port) port=$value;;
 esac
-done < ../Server.config
+done < ../Configs/Server.config
 
 curl "$host:$port/posts?token=$token&author_name=$author_name&category_id=$category_id&tag=$tag&tag_id=$tag_id&tag_in=$tag_in&tag_all=$tag_all&post_name=$post_name&text=$text&substring=$substring&date_after=$date_after&date_at=$date_at&date_before=$date_before&sort_by=$sort_by&offset=$offset&limit=$limit" -X GET

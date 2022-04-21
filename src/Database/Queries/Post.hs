@@ -5,7 +5,6 @@ module Database.Queries.Post where
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, append, pack)
-import Database.Connection (serverAddress)
 import Database.PostgreSQL.Simple
   ( Connection,
     In (In),
@@ -14,7 +13,7 @@ import Database.PostgreSQL.Simple
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
 import Types.Filter (Limit, Offset)
-import Types.Image (Image (Link))
+import Types.Image (Image (Id))
 import Types.Post
   ( Post
       ( ShortPost,
@@ -33,7 +32,6 @@ import qualified Types.Tag as Tag
 
 get :: [PostId] -> Limit -> Offset -> Connection -> IO [Post]
 get pId limit offset conn = do
-  server <- serverAddress
   result <-
     query
       conn
@@ -53,10 +51,7 @@ get pId limit offset conn = do
                ) ->
                 ShortPost
                   { date = pack $ show (date :: Time.Date),
-                    mainPhoto =
-                      Link $
-                        server `append` "/images?image_id="
-                          `append` pack (show (mainPhoto :: Integer)),
+                    mainPhoto = Id mainPhoto,
                     authorId = fromMaybe 0 maybeAuthorId,
                     categoryId = fromMaybe 0 maybeCategoryId,
                     ..
@@ -72,7 +67,6 @@ getAll conn = do
 
 getMinorPhotos :: PostId -> Connection -> IO [Image]
 getMinorPhotos postId conn = do
-  server <- serverAddress
   xs <-
     query
       conn
@@ -81,10 +75,7 @@ getMinorPhotos postId conn = do
       (Only postId)
   let xs' =
         map
-          ( \(Only x) ->
-              Link $
-                server `append` "/images?image_id="
-                  `append` pack (show (x :: Integer))
+          ( \(Only x) -> Id x
           )
           xs
   return xs'

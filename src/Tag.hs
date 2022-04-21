@@ -19,16 +19,17 @@ import Network.HTTP.Types.Status
   )
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
+import Types.Config (Config (database))
 import Types.Tag (Tag (Tag, name, tagId))
 import Utility (getInteger, getText)
 
-create :: Logger.Handle IO -> QueryText -> IO Response
-create logger query = do
+create :: Logger.Handle IO -> Config -> QueryText -> IO Response
+create logger config query = do
   let info = getText query "name"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right name -> do
-      result <- Handler.create handle name
+      result <- Handler.create (handle config) name
       Logger.debug logger $ "Tried to create tag and got: " ++ show result
       case result of
         Left l ->
@@ -41,13 +42,13 @@ create logger query = do
         Right _ -> return $ responseLBS status201 [] ""
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: Logger.Handle IO -> QueryText -> IO Response
-get logger query = do
+get :: Logger.Handle IO -> Config -> QueryText -> IO Response
+get logger config query = do
   let info = getInteger query "tag_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right tagId -> do
-      result <- Handler.get handle tagId
+      result <- Handler.get (handle config) tagId
       Logger.debug logger $ "Tried to get tag and got: " ++ show result
       case result of
         Right r ->
@@ -65,8 +66,8 @@ get logger query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-edit :: Logger.Handle IO -> QueryText -> IO Response
-edit logger query = do
+edit :: Logger.Handle IO -> Config -> QueryText -> IO Response
+edit logger config query = do
   let info = do
         name <- getText query "name"
         tagId <- getInteger query "tag_id"
@@ -75,7 +76,7 @@ edit logger query = do
   case info of
     Right (tagId, name) -> do
       let tag = Tag {..}
-      result <- Handler.edit handle tag
+      result <- Handler.edit (handle config) tag
       Logger.debug logger $ "Tried to edit tag and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
@@ -88,13 +89,13 @@ edit logger query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: Logger.Handle IO -> QueryText -> IO Response
-delete logger query = do
+delete :: Logger.Handle IO -> Config -> QueryText -> IO Response
+delete logger config query = do
   let info = getInteger query "tag_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right tagId -> do
-      result <- Handler.delete handle tagId
+      result <- Handler.delete (handle config) tagId
       Logger.debug logger $ "Tried to delete tag and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
@@ -107,12 +108,13 @@ delete logger query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-handle :: Handler.Handle IO
-handle =
-  Handler.Handle
-    { Handler.hCreate = manage . Db.create,
-      Handler.hGet = manage . Db.get,
-      Handler.hDelete = manage . Db.delete,
-      Handler.hEdit = manage . Db.edit,
-      Handler.hDoesExist = manage . Db.doesExist
-    }
+handle :: Config -> Handler.Handle IO
+handle config =
+  let db = database config
+   in Handler.Handle
+        { Handler.hCreate = manage db . Db.create,
+          Handler.hGet = manage db . Db.get,
+          Handler.hDelete = manage db . Db.delete,
+          Handler.hEdit = manage db . Db.edit,
+          Handler.hDoesExist = manage db . Db.doesExist
+        }

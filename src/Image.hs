@@ -13,20 +13,22 @@ import Network.HTTP.Types (hContentType)
 import Network.HTTP.Types.Status (status200, status400)
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseBuilder)
+import Types.Config (Config (database))
 import Types.Image (Image (Image))
 import Utility (getInteger)
 
-get :: Logger.Handle IO -> QueryText -> IO Response
-get logger query = do
+get :: Logger.Handle IO -> Config -> QueryText -> IO Response
+get logger config query = do
   let info = getInteger query "image_id"
+  let db = database config
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right imageId -> do
-      doesExist <- manage $ Db.doesExist imageId
+      doesExist <- manage db $ Db.doesExist imageId
       case doesExist of
         Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 l
         Right _ -> do
-          (Image image imageType) <- manage $ Db.get imageId
+          (Image image imageType) <- manage db $ Db.get imageId
           let decodeImage = decode $ encodeUtf8 image
           send decodeImage imageType
     Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 l

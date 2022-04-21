@@ -6,7 +6,8 @@ import Crypto.Hash (SHA256 (SHA256), hashWith)
 import qualified Data.ByteString.Char8 as Char8
 import Data.Text (Text, pack)
 import Data.Text.Encoding (encodeUtf8)
-import Types.Image (Image (Image, Link), malformedImage)
+import Types.Config (ServerAddress)
+import Types.Image (Image (Image), malformedImage)
 import Types.User
   ( Login,
     Password,
@@ -29,6 +30,7 @@ import Types.User
     loginTaken,
     malformedUser,
   )
+import Utility (imageToLink)
 
 data Handle m = Handle
   { hIsLoginUnique :: Login -> m Bool,
@@ -49,7 +51,6 @@ create handle partUser@UserToCreate {} = do
   isUnique <- hIsLoginUnique handle $ login partUser
   if isUnique
     then case avatar partUser of
-      Link _ -> return $ Left malformedImage
       Image _ _ -> do
         token <- generateToken handle
         time <- hGetCurrentTime handle
@@ -67,17 +68,19 @@ create handle partUser@UserToCreate {} = do
                 }
         hCreate handle user
         return $ Right token
+      _ -> return $ Left malformedImage
     else return $ Left loginTaken
 create _ _ = return $ Left malformedUser
 
-get :: Monad m => Handle m -> Token -> m (Either Text User)
-get handle token = do
+get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Text User)
+get handle server token = do
   user <- hGet handle token
   case user of
-    UserToGet {} ->
-      case avatar user of
-        Link _ -> return $ Right user
-        Image _ _ -> return $ Left malformedImage
+    UserToGet {} -> do
+      let maybeLink = imageToLink server $ avatar user
+      case maybeLink of
+        Right link -> return $ Right user {avatar = link}
+        Left l -> return $ Left l
     _ -> return $ Left malformedUser
 
 delete :: Monad m => Handle m -> UserId -> m (Either Text ())

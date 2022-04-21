@@ -16,6 +16,6 @@ case "$name_" in
  host) host=${value//\"};;
  port) port=$value;;
 esac
-done < ../Server.config
+done < ../Configs/Server.config
 
 curl "$host:$port/comments?token=$token&post_id=$post_id&user_id=$user_id&text=$text" -X POST

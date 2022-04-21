@@ -3,13 +3,14 @@
 module DraftSpec where
 
 import Data.Functor.Identity (Identity (Identity))
-import Data.Text (Text)
+import Data.Text (Text, append, pack)
 import qualified Handlers.Draft as H
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Author (authorNotExist)
 import Types.Category (categoryNotExist)
+import Types.Config (ServerAddress)
 import Types.Draft (Draft (..), EditParams (..), draftNotExist, noDeleteHasPost, noDraftAuthor, userNotAuthor)
-import Types.Image (Image (..), malformedImage)
+import Types.Image (Image (..), malformedImage, imageAddress)
 import Types.Tag (tagNotExist)
 
 main :: IO ()
@@ -56,10 +57,10 @@ main = hspec $ do
             handle
               { H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase 1 "1234"
+      let result = H.get handleCase serverAddress 1 "1234"
       result `shouldBe` return (Right draftCase)
     it "Should fail if main photo format is incorrect" $ do
-      let result = H.get handle 1 "1234"
+      let result = H.get handle serverAddress 1 "1234"
       result `shouldBe` return (Left malformedImage)
     it "Should fail if minor photo format is incorrect" $ do
       let draftCase =
@@ -70,7 +71,7 @@ main = hspec $ do
             handle
               { H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase 1 "1234"
+      let result = H.get handleCase serverAddress 1 "1234"
       result `shouldBe` return (Left malformedImage)
     it "Should fail if draft doesn't exist" $ do
       let draftCase =
@@ -82,7 +83,7 @@ main = hspec $ do
               { H.hDoesExist = \_ -> return (Left draftNotExist),
                 H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase 1 "1234"
+      let result = H.get handleCase serverAddress 1 "1234"
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author of draft" $ do
       let draftCase =
@@ -94,7 +95,7 @@ main = hspec $ do
               { H.hGetAuthorIdByToken = \_ -> return 2,
                 H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase 1 "1234"
+      let result = H.get handleCase serverAddress 1 "1234"
       result `shouldBe` return (Left noDraftAuthor)
     it "Shoudl fail if user is not author at all" $ do
       let draftCase =
@@ -106,7 +107,7 @@ main = hspec $ do
               { H.hIsAuthor = \_ -> return False,
                 H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase 1 "1234"
+      let result = H.get handleCase serverAddress 1 "1234"
       result `shouldBe` return (Left userNotAuthor)
   describe "Testing edit draft" $ do
     it "Should successfully edit" $ do
@@ -343,4 +344,10 @@ image :: Image
 image = Image "image" "imageType"
 
 link :: Image
-link = Link "link"
+link = Link $ imageAddress `append` pack (show imageId)
+
+imageId :: Image
+imageId = Id 1
+
+serverAddress :: ServerAddress
+serverAddress = ""

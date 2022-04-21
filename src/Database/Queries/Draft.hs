@@ -5,8 +5,7 @@
 module Database.Queries.Draft where
 
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, append, pack)
-import Database.Connection (serverAddress)
+import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only),
@@ -46,7 +45,6 @@ create draft conn = do
 
 get :: DraftId -> Connection -> IO Draft
 get draftId conn = do
-  server <- serverAddress
   [(postId, maybeAuthorId, maybeCategoryId, name, description, mainPhotoId)] <-
     query
       conn
@@ -63,16 +61,10 @@ get draftId conn = do
   return $
     Draft
       { tagId = map (\(Only x) -> x) tagIds,
-        mainPhoto =
-          Link $
-            server `append` "/images?image_id="
-              `append` pack (show (mainPhotoId :: Integer)),
+        mainPhoto = Id mainPhotoId,
         minorPhoto =
           map
-            ( \(Only x) ->
-                Link $
-                  server `append` "/images?image_id="
-                    `append` pack (show (x :: Integer))
+            ( \(Only x) -> Id x
             )
             minorPhotoId,
         authorId = fromMaybe 0 maybeAuthorId,
