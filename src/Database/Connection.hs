@@ -1,9 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
+module Database.Connection (manage, open) where
 
-module Database.Connection (manage, open, serverAddress) where
-
-import qualified Data.Configurator as Config
-import Data.Text (Text, append, pack)
 import Database.PostgreSQL.Simple
   ( ConnectInfo
       ( connectDatabase,
@@ -17,34 +13,22 @@ import Database.PostgreSQL.Simple
     connect,
     defaultConnectInfo,
   )
+import Types.Config (DatabaseConfig (dHost, dName, dPassword, dPort, dUser))
 
-open :: IO Connection
-open = do
-  config <- Config.load [Config.Required "Database.config"]
-  host <- Config.require config "host"
-  port <- Config.require config "port"
-  user <- Config.require config "user"
-  password <- Config.require config "password"
-  database <- Config.require config "database"
+open :: DatabaseConfig -> IO Connection
+open config =
   connect
     defaultConnectInfo
-      { connectHost = host,
-        connectPort = port,
-        connectUser = user,
-        connectPassword = password,
-        connectDatabase = database
+      { connectHost = dHost config,
+        connectPort = dPort config,
+        connectUser = dUser config,
+        connectPassword = dPassword config,
+        connectDatabase = dName config
       }
 
-serverAddress :: IO Text
-serverAddress = do
-  config <- Config.load [Config.Required "Server.config"]
-  host <- Config.require config "host"
-  port <- Config.require config "port"
-  return $ "http://" `append` host `append` ":" `append` pack (show (port :: Integer))
-
-manage :: (Connection -> IO b) -> IO b
-manage f = do
-  conn <- open
+manage :: DatabaseConfig -> (Connection -> IO b) -> IO b
+manage config f = do
+  conn <- open config
   result <- f conn
   close conn
   return result

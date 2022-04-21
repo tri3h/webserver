@@ -28,6 +28,7 @@ library
       Author
       Category
       Comment
+      Config
       Database.Connection
       Database.Migration
       Database.Queries.Author
@@ -48,13 +49,14 @@ library
       Handlers.Tag
       Handlers.User
       Image
-      Lib
+      Logger
       Post
       Server
       Tag
       Types.Author
       Types.Category
       Types.Comment
+      Types.Config
       Types.Draft
       Types.Filter
       Types.Image

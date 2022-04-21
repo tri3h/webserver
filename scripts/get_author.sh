@@ -14,6 +14,6 @@ case "$name_" in
  host) host=${value//\"};;
  port) port=$value;;
 esac
-done < ../Server.config
+done < ../Configs/Server.config
 
 curl "$host:$port/authors?token=$token&author_id=$id" -X GET

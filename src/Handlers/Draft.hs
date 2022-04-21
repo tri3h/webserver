@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Handlers.Draft
   ( Handle (..),
     create,
@@ -18,6 +16,7 @@ import Data.Foldable (forM_)
 import Data.Text (Text)
 import Types.Author (AuthorId)
 import Types.Category (CategoryId)
+import Types.Config (ServerAddress)
 import Types.Draft
   ( Description,
     Draft (authorId, categoryId, mainPhoto, minorPhoto, tagId),
@@ -28,9 +27,10 @@ import Types.Draft
     noDraftAuthor,
     userNotAuthor,
   )
-import Types.Image (Image (Image, Link), ImageId, malformedImage)
+import Types.Image (Image (Image), ImageId, malformedImage)
 import Types.Tag (TagId)
 import Types.User (Token)
+import Utility (imageToLink, imagesToLinks)
 import Prelude hiding (words)
 
 data Handle m = Handle
@@ -69,18 +69,25 @@ create handle draft = do
         _ -> return $ Left malformedImage
     Left l -> return $ Left l
 
-get :: Monad m => Handle m -> DraftId -> Token -> m (Either Text Draft)
-get handle draftId token = do
+get :: Monad m => Handle m -> ServerAddress -> DraftId -> Token -> m (Either Text Draft)
+get handle server draftId token = do
   access <- canAccess handle draftId token
   case access of
     Left l -> return $ Left l
     Right _ -> do
       draft <- hGet handle draftId
-      let isMinorPhotoCorrect = all (\case Link {} -> True; _ -> False) (minorPhoto draft)
-      let isMainPhotoCorrect = case mainPhoto draft of Link {} -> True; _ -> False
-      if isMinorPhotoCorrect && isMainPhotoCorrect
-        then return $ Right draft
-        else return $ Left malformedImage
+      return $ checkPhoto server draft
+
+checkPhoto :: ServerAddress -> Draft -> Either Text Draft
+checkPhoto server draft =
+  let mainPhotoLink = imageToLink server $ mainPhoto draft
+      minorPhotoLink = imagesToLinks server $ minorPhoto draft
+   in case mainPhotoLink of
+        Right mainLink ->
+          case minorPhotoLink of
+            Right minorLink -> Right draft {mainPhoto = mainLink, minorPhoto = minorLink}
+            Left l -> Left l
+        Left l -> Left l
 
 edit :: Monad m => Handle m -> DraftId -> Token -> EditParams -> m (Either Text ())
 edit handle draftId token params = do

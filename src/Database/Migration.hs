@@ -8,10 +8,11 @@ import Database.PostgreSQL.Simple.Migration
     MigrationResult,
     runMigration,
   )
+import Types.Config (DatabaseConfig)
 
-execute :: IO (MigrationResult String)
-execute = do
-  conn <- open
+execute :: DatabaseConfig -> IO (MigrationResult String)
+execute config = do
+  conn <- open config
   _ <-
     withTransaction conn $
       runMigration $

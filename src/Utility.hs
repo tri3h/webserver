@@ -3,8 +3,10 @@
 module Utility where
 
 import Control.Monad (join)
-import Data.Text (Text, append, isInfixOf, null, replace, splitOn, unpack)
+import Data.Text (Text, append, isInfixOf, null, pack, replace, splitOn, unpack)
 import Network.HTTP.Types.URI (QueryText)
+import Types.Config (ServerAddress)
+import Types.Image (Image (Id, Link), malformedImage, imageAddress)
 import Prelude hiding (null)
 
 getText :: QueryText -> Text -> Either Text Text
@@ -72,6 +74,14 @@ getMaybeImage body name =
                 tail $
                   dropWhile (/= "") $ splitOn "\r\n" body
         else Nothing
+
+imageToLink :: ServerAddress -> Image -> Either Text Image
+imageToLink server (Id x) = Right . Link $ server `append` imageAddress `append` pack (show x)
+imageToLink _ link@(Link _) = Right link
+imageToLink _ _ = Left malformedImage
+
+imagesToLinks :: ServerAddress -> [Image] -> Either Text [Image]
+imagesToLinks server = mapM (imageToLink server)
 
 noSpecified :: Text -> Either Text b
 noSpecified name = Left $ "No " `append` name `append` " specified"

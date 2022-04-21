@@ -20,7 +20,7 @@ case "$name_" in
  host) host=${value//\"};;
  port) port=$value;;
 esac
-done < ../Server.config
+done < ../Configs/Server.config
 
 if [ ! -z ${main_photo+x} ];
 

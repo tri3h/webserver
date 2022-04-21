@@ -3,10 +3,11 @@
 module UserSpec where
 
 import Data.Functor.Identity (Identity (Identity))
-import Data.Text (Text)
+import Data.Text (Text, append, pack)
 import qualified Handlers.User as H
 import Test.Hspec (describe, hspec, it, shouldBe)
-import Types.Image (Image (Image, Link), malformedImage)
+import Types.Config (ServerAddress)
+import Types.Image (Image (Id, Image, Link), malformedImage, imageAddress)
 import Types.User
   ( User
       ( User,
@@ -57,9 +58,9 @@ main = hspec $ do
       result `shouldBe` return (Left malformedUser)
   describe "Testing get user" $ do
     it "Should successfully get" $ do
-      let result = H.get handle "1234"
+      let result = H.get handle serverAddress "1234"
       result `shouldBe` return (Right userToGet)
-    it "Should fail if avatar format is incorrect" $ do
+    it "Should fail if avatar format is incorrect (Image)" $ do
       let userToGetCase =
             userToGet
               { avatar = avatarImage
@@ -68,21 +69,21 @@ main = hspec $ do
             handle
               { H.hGet = \_ -> return userToGetCase
               }
-      let result = H.get handleCase "1234"
+      let result = H.get handleCase serverAddress "1234"
       result `shouldBe` return (Left malformedImage)
     it "Should fail if user format is incorrect (User)" $ do
       let handleCase =
             handle
               { H.hGet = \_ -> return user
               }
-      let result = H.get handleCase "1234"
+      let result = H.get handleCase serverAddress "1234"
       result `shouldBe` return (Left malformedUser)
     it "Should fail if user format is incorrect (UserToCreate)" $ do
       let handleCase =
             handle
               { H.hGet = \_ -> return userToCreate
               }
-      let result = H.get handleCase "1234"
+      let result = H.get handleCase serverAddress "1234"
       result `shouldBe` return (Left malformedUser)
   describe "Testing delete user" $ do
     it "Should successfully delete" $ do
@@ -167,6 +168,11 @@ userToCreate =
       avatar = avatarImage
     }
 
-avatarLink = Link "link"
+avatarLink = Link $ imageAddress `append` pack (show avatarId)
 
 avatarImage = Image "image" "imageType"
+
+avatarId = Id 1
+
+serverAddress :: ServerAddress
+serverAddress = ""

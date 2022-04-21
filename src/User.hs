@@ -25,14 +25,15 @@ import Network.HTTP.Types.Status
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
 import System.Random (randomIO)
+import Types.Config (Config (database, server), DatabaseConfig, ServerConfig (sAddress))
 import Types.Image (Image (Image))
 import Types.User
   ( User (UserToCreate, avatar, login, name, password, surname),
   )
 import Utility (getImage, getInteger, getText)
 
-create :: Logger.Handle IO -> QueryText -> ByteString -> IO Response
-create logger query body = do
+create :: Logger.Handle IO -> Config -> QueryText -> ByteString -> IO Response
+create logger config query body = do
   let info = do
         name <- getText query "name"
         surname <- getText query "surname"
@@ -49,7 +50,7 @@ create logger query body = do
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
     Right user -> do
-      result <- Handler.create handle user
+      result <- Handler.create (handle config) user
       Logger.debug logger $ "Tried to create user and got: " ++ show result
       case result of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -57,9 +58,9 @@ create logger query body = do
           let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict token) `append` "\"}"
           return $ responseLBS status201 [(hContentType, "application/json")] a
 
-get :: Logger.Handle IO -> Text -> IO Response
-get logger token = do
-  result <- Handler.get handle token
+get :: Logger.Handle IO -> Config -> Text -> IO Response
+get logger config token = do
+  result <- Handler.get (handle config) (sAddress $ server config) token
   Logger.debug logger $ "Tried to get user and got: " ++ show result
   case result of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -70,13 +71,13 @@ get logger token = do
           [(hContentType, "application/json")]
           $ encode user
 
-delete :: Logger.Handle IO -> QueryText -> IO Response
-delete logger query = do
+delete :: Logger.Handle IO -> Config -> QueryText -> IO Response
+delete logger config query = do
   let info = getInteger query "user_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right userId -> do
-      result <- Handler.delete handle userId
+      result <- Handler.delete (handle config) userId
       Logger.debug logger $ "Tried to delete user and got: " ++ show result
       case result of
         Left l ->
@@ -89,8 +90,8 @@ delete logger query = do
         Right _ -> return $ responseLBS status204 [] ""
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-getNewToken :: Logger.Handle IO -> QueryText -> IO Response
-getNewToken logger query = do
+getNewToken :: Logger.Handle IO -> Config -> QueryText -> IO Response
+getNewToken logger config query = do
   let info = do
         login <- getText query "login"
         password <- getText query "password"
@@ -98,7 +99,7 @@ getNewToken logger query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right (login, password) -> do
-      result <- Handler.getNewToken handle login password
+      result <- Handler.getNewToken (handle config) login password
       Logger.debug logger $ "Tried to get new token and got: " ++ show result
       case result of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -107,24 +108,25 @@ getNewToken logger query = do
           return $ responseLBS status201 [(hContentType, "application/json")] a
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-isAdmin :: Handler.Token -> IO Bool
-isAdmin = manage . Db.isAdmin
+isAdmin :: DatabaseConfig -> Handler.Token -> IO Bool
+isAdmin config = manage config . Db.isAdmin
 
-isTokenValid :: Handler.Token -> IO Bool
-isTokenValid = manage . Db.isTokenValid
+isTokenValid :: DatabaseConfig -> Handler.Token -> IO Bool
+isTokenValid config = manage config . Db.isTokenValid
 
-handle :: Handler.Handle IO
-handle =
-  Handler.Handle
-    { Handler.hIsLoginUnique = manage . Db.isLoginUnique,
-      Handler.hIsTokenUnique = manage . Db.isTokenUnique,
-      Handler.hIsLoginValid = manage . Db.isLoginValid,
-      Handler.hCreate = manage . Db.create,
-      Handler.hGet = manage . Db.get,
-      Handler.hDelete = manage . Db.delete,
-      Handler.hGetRandomNumber = randomIO,
-      Handler.hGetCurrentTime = show <$> getCurrentTime,
-      Handler.hFindPassword = manage . Db.findPassword,
-      Handler.hUpdateToken = \a b -> manage $ Db.updateToken a b,
-      Handler.hDoesExist = manage . Db.doesExist
-    }
+handle :: Config -> Handler.Handle IO
+handle config =
+  let db = database config
+   in Handler.Handle
+        { Handler.hIsLoginUnique = manage db . Db.isLoginUnique,
+          Handler.hIsTokenUnique = manage db . Db.isTokenUnique,
+          Handler.hIsLoginValid = manage db . Db.isLoginValid,
+          Handler.hCreate = manage db . Db.create,
+          Handler.hGet = manage db . Db.get,
+          Handler.hDelete = manage db . Db.delete,
+          Handler.hGetRandomNumber = randomIO,
+          Handler.hGetCurrentTime = show <$> getCurrentTime,
+          Handler.hFindPassword = manage db . Db.findPassword,
+          Handler.hUpdateToken = \a b -> manage db $ Db.updateToken a b,
+          Handler.hDoesExist = manage db . Db.doesExist
+        }

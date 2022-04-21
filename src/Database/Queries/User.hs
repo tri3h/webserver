@@ -3,8 +3,7 @@
 
 module Database.Queries.User where
 
-import Data.Text
-import Database.Connection (serverAddress)
+import Data.Text (Text, pack)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only),
@@ -12,7 +11,7 @@ import Database.PostgreSQL.Simple
     query,
   )
 import Database.PostgreSQL.Simple.Time (Date)
-import Types.Image (Image (Image, Link))
+import Types.Image (Image (Id, Image))
 import Types.User
   ( Login,
     Password,
@@ -117,7 +116,6 @@ delete userId conn = do
 
 get :: Token -> Connection -> IO User
 get token conn = do
-  server <- serverAddress
   [(userId, name, surname, imageId, login, regDate)] <-
     query
       conn
@@ -126,17 +124,13 @@ get token conn = do
       (Only token)
   return
     UserToGet
-      { avatar =
-          Link $
-            server `append` "/images?image_id="
-              `append` pack (show (imageId :: Integer)),
+      { avatar = Id imageId,
         date = pack $ show (regDate :: Date),
         ..
       }
 
 getByUserId :: UserId -> Connection -> IO User
 getByUserId uId conn = do
-  server <- serverAddress
   [(userId, name, surname, imageId, login, regDate)] <-
     query
       conn
@@ -145,17 +139,13 @@ getByUserId uId conn = do
       (Only uId)
   return
     UserToGet
-      { avatar =
-          Link $
-            server `append` "/images?image_id="
-              `append` pack (show (imageId :: Integer)),
+      { avatar = Id imageId,
         date = pack $ show (regDate :: Date),
         ..
       }
 
 getMaybeByUserId :: UserId -> Connection -> IO (Maybe User)
 getMaybeByUserId uId conn = do
-  server <- serverAddress
   x <-
     query
       conn
@@ -167,10 +157,7 @@ getMaybeByUserId uId conn = do
       return $
         Just
           UserToGet
-            { avatar =
-                Link $
-                  server `append` "/images?image_id="
-                    `append` pack (show (imageId :: Integer)),
+            { avatar = Id imageId,
               date = pack $ show (regDate :: Date),
               ..
             }

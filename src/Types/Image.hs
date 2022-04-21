@@ -18,7 +18,7 @@ type ImageId = Integer
 
 type ImageType = Text
 
-data Image = Link Text | Image Text ImageType
+data Image = Id Integer | Link Text | Image Text ImageType
   deriving (Show, Eq, Read, Generic)
 
 instance ToJSON Image where
@@ -27,9 +27,13 @@ instance ToJSON Image where
 instance ToField Image where
   toField (Image image _) = toField image
   toField (Link x) = toField x
+  toField (Id x) = toField x
 
 malformedImage :: Text
 malformedImage = "Malformed image"
 
 imageNotExist :: Text
 imageNotExist = "Image with such id doesn't exist"
+
+imageAddress :: Text
+imageAddress = "/images?image_id="

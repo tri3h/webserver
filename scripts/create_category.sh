@@ -15,6 +15,6 @@ case "$name_" in
  host) host=${value//\"};;
  port) port=$value;;
 esac
-done < ../Server.config
+done < ../Configs/Server.config
 
 curl "$host:$port/categories?token=$token&name=$name&parent_id=$parent_id" -X POST
