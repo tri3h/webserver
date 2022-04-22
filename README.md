@@ -2,7 +2,7 @@
 
 ## How to run
 Before the first run, 2 config files should be filled. They are both in the folder **Configs**.
-The first file is **Server.config** that contains information about a port and a host.
+The first file is **Server.config** that contains information about a port, a host and a log verbosity.
 The second file is **Database.config** that contains information about a database.
 Also it may be necessary to use a command stack setup.
 
