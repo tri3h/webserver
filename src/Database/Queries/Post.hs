@@ -30,15 +30,15 @@ import Types.Post
   )
 import qualified Types.Tag as Tag
 
-get :: [PostId] -> Limit -> Offset -> Connection -> IO [Post]
-get pId limit offset conn = do
+get :: [PostId] -> Connection -> IO [Post]
+get pId conn = do
   result <-
     query
       conn
       "SELECT p.post_id, p.author_id, p.category_id, \
       \p.name, p.date, p.text, p.image_id \
-      \FROM posts p WHERE p.post_id IN ? LIMIT ? OFFSET ?"
-      (In pId, limit, offset)
+      \FROM posts p WHERE p.post_id IN ?"
+      (Only $ In pId)
   let posts =
         map
           ( \( postId,
@@ -63,6 +63,11 @@ get pId limit offset conn = do
 getAll :: Connection -> IO [PostId]
 getAll conn = do
   result <- query conn "SELECT post_id FROM posts p" ()
+  return $ map (\(Only x) -> x) result
+
+applyLimitOffset :: [PostId] -> Limit -> Offset -> Connection -> IO [PostId]
+applyLimitOffset posts limit offset conn = do
+  result <- query conn "SELECT post_id FROM posts WHERE post_id IN ? LIMIT ? OFFSET ?" (In posts, limit, offset)
   return $ map (\(Only x) -> x) result
 
 getMinorPhotos :: PostId -> Connection -> IO [Image]
