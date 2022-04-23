@@ -76,7 +76,7 @@ handle pool =
   Handler.Handle
     { Handler.hFilterHandle = filterHandle pool,
       Handler.hOrderHandle = orderHandle pool,
-      Handler.hGet = \a b c -> withResource pool $ Db.get a b c,
+      Handler.hGet = withResource pool . Db.get,
       Handler.hGetAll = withResource pool Db.getAll,
       Handler.hGetMinorPhotos = withResource pool . Db.getMinorPhotos,
       Handler.hGetAuthor = withResource pool . AuthorDb.getMaybe,
@@ -85,7 +85,8 @@ handle pool =
         parents <- withResource pool $ CategoryDb.getParents catId
         mapM (withResource pool . CategoryDb.get) parents,
       Handler.hGetTag = withResource pool . TagDb.getByPostId,
-      Handler.hGetComment = withResource pool . CommentDb.get
+      Handler.hGetComment = withResource pool . CommentDb.get,
+      Handler.applyLimitOffset = \a b c -> withResource pool $ Db.applyLimitOffset a b c
     }
 
 filterHandle :: Pool Connection -> Handler.FilterHandle IO

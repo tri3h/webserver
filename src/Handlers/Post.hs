@@ -42,14 +42,15 @@ import Utility (imagesToLinks)
 data Handle m = Handle
   { hFilterHandle :: FilterHandle m,
     hOrderHandle :: OrderHandle m,
-    hGet :: [PostId] -> F.Limit -> F.Offset -> m [Post],
+    hGet :: [PostId] -> m [Post],
     hGetAll :: m [PostId],
     hGetMinorPhotos :: PostId -> m [Image],
     hGetAuthor :: A.AuthorId -> m (Maybe A.Author),
     hGetUser :: UserId -> m (Maybe User),
     hGetCategory :: CategoryId -> m [Category],
     hGetTag :: PostId -> m [Tag],
-    hGetComment :: PostId -> m [Comment]
+    hGetComment :: PostId -> m [Comment],
+    applyLimitOffset :: [PostId] -> F.Limit -> F.Offset -> m [PostId]
   }
 
 data FilterHandle m = FilterHandle
@@ -96,14 +97,15 @@ get handle server params order limit offset = do
     if isFiltersEmpty
       then hGetAll handle
       else getFiltered handle params
-  orderedCommon <- getOrdered handle common order
-  if null orderedCommon
+  ordered <- getOrdered handle common order
+  limitedOffseted <- applyLimitOffset handle ordered limit offset
+  if null limitedOffseted
     then return $ Left noPost
     else do
-      posts <- hGet handle orderedCommon limit offset
+      posts <- hGet handle limitedOffseted
       let isFormatCorrect = all (\case ShortPost {} -> True; _ -> False) posts
       if isFormatCorrect
-        then makeFullPost handle server posts orderedCommon
+        then makeFullPost handle server posts limitedOffseted
         else return $ Left malformedPost
 
 orderFullPost :: [PostId] -> [Post] -> [Post]
