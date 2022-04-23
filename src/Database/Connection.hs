@@ -1,4 +1,4 @@
-module Database.Connection (manage, open) where
+module Database.Connection (makePool, openConnection) where
 
 import Database.PostgreSQL.Simple
   ( ConnectInfo
@@ -14,9 +14,10 @@ import Database.PostgreSQL.Simple
     defaultConnectInfo,
   )
 import Types.Config (DatabaseConfig (dHost, dName, dPassword, dPort, dUser))
+import Data.Pool ( createPool, Pool )
 
-open :: DatabaseConfig -> IO Connection
-open config =
+openConnection :: DatabaseConfig -> IO Connection
+openConnection config =
   connect
     defaultConnectInfo
       { connectHost = dHost config,
@@ -26,9 +27,5 @@ open config =
         connectDatabase = dName config
       }
 
-manage :: DatabaseConfig -> (Connection -> IO b) -> IO b
-manage config f = do
-  conn <- open config
-  result <- f conn
-  close conn
-  return result
+makePool :: DatabaseConfig -> IO (Pool Connection)
+makePool config = createPool (openConnection config) close 1 10 10  

@@ -8,8 +8,11 @@ import qualified Comment
 import Control.Monad (join)
 import qualified Data.ByteString as BS
 import Data.ByteString.Lazy (toStrict)
+import Data.Pool (Pool)
 import Data.String (IsString (fromString))
 import Data.Text (Text, unpack)
+import Database.Connection (makePool)
+import Database.PostgreSQL.Simple (Connection)
 import qualified Draft
 import qualified Handlers.Logger as Logger
 import qualified Image
@@ -24,7 +27,7 @@ import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Post
 import qualified Tag
-import Types.Config (Config (database, server), ServerConfig (sHost, sPort))
+import Types.Config (Config (database, server), ServerConfig (sAddress, sHost, sPort))
 import qualified Types.Config as Config
 import qualified User
 
@@ -33,6 +36,7 @@ run logger config = do
   let port = fromInteger . sPort $ server config
   let host = fromString . unpack . sHost $ server config
   let settings = Warp.setHost host $ Warp.setPort port Warp.defaultSettings
+  pool <- makePool $ database config
   Warp.runSettings settings $ \req f -> do
     let query = queryToQueryText $ queryString req
     Logger.debug logger $ "Received query: " ++ show query
@@ -40,93 +44,94 @@ run logger config = do
     Logger.debug logger $ "Received body: " ++ show body
     response <- case join $ lookup "token" query of
       Just t -> do
-        isValid <- User.isTokenValid (database config) t
+        isValid <- User.isTokenValid pool t
         if isValid
-          then makeTokenResponse logger config req body t
+          then makeTokenResponse logger config pool req body t
           else do
             let err = "Invalid token"
             Logger.debug logger $ show err
             return $ responseLBS status400 [] err
-      Nothing -> makeNoTokenResponse logger config req body
+      Nothing -> makeNoTokenResponse logger pool req body
     f response
 
-makeNoTokenResponse :: Logger.Handle IO -> Config.Config -> Request -> BS.ByteString -> IO Response
-makeNoTokenResponse logger config req body = do
+makeNoTokenResponse :: Logger.Handle IO -> Pool Connection -> Request -> BS.ByteString -> IO Response
+makeNoTokenResponse logger pool req body = do
   let query = queryToQueryText $ queryString req
   case pathInfo req of
     ["users"] ->
       if requestMethod req == "POST"
-        then User.create logger config query body
+        then User.create logger pool query body
         else return $ responseLBS status400 [] "No token"
-    ["tokens"] -> User.getNewToken logger config query
+    ["tokens"] -> User.getNewToken logger pool query
     ["images"] -> case requestMethod req of
-      "GET" -> Image.get logger config query
+      "GET" -> Image.get logger pool query
       _ -> return $ responseLBS status404 [] ""
     _ -> return $ responseLBS status404 [] ""
 
-makeTokenResponse :: Logger.Handle IO -> Config.Config -> Request -> BS.ByteString -> Text -> IO Response
-makeTokenResponse logger config req body token = do
-  isAdmin <- User.isAdmin (database config) token
+makeTokenResponse :: Logger.Handle IO -> Config.Config -> Pool Connection -> Request -> BS.ByteString -> Text -> IO Response
+makeTokenResponse logger config pool req body token = do
+  isAdmin <- User.isAdmin pool token
   let query = queryToQueryText $ queryString req
+  let address = sAddress $ server config
   case pathInfo req of
     ["users"] -> case requestMethod req of
-      "GET" -> User.get logger config token
+      "GET" -> User.get logger pool address token
       _ -> chooseResponse isAdmin
     ["tags"] -> case requestMethod req of
-      "GET" -> Tag.get logger config query
+      "GET" -> Tag.get logger pool query
       _ -> chooseResponse isAdmin
     ["categories"] -> case requestMethod req of
-      "GET" -> Category.get logger config query
+      "GET" -> Category.get logger pool query
       _ -> chooseResponse isAdmin
     ["posts"] -> case requestMethod req of
-      "GET" -> Post.get logger config query
+      "GET" -> Post.get logger pool address query
       _ -> chooseResponse isAdmin
     ["comments"] -> case requestMethod req of
-      "GET" -> Comment.get logger config query
-      "POST" -> Comment.create logger config query
+      "GET" -> Comment.get logger pool query
+      "POST" -> Comment.create logger pool query
       _ -> chooseResponse isAdmin
     ["drafts"] -> case requestMethod req of
-      "GET" -> Draft.get logger config query
-      "POST" -> Draft.create logger config query body token
-      "PUT" -> Draft.edit logger config query body
-      "DELETE" -> Draft.delete logger config query
+      "GET" -> Draft.get logger pool address query
+      "POST" -> Draft.create logger pool query body token
+      "PUT" -> Draft.edit logger pool query body
+      "DELETE" -> Draft.delete logger pool query
       _ -> return $ responseLBS status404 [] ""
     ["drafts", "minor_photo"] -> case requestMethod req of
-      "POST" -> Draft.addMinorPhoto logger config query body
-      "DELETE" -> Draft.deleteMinorPhoto logger config query
+      "POST" -> Draft.addMinorPhoto logger pool query body
+      "DELETE" -> Draft.deleteMinorPhoto logger pool query
       _ -> return $ responseLBS status404 [] ""
-    ["publish"] -> Draft.publish logger config query
+    ["publish"] -> Draft.publish logger pool query
     _ -> chooseResponse isAdmin
   where
     chooseResponse isAdmin =
       if isAdmin
-        then makeAdminResponse logger config req
+        then makeAdminResponse logger pool req
         else return $ responseLBS status404 [] ""
 
-makeAdminResponse :: Logger.Handle IO -> Config.Config -> Request -> IO Response
-makeAdminResponse logger config req = do
+makeAdminResponse :: Logger.Handle IO -> Pool Connection -> Request -> IO Response
+makeAdminResponse logger pool req = do
   let query = queryToQueryText $ queryString req
   case pathInfo req of
     ["users"] -> case requestMethod req of
-      "DELETE" -> User.delete logger config query
+      "DELETE" -> User.delete logger pool query
       _ -> return $ responseLBS status404 [] ""
     ["authors"] -> case requestMethod req of
-      "POST" -> Author.create logger config query
-      "PUT" -> Author.edit logger config query
-      "GET" -> Author.get logger config query
-      "DELETE" -> Author.delete logger config query
+      "POST" -> Author.create logger pool query
+      "PUT" -> Author.edit logger pool query
+      "GET" -> Author.get logger pool query
+      "DELETE" -> Author.delete logger pool query
       _ -> return $ responseLBS status404 [] ""
     ["tags"] -> case requestMethod req of
-      "POST" -> Tag.create logger config query
-      "PUT" -> Tag.edit logger config query
-      "DELETE" -> Tag.delete logger config query
+      "POST" -> Tag.create logger pool query
+      "PUT" -> Tag.edit logger pool query
+      "DELETE" -> Tag.delete logger pool query
       _ -> return $ responseLBS status404 [] ""
     ["categories"] -> case requestMethod req of
-      "POST" -> Category.create logger config query
-      "PUT" -> Category.edit logger config query
-      "DELETE" -> Category.delete logger config query
+      "POST" -> Category.create logger pool query
+      "PUT" -> Category.edit logger pool query
+      "DELETE" -> Category.delete logger pool query
       _ -> return $ responseLBS status404 [] ""
     ["comments"] -> case requestMethod req of
-      "DELETE" -> Comment.delete logger config query
+      "DELETE" -> Comment.delete logger pool query
       _ -> return $ responseLBS status404 [] ""
     _ -> return $ responseLBS status404 [] ""

@@ -4,9 +4,10 @@
 module Author where
 
 import Data.Aeson (encode)
+import Data.Pool (Pool, withResource)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import Database.Connection (manage)
+import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Author as Db
 import qualified Database.Queries.User as UserDb
 import qualified Handlers.Author as Handler
@@ -29,11 +30,10 @@ import Types.Author
         userId
       ),
   )
-import Types.Config (Config (database))
 import Utility (getInteger, getText)
 
-create :: Logger.Handle IO -> Config -> QueryText -> IO Response
-create logger config query = do
+create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+create logger pool query = do
   let info = do
         userId <- getInteger query "user_id"
         description <- getText query "description"
@@ -42,7 +42,7 @@ create logger config query = do
   case info of
     Right (userId, description) -> do
       let author = AuthorToCreate {..}
-      result <- Handler.create (handle config) author
+      result <- Handler.create (handle pool) author
       Logger.debug logger $ "Tried to create author and got: " ++ show result
       case result of
         Left l ->
@@ -55,13 +55,13 @@ create logger config query = do
         Right _ -> return $ responseLBS status201 [] ""
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: Logger.Handle IO -> Config -> QueryText -> IO Response
-get logger config query = do
+get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+get logger pool query = do
   let info = getInteger query "author_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- Handler.get (handle config) authorId
+      result <- Handler.get (handle pool) authorId
       Logger.debug logger $ "Tried to get author and got: " ++ show result
       case result of
         Right r ->
@@ -79,8 +79,8 @@ get logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-edit :: Logger.Handle IO -> Config -> QueryText -> IO Response
-edit logger config query = do
+edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+edit logger pool query = do
   let info = do
         authorId <- getInteger query "author_id"
         description <- getText query "description"
@@ -88,7 +88,7 @@ edit logger config query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right author -> do
-      result <- Handler.edit (handle config) author
+      result <- Handler.edit (handle pool) author
       Logger.debug logger $ "Tried to edit author and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
@@ -101,13 +101,13 @@ edit logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: Logger.Handle IO -> Config -> QueryText -> IO Response
-delete logger config query = do
+delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+delete logger pool query = do
   let info = getInteger query "author_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- Handler.delete (handle config) authorId
+      result <- Handler.delete (handle pool) authorId
       Logger.debug logger $ "Tried to delete author and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
@@ -120,14 +120,13 @@ delete logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-handle :: Config -> Handler.Handle IO
-handle config =
-  let db = database config
-   in Handler.Handle
-        { Handler.hCreate = manage db . Db.create,
-          Handler.hGet = manage db . Db.get,
-          Handler.hDelete = manage db . Db.delete,
-          Handler.hEdit = manage db . Db.edit,
-          Handler.hDoesExist = manage db . Db.doesExist,
-          Handler.hDoesUserExist = manage db . UserDb.doesExist
-        }
+handle :: Pool Connection -> Handler.Handle IO
+handle pool =
+  Handler.Handle
+    { Handler.hCreate = withResource pool . Db.create,
+      Handler.hGet = withResource pool . Db.get,
+      Handler.hDelete = withResource pool . Db.delete,
+      Handler.hEdit = withResource pool . Db.edit,
+      Handler.hDoesExist = withResource pool . Db.doesExist,
+      Handler.hDoesUserExist = withResource pool . UserDb.doesExist
+    }
