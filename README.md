@@ -33,12 +33,16 @@ Files from this part are in the folder */Handler*. These files contain the main 
 *Database part*
 
 This part is responsible for work with database and contains queries to a database. They are stored in the folder */Database/Queries*. They are used to insert, update, delete or get data from a database.
-**Connection.hs** is responsible for getting database config and openning/closing connection to a database.
+**Connection.hs** is responsible for openning/closing connection to a database.
 **Migration.hs** is responsible for applying migrations to a database.
 
 
 Additional parts are folders */Types*, */scripts*, */DatabaseMigrations* and */test*:
+
 - *Types* files contain created types that used in this project.
-- *Scripts* contains sh scripts with curl requests.
+
+- *Scripts* contains sh scripts with curl requests in main folder and additional utility scripts in *utility* folder. Scripts may be run with bash like *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. Some of scripts take an image, they take it in the form of two parameters: a path to the file and a type of image, for example to add a minor photo to a draft *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg" -y "jpg"*. 
+
 - *DatabaseMigrations* contains sql files that needed to make migrations.
+
 - *Test* contains tests for the Handler part.
