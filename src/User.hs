@@ -6,12 +6,13 @@ module User where
 import Data.Aeson (encode)
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (append)
+import Data.Pool (Pool, withResource)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Time.Clock (getCurrentTime)
-import Database.Connection (manage)
+import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.User as Db
 import qualified Handlers.Logger as Logger
 import qualified Handlers.User as Handler
@@ -25,15 +26,15 @@ import Network.HTTP.Types.Status
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
 import System.Random (randomIO)
-import Types.Config (Config (database, server), DatabaseConfig, ServerConfig (sAddress))
+import Types.Config (ServerAddress)
 import Types.Image (Image (Image))
 import Types.User
   ( User (UserToCreate, avatar, login, name, password, surname),
   )
 import Utility (getImage, getInteger, getText)
 
-create :: Logger.Handle IO -> Config -> QueryText -> ByteString -> IO Response
-create logger config query body = do
+create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
+create logger pool query body = do
   let info = do
         name <- getText query "name"
         surname <- getText query "surname"
@@ -50,7 +51,7 @@ create logger config query body = do
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
     Right user -> do
-      result <- Handler.create (handle config) user
+      result <- Handler.create (handle pool) user
       Logger.debug logger $ "Tried to create user and got: " ++ show result
       case result of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -58,9 +59,9 @@ create logger config query body = do
           let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict token) `append` "\"}"
           return $ responseLBS status201 [(hContentType, "application/json")] a
 
-get :: Logger.Handle IO -> Config -> Text -> IO Response
-get logger config token = do
-  result <- Handler.get (handle config) (sAddress $ server config) token
+get :: Logger.Handle IO -> Pool Connection -> ServerAddress -> Text -> IO Response
+get logger pool server token = do
+  result <- Handler.get (handle pool) server token
   Logger.debug logger $ "Tried to get user and got: " ++ show result
   case result of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -71,13 +72,13 @@ get logger config token = do
           [(hContentType, "application/json")]
           $ encode user
 
-delete :: Logger.Handle IO -> Config -> QueryText -> IO Response
-delete logger config query = do
+delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+delete logger pool query = do
   let info = getInteger query "user_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right userId -> do
-      result <- Handler.delete (handle config) userId
+      result <- Handler.delete (handle pool) userId
       Logger.debug logger $ "Tried to delete user and got: " ++ show result
       case result of
         Left l ->
@@ -90,8 +91,8 @@ delete logger config query = do
         Right _ -> return $ responseLBS status204 [] ""
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-getNewToken :: Logger.Handle IO -> Config -> QueryText -> IO Response
-getNewToken logger config query = do
+getNewToken :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+getNewToken logger pool query = do
   let info = do
         login <- getText query "login"
         password <- getText query "password"
@@ -99,7 +100,7 @@ getNewToken logger config query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right (login, password) -> do
-      result <- Handler.getNewToken (handle config) login password
+      result <- Handler.getNewToken (handle pool) login password
       Logger.debug logger $ "Tried to get new token and got: " ++ show result
       case result of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -108,25 +109,24 @@ getNewToken logger config query = do
           return $ responseLBS status201 [(hContentType, "application/json")] a
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-isAdmin :: DatabaseConfig -> Handler.Token -> IO Bool
-isAdmin config = manage config . Db.isAdmin
+isAdmin :: Pool Connection -> Handler.Token -> IO Bool
+isAdmin pool = withResource pool . Db.isAdmin
 
-isTokenValid :: DatabaseConfig -> Handler.Token -> IO Bool
-isTokenValid config = manage config . Db.isTokenValid
+isTokenValid :: Pool Connection -> Handler.Token -> IO Bool
+isTokenValid pool = withResource pool . Db.isTokenValid
 
-handle :: Config -> Handler.Handle IO
-handle config =
-  let db = database config
-   in Handler.Handle
-        { Handler.hIsLoginUnique = manage db . Db.isLoginUnique,
-          Handler.hIsTokenUnique = manage db . Db.isTokenUnique,
-          Handler.hIsLoginValid = manage db . Db.isLoginValid,
-          Handler.hCreate = manage db . Db.create,
-          Handler.hGet = manage db . Db.get,
-          Handler.hDelete = manage db . Db.delete,
-          Handler.hGetRandomNumber = randomIO,
-          Handler.hGetCurrentTime = show <$> getCurrentTime,
-          Handler.hFindPassword = manage db . Db.findPassword,
-          Handler.hUpdateToken = \a b -> manage db $ Db.updateToken a b,
-          Handler.hDoesExist = manage db . Db.doesExist
-        }
+handle :: Pool Connection -> Handler.Handle IO
+handle pool =
+  Handler.Handle
+    { Handler.hIsLoginUnique = withResource pool . Db.isLoginUnique,
+      Handler.hIsTokenUnique = withResource pool . Db.isTokenUnique,
+      Handler.hIsLoginValid = withResource pool . Db.isLoginValid,
+      Handler.hCreate = withResource pool . Db.create,
+      Handler.hGet = withResource pool . Db.get,
+      Handler.hDelete = withResource pool . Db.delete,
+      Handler.hGetRandomNumber = randomIO,
+      Handler.hGetCurrentTime = show <$> getCurrentTime,
+      Handler.hFindPassword = withResource pool . Db.findPassword,
+      Handler.hUpdateToken = \a b -> withResource pool $ Db.updateToken a b,
+      Handler.hDoesExist = withResource pool . Db.doesExist
+    }

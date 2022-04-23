@@ -4,9 +4,10 @@
 module Category where
 
 import Data.Aeson (encode)
+import Data.Pool (Pool, withResource)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import Database.Connection (manage)
+import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Category as Db
 import qualified Handlers.Category as Handler
 import qualified Handlers.Logger as Logger
@@ -26,11 +27,10 @@ import Types.Category
         parentId
       ),
   )
-import Types.Config (Config (database))
 import Utility (getInteger, getMaybeInteger, getMaybeText, getText)
 
-create :: Logger.Handle IO -> Config -> QueryText -> IO Response
-create logger config query = do
+create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+create logger pool query = do
   let info = getText query "name"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
@@ -40,7 +40,7 @@ create logger config query = do
               { parentId = getMaybeInteger query "parent_id",
                 ..
               }
-      result <- Handler.create (handle config) category
+      result <- Handler.create (handle pool) category
       Logger.debug logger $ "Tried to create category and got: " ++ show result
       case result of
         Left l ->
@@ -53,13 +53,13 @@ create logger config query = do
         Right _ -> return $ responseLBS status201 [] ""
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: Logger.Handle IO -> Config -> QueryText -> IO Response
-get logger config query = do
+get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+get logger pool query = do
   let info = getInteger query "category_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
-      result <- Handler.get (handle config) categoryId
+      result <- Handler.get (handle pool) categoryId
       Logger.debug logger $ "Tried to get category and got: " ++ show result
       case result of
         Right r ->
@@ -77,15 +77,15 @@ get logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-edit :: Logger.Handle IO -> Config -> QueryText -> IO Response
-edit logger config query = do
+edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+edit logger pool query = do
   let info = getInteger query "category_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
       let parentId = getMaybeInteger query "parent_id"
       let name = getMaybeText query "name"
-      result <- Handler.edit (handle config) categoryId name parentId
+      result <- Handler.edit (handle pool) categoryId name parentId
       Logger.debug logger $ "Tried to edit category and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
@@ -98,13 +98,13 @@ edit logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: Logger.Handle IO -> Config -> QueryText -> IO Response
-delete logger config query = do
+delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+delete logger pool query = do
   let info = getInteger query "category_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
-      result <- Handler.delete (handle config) categoryId
+      result <- Handler.delete (handle pool) categoryId
       Logger.debug logger $ "Tried to delete category and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
@@ -117,15 +117,14 @@ delete logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-handle :: Config -> Handler.Handle IO
-handle config =
-  let db = database config
-   in Handler.Handle
-        { Handler.hCreate = manage db . Db.create,
-          Handler.hGet = manage db . Db.get,
-          Handler.hDelete = manage db . Db.delete,
-          Handler.hEditName = \a b -> manage db $ Db.editName a b,
-          Handler.hEditParent = \a b -> manage db $ Db.editParent a b,
-          Handler.hDoesExist = manage db . Db.doesExist,
-          Handler.hGetChildren = manage db . Db.getChildren
-        }
+handle :: Pool Connection -> Handler.Handle IO
+handle pool =
+  Handler.Handle
+    { Handler.hCreate = withResource pool . Db.create,
+      Handler.hGet = withResource pool . Db.get,
+      Handler.hDelete = withResource pool . Db.delete,
+      Handler.hEditName = \a b -> withResource pool $ Db.editName a b,
+      Handler.hEditParent = \a b -> withResource pool $ Db.editParent a b,
+      Handler.hDoesExist = withResource pool . Db.doesExist,
+      Handler.hGetChildren = withResource pool . Db.getChildren
+    }

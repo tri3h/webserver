@@ -4,9 +4,10 @@
 module Comment where
 
 import Data.Aeson (encode)
+import Data.Pool (Pool, withResource)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import Database.Connection (manage)
+import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Comment as Db
 import qualified Database.Queries.Post as Db.Post
 import qualified Handlers.Comment as Handler
@@ -23,11 +24,10 @@ import Network.Wai (Response, responseLBS)
 import Types.Comment
   ( Comment (CommentToCreate, postId, text, userId),
   )
-import Types.Config (Config (database))
 import Utility (getInteger, getText)
 
-create :: Logger.Handle IO -> Config -> QueryText -> IO Response
-create logger config query = do
+create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+create logger pool query = do
   let info = do
         postId <- getInteger query "post_id"
         userId <- getInteger query "user_id"
@@ -36,7 +36,7 @@ create logger config query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right comment -> do
-      result <- Handler.create (handle config) comment
+      result <- Handler.create (handle pool) comment
       Logger.debug logger $ "Tried to create comment and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
@@ -49,13 +49,13 @@ create logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-get :: Logger.Handle IO -> Config -> QueryText -> IO Response
-get logger config query = do
+get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+get logger pool query = do
   let info = getInteger query "post_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right postId -> do
-      result <- Handler.get (handle config) postId
+      result <- Handler.get (handle pool) postId
       Logger.debug logger $ "Tried to get comment and got: " ++ show result
       case result of
         Right r ->
@@ -73,13 +73,13 @@ get logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-delete :: Logger.Handle IO -> Config -> QueryText -> IO Response
-delete logger config query = do
+delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
+delete logger pool query = do
   let info = getInteger query "comment_id"
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right commentId -> do
-      result <- Handler.delete (handle config) commentId
+      result <- Handler.delete (handle pool) commentId
       Logger.debug logger $ "Tried to delete comment and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
@@ -92,13 +92,12 @@ delete logger config query = do
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
-handle :: Config -> Handler.Handle IO
-handle config =
-  let db = database config
-   in Handler.Handle
-        { Handler.hGet = manage db . Db.get,
-          Handler.hCreate = manage db . Db.create,
-          Handler.hDelete = manage db . Db.delete,
-          Handler.hDoesPostExist = manage db . Db.Post.doesExist,
-          Handler.hDoesExist = manage db . Db.doesExist
-        }
+handle :: Pool Connection -> Handler.Handle IO
+handle pool =
+  Handler.Handle
+    { Handler.hGet = withResource pool . Db.get,
+      Handler.hCreate = withResource pool . Db.create,
+      Handler.hDelete = withResource pool . Db.delete,
+      Handler.hDoesPostExist = withResource pool . Db.Post.doesExist,
+      Handler.hDoesExist = withResource pool . Db.doesExist
+    }
