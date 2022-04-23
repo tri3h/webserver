@@ -1,5 +1,6 @@
 #! /bin/sh
 
+#Required parameters: t, a. Others are optional. 
 while getopts t:a:c:i:n:d:m:b: flag
 do
  case "$flag" in
@@ -14,13 +15,7 @@ do
  esac
 done
 
-while read name_ n value
-do 
-case "$name_" in 
- host) host=${value//\"};;
- port) port=$value;;
-esac
-done < ../Configs/Server.config
+source utility/load_config.sh
 
 if [ ! -z ${main_photo+x} ];
 
@@ -28,6 +23,6 @@ then base64 $main_photo > "image.dat"
 curl "$host:$port/drafts?token=$token&draft_id=$draft_id&category_id=$category_id&tag_id=$tag_id&name=$name&description=$description&image_type=$main_photo_image_type" -X PUT -F main_photo=@image.dat
 rm "image.dat"; 
 
-else curl "$host:$port/drafts?token=$token&draft_id=$draft_id&category_id=$category_id&tag_id=$tag_id&name=$name&description=$description&image_type=$main_photo_image_type" -X PUT;
+else curl "$host:$port/drafts?token=$token&draft_id=$draft_id&category_id=$category_id&tag_id=$tag_id&name=$name&description=$description" -X PUT;
 fi
 

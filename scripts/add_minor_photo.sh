@@ -1,5 +1,7 @@
 #! /bin/sh
 
+
+#All parameters are required
 while getopts t:d:p:y: flag
 do
  case "$flag" in
@@ -10,13 +12,7 @@ do
  esac
 done
 
-while read name_ n value
-do 
-case "$name_" in 
- host) host=${value//\"};;
- port) port=$value;;
-esac
-done < ../Configs/Server.config
+source utility/load_config.sh
 
 base64 $minor_photo > "image.dat"
 

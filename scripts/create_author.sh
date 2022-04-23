@@ -1,5 +1,6 @@
 #! /bin/sh
 
+#All parameters are required
 while getopts t:i:d: flag
 do
  case "$flag" in
@@ -9,12 +10,6 @@ do
  esac
 done
 
-while read name_ n value
-do 
-case "$name_" in 
- host) host=${value//\"};;
- port) port=$value;;
-esac
-done < ../Configs/Server.config
+source utility/load_config.sh
 
 curl "$host:$port/authors?token=$token&user_id=$id&description=$description" -X POST
