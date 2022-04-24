@@ -86,7 +86,7 @@ handle pool =
         mapM (withResource pool . CategoryDb.get) parents,
       Handler.hGetTag = withResource pool . TagDb.getByPostId,
       Handler.hGetComment = withResource pool . CommentDb.get,
-      Handler.applyLimitOffset = \a b c -> withResource pool $ Db.applyLimitOffset a b c
+      Handler.hApplyLimitOffset = \a b c -> withResource pool $ Db.applyLimitOffset a b c
     }
 
 filterHandle :: Pool Connection -> Handler.FilterHandle IO

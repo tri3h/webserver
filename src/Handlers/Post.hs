@@ -50,7 +50,7 @@ data Handle m = Handle
     hGetCategory :: CategoryId -> m [Category],
     hGetTag :: PostId -> m [Tag],
     hGetComment :: PostId -> m [Comment],
-    applyLimitOffset :: [PostId] -> F.Limit -> F.Offset -> m [PostId]
+    hApplyLimitOffset :: [PostId] -> F.Limit -> F.Offset -> m [PostId]
   }
 
 data FilterHandle m = FilterHandle
@@ -98,7 +98,7 @@ get handle server params order limit offset = do
       then hGetAll handle
       else getFiltered handle params
   ordered <- getOrdered handle common order
-  limitedOffseted <- applyLimitOffset handle ordered limit offset
+  limitedOffseted <- hApplyLimitOffset handle ordered limit offset
   if null limitedOffseted
     then return $ Left noPost
     else do
