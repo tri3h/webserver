@@ -27,36 +27,22 @@ import Network.HTTP.Types.Status
   )
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
+import Types.Category (CategoryId (CategoryId))
 import Types.Config (ServerAddress)
 import Types.Draft
-  ( Draft
-      ( Draft,
-        authorId,
-        categoryId,
-        description,
-        draftId,
-        mainPhoto,
-        minorPhoto,
-        name,
-        postId,
-        tagId
-      ),
-    EditParams
-      ( EditParams,
-        eCategoryId,
-        eDescription,
-        eMainPhoto,
-        eName,
-        eTagId
-      ),
+  ( CreateDraft (..),
+    DraftId (DraftId),
+    EditParams (..),
+    Name (Name),
   )
-import Types.Image (Image (Image))
-import Types.User (Token)
+import Types.Image (Image (..))
+import Types.Tag (TagId (TagId))
+import Types.User (Token (Token))
 import Utility
-  ( getImage,
+  ( getImageBody,
     getInteger,
     getIntegers,
-    getMaybeImage,
+    getMaybeImageBody,
     getMaybeInteger,
     getMaybeIntegers,
     getMaybeText,
@@ -68,19 +54,17 @@ create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> Toke
 create logger pool query body token = do
   author <- Handler.getAuthorIdByToken (handle pool) token
   let info = do
-        categoryId <- getInteger query "category_id"
-        tagId <- getIntegers query "tag_id"
-        name <- getText query "name"
-        description <- getText query "description"
+        cCategoryId <- CategoryId <$> getInteger query "category_id"
+        cTagId <- map TagId <$> getIntegers query "tag_id"
+        cName <- Name <$> getText query "name"
+        cText <- getText query "description"
         imageType <- getText query "image_type"
-        image <- getImage (decodeUtf8 body) "main_photo"
-        authorId <- author
+        image <- getImageBody (decodeUtf8 body) "main_photo"
+        cAuthorId <- author
         Right $
-          Draft
-            { draftId = Nothing,
-              postId = Nothing,
-              mainPhoto = Image image imageType,
-              minorPhoto = [],
+          CreateDraft
+            { cMainPhoto = Image image imageType,
+              cPostId = Nothing,
               ..
             }
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
@@ -150,20 +134,17 @@ delete logger pool query = do
 
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 edit logger pool query body = do
-  let info = do
-        token <- getText query "token"
-        draftId <- getInteger query "draft_id"
-        Right (token, draftId)
+  let info = getDraftIdToken query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-    Right (token, draftId) -> do
+    Right (draftId, token) -> do
       let editParams =
             EditParams
-              { eCategoryId = getMaybeInteger query "category_id",
-                eTagId = getMaybeIntegers query "tag_id",
-                eName = getMaybeText query "name",
-                eDescription = getMaybeText query "description",
+              { eCategoryId = CategoryId <$> getMaybeInteger query "category_id",
+                eTagId = map TagId <$> getMaybeIntegers query "tag_id",
+                eName = Name <$> getMaybeText query "name",
+                eText = getMaybeText query "description",
                 eMainPhoto = getMainPhoto query body
               }
       result <- Handler.edit (handle pool) draftId token editParams
@@ -181,7 +162,7 @@ edit logger pool query body = do
 getMainPhoto :: QueryText -> ByteString -> Maybe Image
 getMainPhoto query body =
   let imageType = getMaybeText query "image_type"
-      image = getMaybeImage (decodeUtf8 body) "main_photo"
+      image = getMaybeImageBody (decodeUtf8 body) "main_photo"
    in case imageType of
         Nothing -> Nothing
         Just t -> case image of
@@ -218,8 +199,8 @@ addMinorPhoto logger pool query body = do
         draftId <- getInteger query "draft_id"
         token <- getText query "token"
         imageType <- getText query "image_type"
-        image <- getImage (decodeUtf8 body) "minor_photo"
-        Right (draftId, token, image, imageType)
+        image <- getImageBody (decodeUtf8 body) "minor_photo"
+        Right (DraftId draftId, Token token, image, imageType)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -236,7 +217,7 @@ deleteMinorPhoto logger pool query = do
         draftId <- getInteger query "draft_id"
         token <- getText query "token"
         imageId <- getInteger query "minor_photo_id"
-        Right (draftId, token, imageId)
+        Right (DraftId draftId, Token token, imageId)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -247,11 +228,11 @@ deleteMinorPhoto logger pool query = do
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
         Right _ -> return $ responseLBS status204 [] ""
 
-getDraftIdToken :: QueryText -> Either Text (Integer, Text)
+getDraftIdToken :: QueryText -> Either Text (DraftId, Token)
 getDraftIdToken query = do
   draftId <- getInteger query "draft_id"
   token <- getText query "token"
-  Right (draftId, token)
+  Right (DraftId draftId, Token token)
 
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
@@ -260,7 +241,7 @@ handle pool =
       Handler.hEditCategoryId = \a b -> withResource pool $ Db.Draft.editCategoryId a b,
       Handler.hEditTagId = \a b -> withResource pool $ Db.Draft.editTagId a b,
       Handler.hEditName = \a b -> withResource pool $ Db.Draft.editName a b,
-      Handler.hEditDescription = \a b -> withResource pool $ Db.Draft.editDescription a b,
+      Handler.hEditDescription = \a b -> withResource pool $ Db.Draft.editText a b,
       Handler.hEditMainPhoto = \a b -> withResource pool $ Db.Draft.editMainPhoto a b,
       Handler.hDoesExist = withResource pool . Db.Draft.doesExist,
       Handler.hIsAuthor = withResource pool . Db.Author.isAuthor,

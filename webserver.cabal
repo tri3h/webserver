@@ -61,6 +61,7 @@ library
       Types.Filter
       Types.Image
       Types.Post
+      Types.PostComment
       Types.Tag
       Types.User
       User

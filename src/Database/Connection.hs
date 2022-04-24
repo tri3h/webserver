@@ -1,20 +1,14 @@
 module Database.Connection (makePool, openConnection) where
 
+import Data.Pool (Pool, createPool)
 import Database.PostgreSQL.Simple
-  ( ConnectInfo
-      ( connectDatabase,
-        connectHost,
-        connectPassword,
-        connectPort,
-        connectUser
-      ),
+  ( ConnectInfo (..),
     Connection,
     close,
     connect,
     defaultConnectInfo,
   )
-import Types.Config (DatabaseConfig (dHost, dName, dPassword, dPort, dUser))
-import Data.Pool ( createPool, Pool )
+import Types.Config (DatabaseConfig (..))
 
 openConnection :: DatabaseConfig -> IO Connection
 openConnection config =
@@ -28,4 +22,4 @@ openConnection config =
       }
 
 makePool :: DatabaseConfig -> IO (Pool Connection)
-makePool config = createPool (openConnection config) close 1 10 10  
+makePool config = createPool (openConnection config) close 1 10 10

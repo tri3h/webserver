@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Category where
 
@@ -21,11 +20,9 @@ import Network.HTTP.Types.Status
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
 import Types.Category
-  ( Category
-      ( CategoryToCreate,
-        name,
-        parentId
-      ),
+  ( CategoryId (CategoryId),
+    CreateCategory (..),
+    Name (Name),
   )
 import Utility (getInteger, getMaybeInteger, getMaybeText, getText)
 
@@ -36,9 +33,9 @@ create logger pool query = do
   case info of
     Right name -> do
       let category =
-            CategoryToCreate
-              { parentId = getMaybeInteger query "parent_id",
-                ..
+            CreateCategory
+              { cParentId = CategoryId <$> getMaybeInteger query "parent_id",
+                cName = Name name
               }
       result <- Handler.create (handle pool) category
       Logger.debug logger $ "Tried to create category and got: " ++ show result
@@ -59,7 +56,7 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
-      result <- Handler.get (handle pool) categoryId
+      result <- Handler.get (handle pool) $ CategoryId categoryId
       Logger.debug logger $ "Tried to get category and got: " ++ show result
       case result of
         Right r ->
@@ -83,9 +80,9 @@ edit logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
-      let parentId = getMaybeInteger query "parent_id"
-      let name = getMaybeText query "name"
-      result <- Handler.edit (handle pool) categoryId name parentId
+      let parentId = CategoryId <$> getMaybeInteger query "parent_id"
+      let name = Name <$> getMaybeText query "name"
+      result <- Handler.edit (handle pool) (CategoryId categoryId) name parentId
       Logger.debug logger $ "Tried to edit category and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
@@ -104,7 +101,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
-      result <- Handler.delete (handle pool) categoryId
+      result <- Handler.delete (handle pool) $ CategoryId categoryId
       Logger.debug logger $ "Tried to delete category and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""

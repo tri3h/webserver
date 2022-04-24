@@ -1,64 +1,72 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types.Post where
 
 import Data.Aeson
-  ( Options (sumEncoding),
-    SumEncoding (UntaggedValue),
-    ToJSON (toEncoding),
-    defaultOptions,
-    genericToEncoding,
+  ( KeyValue ((.=)),
+    ToJSON (toJSON),
+    object,
   )
 import Data.Text (Text)
-import GHC.Generics (Generic)
-import Types.Author (Author)
-import Types.Category (Category)
-import Types.Comment (Comment)
+import Database.PostgreSQL.Simple.FromField (FromField)
+import Database.PostgreSQL.Simple.ToField (ToField)
+import Types.Author (AuthorId, GetAuthor)
+import Types.Category (CategoryId, GetCategory)
+import Types.Comment (GetComment)
 import Types.Image (Image)
+import Types.PostComment (PostId)
 import Types.Tag (Tag)
-import Types.User (User)
+import Types.User (GetUser)
 
-postsOnPage :: Integer
-postsOnPage = 10
+newtype Name = Name {getName :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type PostId = Integer
+newtype Date = Date {getDate :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type Date = Text
+data ShortPost = ShortPost
+  { sPostId :: PostId,
+    sAuthorId :: Maybe AuthorId,
+    sCategoryId :: Maybe CategoryId,
+    sName :: Name,
+    sDate :: Date,
+    sText :: Text,
+    sMainPhoto :: Image
+  }
+  deriving (Show, Eq)
 
-data Post
-  = ShortPost
-      { postId :: Integer,
-        authorId :: Integer,
-        categoryId :: Integer,
-        name :: Text,
-        date :: Text,
-        text :: Text,
-        mainPhoto :: Image
-      }
-  | FullPost
-      { postId :: Integer,
-        author :: Maybe Author,
-        user :: Maybe User,
-        category :: [Category],
-        tag :: [Tag],
-        comment :: [Comment],
-        name :: Text,
-        date :: Text,
-        text :: Text,
-        mainPhoto :: Image,
-        minorPhoto :: [Image]
-      }
-  deriving (Show, Eq, Generic)
+data FullPost = FullPost
+  { fPostId :: PostId,
+    fAuthor :: Maybe GetAuthor,
+    fUser :: Maybe GetUser,
+    fCategory :: [GetCategory],
+    fTag :: [Tag],
+    fComment :: [GetComment],
+    fName :: Name,
+    fDate :: Date,
+    fText :: Text,
+    fMainPhoto :: Image,
+    fMinorPhoto :: [Image]
+  }
+  deriving (Show, Eq)
 
-instance ToJSON Post where
-  toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+instance ToJSON FullPost where
+  toJSON post =
+    object
+      [ "post_id" .= fPostId post,
+        "author" .= fAuthor post,
+        "user" .= fUser post,
+        "category" .= fCategory post,
+        "tag" .= fTag post,
+        "comment" .= fComment post,
+        "name" .= fName post,
+        "date" .= fDate post,
+        "text" .= fText post,
+        "main_photo" .= fMainPhoto post,
+        "minor_photo" .= fMinorPhoto post
+      ]
 
 postNotExist :: Text
 postNotExist = "Post with such id doesn't exist"
-
-malformedPost :: Text
-malformedPost = "Malformed posts"
 
 noPost :: Text
 noPost = "No posts with such parameters"

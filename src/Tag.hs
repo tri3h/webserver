@@ -20,7 +20,7 @@ import Network.HTTP.Types.Status
   )
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
-import Types.Tag (Tag (Tag, name, tagId))
+import Types.Tag (Name (Name), Tag (..), TagId (TagId))
 import Utility (getInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
@@ -29,7 +29,7 @@ create logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right name -> do
-      result <- Handler.create (handle pool) name
+      result <- Handler.create (handle pool) $ Name name
       Logger.debug logger $ "Tried to create tag and got: " ++ show result
       case result of
         Left l ->
@@ -48,7 +48,7 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right tagId -> do
-      result <- Handler.get (handle pool) tagId
+      result <- Handler.get (handle pool) $ TagId tagId
       Logger.debug logger $ "Tried to get tag and got: " ++ show result
       case result of
         Right r ->
@@ -69,8 +69,8 @@ get logger pool query = do
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
   let info = do
-        name <- getText query "name"
-        tagId <- getInteger query "tag_id"
+        name <- Name <$> getText query "name"
+        tagId <- TagId <$> getInteger query "tag_id"
         Right (tagId, name)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
@@ -95,7 +95,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right tagId -> do
-      result <- Handler.delete (handle pool) tagId
+      result <- Handler.delete (handle pool) $ TagId tagId
       Logger.debug logger $ "Tried to delete tag and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""

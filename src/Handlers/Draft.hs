@@ -18,10 +18,10 @@ import Types.Author (AuthorId)
 import Types.Category (CategoryId)
 import Types.Config (ServerAddress)
 import Types.Draft
-  ( Description,
-    Draft (authorId, categoryId, mainPhoto, minorPhoto, tagId),
+  ( CreateDraft (..),
     DraftId,
-    EditParams (eCategoryId, eDescription, eMainPhoto, eName, eTagId),
+    EditParams (..),
+    GetDraft (..),
     Name,
     noDeleteHasPost,
     noDraftAuthor,
@@ -34,11 +34,11 @@ import Utility (imageToLink, imagesToLinks)
 import Prelude hiding (words)
 
 data Handle m = Handle
-  { hCreate :: Draft -> m (),
+  { hCreate :: CreateDraft -> m (),
     hEditCategoryId :: DraftId -> CategoryId -> m (),
     hEditTagId :: DraftId -> [TagId] -> m (),
     hEditName :: DraftId -> Name -> m (),
-    hEditDescription :: DraftId -> Description -> m (),
+    hEditDescription :: DraftId -> Text -> m (),
     hEditMainPhoto :: DraftId -> Image -> m (),
     hDelete :: DraftId -> m (),
     hAddMinorPhoto :: DraftId -> Image -> m (),
@@ -46,10 +46,10 @@ data Handle m = Handle
     hIsAuthor :: Token -> m Bool,
     hHasPost :: DraftId -> m Bool,
     hGetCurrentDate :: m String,
-    hGet :: DraftId -> m Draft,
+    hGet :: DraftId -> m GetDraft,
     hGetAuthor :: DraftId -> m AuthorId,
-    hPublish :: Draft -> String -> m (),
-    hUpdate :: Draft -> m (),
+    hPublish :: GetDraft -> String -> m (),
+    hUpdate :: GetDraft -> m (),
     hGetAuthorIdByToken :: Token -> m AuthorId,
     hDoesExist :: DraftId -> m (Either Text ()),
     hDoesAuthorExist :: AuthorId -> m (Either Text ()),
@@ -57,19 +57,19 @@ data Handle m = Handle
     hDoesTagExist :: TagId -> m (Either Text ())
   }
 
-create :: Monad m => Handle m -> Draft -> m (Either Text ())
+create :: Monad m => Handle m -> CreateDraft -> m (Either Text ())
 create handle draft = do
-  authorExist <- hDoesAuthorExist handle $ authorId draft
-  categoryExist <- hDoesCategoryExist handle $ categoryId draft
-  tagExist <- foldl1 (>>) $ map (hDoesTagExist handle) $ tagId draft
+  authorExist <- hDoesAuthorExist handle $ cAuthorId draft
+  categoryExist <- hDoesCategoryExist handle $ cCategoryId draft
+  tagExist <- foldl1 (>>) $ map (hDoesTagExist handle) $ cTagId draft
   case authorExist >> categoryExist >> tagExist of
     Right _ ->
-      case mainPhoto draft of
+      case cMainPhoto draft of
         Image {} -> Right <$> hCreate handle draft
         _ -> return $ Left malformedImage
     Left l -> return $ Left l
 
-get :: Monad m => Handle m -> ServerAddress -> DraftId -> Token -> m (Either Text Draft)
+get :: Monad m => Handle m -> ServerAddress -> DraftId -> Token -> m (Either Text GetDraft)
 get handle server draftId token = do
   access <- canAccess handle draftId token
   case access of
@@ -78,14 +78,14 @@ get handle server draftId token = do
       draft <- hGet handle draftId
       return $ checkPhoto server draft
 
-checkPhoto :: ServerAddress -> Draft -> Either Text Draft
+checkPhoto :: ServerAddress -> GetDraft -> Either Text GetDraft
 checkPhoto server draft =
-  let mainPhotoLink = imageToLink server $ mainPhoto draft
-      minorPhotoLink = imagesToLinks server $ minorPhoto draft
+  let mainPhotoLink = imageToLink server $ gMainPhoto draft
+      minorPhotoLink = imagesToLinks server $ gMinorPhoto draft
    in case mainPhotoLink of
         Right mainLink ->
           case minorPhotoLink of
-            Right minorLink -> Right draft {mainPhoto = mainLink, minorPhoto = minorLink}
+            Right minorLink -> Right draft {gMainPhoto = mainLink, gMinorPhoto = minorLink}
             Left l -> Left l
         Left l -> Left l
 
@@ -96,7 +96,7 @@ edit handle draftId token params = do
     Left l -> return $ Left l
     Right _ -> do
       forM_ (eName params) (hEditName handle draftId)
-      forM_ (eDescription params) (hEditDescription handle draftId)
+      forM_ (eText params) (hEditDescription handle draftId)
       resCateg <- case eCategoryId params of
         Nothing -> return $ Right ()
         Just categId -> editCategoryId handle draftId categId

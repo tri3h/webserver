@@ -1,30 +1,33 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types.Tag where
 
 import Data.Aeson
-  ( Options (sumEncoding),
-    SumEncoding (UntaggedValue),
-    ToJSON (toEncoding),
-    defaultOptions,
-    genericToEncoding,
+  ( KeyValue ((.=)),
+    ToJSON (toJSON),
+    object,
   )
 import Data.Text (Text)
-import GHC.Generics (Generic)
+import Database.PostgreSQL.Simple.FromField (FromField)
+import Database.PostgreSQL.Simple.ToField (ToField)
 
-type TagId = Integer
+newtype TagId = TagId {getTagId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type Name = Text
+newtype Name = Name {getName :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
 data Tag = Tag
-  { tagId :: Integer,
-    name :: Text
+  { tagId :: TagId,
+    name :: Name
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
 instance ToJSON Tag where
-  toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+  toJSON tag =
+    object
+      [ "tag_id" .= tagId tag,
+        "name" .= name tag
+      ]
 
 tagNotExist :: Text
 tagNotExist = "Tag with such id doesn't exist"

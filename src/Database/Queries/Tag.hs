@@ -10,7 +10,7 @@ import Database.PostgreSQL.Simple
     execute,
     query,
   )
-import Types.Post (PostId)
+import Types.PostComment (PostId)
 import Types.Tag (Name, Tag (..), TagId, tagNotExist)
 
 create :: Name -> Connection -> IO ()

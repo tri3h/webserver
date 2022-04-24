@@ -20,40 +20,24 @@ import Network.HTTP.Types.Header (hContentType)
 import Network.HTTP.Types.Status (status200, status400)
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
+import qualified Types.Author as Author
+import qualified Types.Category as Category
 import Types.Config (ServerAddress)
+import Types.Filter (postsOnPage)
 import qualified Types.Filter as F
-import Types.Post (postsOnPage)
+import Types.Post (Date (Date), Name (Name))
+import qualified Types.Tag as Tag
+import qualified Types.User as User
 import Utility (getMaybeInteger, getMaybeIntegers, getMaybeText)
 
 get :: Logger.Handle IO -> Pool Connection -> ServerAddress -> QueryText -> IO Response
 get logger pool address query = do
-  let filters =
-        F.Filter
-          { F.dateAfter = getMaybeText query "date_after",
-            F.dateBefore = getMaybeText query "date_before",
-            F.dateAt = getMaybeText query "date_at",
-            F.authorName = getMaybeText query "author_name",
-            F.categoryId = getMaybeInteger query "category_id",
-            F.tagId = getMaybeInteger query "tag_id",
-            F.tag = getMaybeText query "tag",
-            F.tagIn = getMaybeIntegers query "tag_in",
-            F.tagAll = getMaybeIntegers query "tag_all",
-            F.postName = getMaybeText query "post_name",
-            F.text = getMaybeText query "text",
-            F.substring = getMaybeText query "substring"
-          }
+  let filters = getFilter query
   Logger.debug logger $ "Tried to parse query and got filters: " ++ show filters
-  let order = case getMaybeText query "sort_by" of
-        Just "by_date" -> F.ByDate
-        Just "by_author" -> F.ByAuthor
-        Just "by_category" -> F.ByCategory
-        Just "by_photos_number" -> F.ByPhotosNumber
-        _ -> F.None
+  let order = getOrder query
   Logger.debug logger $ "Tried to parse query and got order: " ++ show order
-  let limit = case getMaybeInteger query "limit" of
-        Nothing -> postsOnPage
-        Just x -> if x <= postsOnPage then x else postsOnPage
-  let offset = fromMaybe 0 (getMaybeInteger query "offset")
+  let limit = getLimit query
+  let offset = getOffset query
   posts <- Handler.get (handle pool) address filters order limit offset
   Logger.debug logger $ "Tried to get posts and got: " ++ show posts
   case posts of
@@ -71,6 +55,41 @@ get logger pool address query = do
           [(hContentType, "application/json")]
           $ encode r
 
+getOffset :: QueryText -> F.Offset
+getOffset query = F.Offset $ fromMaybe 0 (getMaybeInteger query "offset")
+
+getLimit :: QueryText -> F.Limit
+getLimit query = case getMaybeInteger query "limit" of
+  Nothing -> postsOnPage
+  Just x ->
+    let limit = F.Limit x
+     in if limit <= postsOnPage then limit else postsOnPage
+
+getOrder :: QueryText -> F.Order
+getOrder query = case getMaybeText query "sort_by" of
+  Just "by_date" -> F.ByDate
+  Just "by_author" -> F.ByAuthor
+  Just "by_category" -> F.ByCategory
+  Just "by_photos_number" -> F.ByPhotosNumber
+  _ -> F.None
+
+getFilter :: QueryText -> F.Filter
+getFilter query =
+  F.Filter
+    { F.dateAfter = Date <$> getMaybeText query "date_after",
+      F.dateBefore = Date <$> getMaybeText query "date_before",
+      F.dateAt = Date <$> getMaybeText query "date_at",
+      F.authorName = User.Name <$> getMaybeText query "author_name",
+      F.categoryId = Category.CategoryId <$> getMaybeInteger query "category_id",
+      F.tagId = Tag.TagId <$> getMaybeInteger query "tag_id",
+      F.tag = Tag.Name <$> getMaybeText query "tag",
+      F.tagIn = map Tag.TagId <$> getMaybeIntegers query "tag_in",
+      F.tagAll = map Tag.TagId <$> getMaybeIntegers query "tag_all",
+      F.postName = Name <$> getMaybeText query "post_name",
+      F.text = getMaybeText query "text",
+      F.substring = getMaybeText query "substring"
+    }
+
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
   Handler.Handle
@@ -79,10 +98,10 @@ handle pool =
       Handler.hGet = withResource pool . Db.get,
       Handler.hGetAll = withResource pool Db.getAll,
       Handler.hGetMinorPhotos = withResource pool . Db.getMinorPhotos,
-      Handler.hGetAuthor = withResource pool . AuthorDb.getMaybe,
-      Handler.hGetUser = withResource pool . UserDb.getMaybeByUserId,
+      Handler.hGetAuthor = withResource pool . AuthorDb.getMaybe . fromMaybe (Author.AuthorId 0),
+      Handler.hGetUser = withResource pool . UserDb.getMaybeByUserId . fromMaybe (User.UserId 0),
       Handler.hGetCategory = \catId -> do
-        parents <- withResource pool $ CategoryDb.getParents catId
+        parents <- withResource pool $ CategoryDb.getParents (fromMaybe (Category.CategoryId 0) catId)
         mapM (withResource pool . CategoryDb.get) parents,
       Handler.hGetTag = withResource pool . TagDb.getByPostId,
       Handler.hGetComment = withResource pool . CommentDb.get,

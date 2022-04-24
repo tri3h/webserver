@@ -3,7 +3,6 @@
 
 module Database.Queries.Author where
 
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -12,22 +11,24 @@ import Database.PostgreSQL.Simple
     query,
   )
 import Types.Author
-  ( Author (AuthorToGet, authorId, description, userId),
-    AuthorId,
+  ( AuthorId,
+    CreateAuthor (..),
+    EditAuthor (..),
+    GetAuthor (..),
     authorNotExist,
   )
 import Types.Draft (DraftId)
-import Types.Post (PostId)
+import Types.PostComment (PostId)
 import Types.User (Token)
 
-create :: Author -> Connection -> IO ()
+create :: CreateAuthor -> Connection -> IO ()
 create author conn = do
   _ <-
     execute
       conn
       "INSERT INTO authors (user_id, description) \
       \VALUES (?,?)"
-      (userId author, description author)
+      (cUserId author, cDescription author)
   return ()
 
 delete :: AuthorId -> Connection -> IO ()
@@ -35,18 +36,17 @@ delete authorId conn = do
   _ <- execute conn "DELETE FROM authors WHERE authors.author_id = ?" (Only authorId)
   return ()
 
-get :: AuthorId -> Connection -> IO Author
+get :: AuthorId -> Connection -> IO GetAuthor
 get authId conn = do
-  [(authorId, maybeUserId, description)] <-
+  [(gAuthorId, gUserId, gDescription)] <-
     query
       conn
       "SELECT author_id, user_id, description FROM authors \
       \WHERE authors.author_id = ?"
       (Only authId)
-  let userId = fromMaybe 0 maybeUserId
-  return AuthorToGet {..}
+  return GetAuthor {..}
 
-getMaybe :: AuthorId -> Connection -> IO (Maybe Author)
+getMaybe :: AuthorId -> Connection -> IO (Maybe GetAuthor)
 getMaybe authId conn = do
   x <-
     query
@@ -55,19 +55,18 @@ getMaybe authId conn = do
       \WHERE authors.author_id = ?"
       (Only authId)
   case x of
-    [(authorId, maybeUserId, description)] -> do
-      let userId = fromMaybe 0 maybeUserId
-      return $ Just AuthorToGet {..}
+    [(gAuthorId, gUserId, gDescription)] ->
+      return $ Just GetAuthor {..}
     _ -> return Nothing
 
-edit :: Author -> Connection -> IO ()
+edit :: EditAuthor -> Connection -> IO ()
 edit author conn = do
   _ <-
     execute
       conn
       "UPDATE authors SET description = ? \
       \WHERE authors.author_id = ?"
-      (description author, authorId author)
+      (eDescription author, eAuthorId author)
   return ()
 
 doesExist :: AuthorId -> Connection -> IO (Either Text ())

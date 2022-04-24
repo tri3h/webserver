@@ -22,14 +22,12 @@ import Network.HTTP.Types.Status
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
 import Types.Author
-  ( Author
-      ( AuthorToCreate,
-        AuthorToEdit,
-        authorId,
-        description,
-        userId
-      ),
+  ( AuthorDescription (AuthorDescription),
+    AuthorId (AuthorId),
+    CreateAuthor (..),
+    EditAuthor (..),
   )
+import Types.User (UserId (UserId))
 import Utility (getInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
@@ -37,11 +35,11 @@ create logger pool query = do
   let info = do
         userId <- getInteger query "user_id"
         description <- getText query "description"
-        Right (userId, description)
+        Right (UserId userId, AuthorDescription description)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Right (userId, description) -> do
-      let author = AuthorToCreate {..}
+    Right (cUserId, cDescription) -> do
+      let author = CreateAuthor {..}
       result <- Handler.create (handle pool) author
       Logger.debug logger $ "Tried to create author and got: " ++ show result
       case result of
@@ -61,7 +59,7 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- Handler.get (handle pool) authorId
+      result <- Handler.get (handle pool) $ AuthorId authorId
       Logger.debug logger $ "Tried to get author and got: " ++ show result
       case result of
         Right r ->
@@ -82,9 +80,9 @@ get logger pool query = do
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
   let info = do
-        authorId <- getInteger query "author_id"
-        description <- getText query "description"
-        Right $ AuthorToEdit {..}
+        eAuthorId <- AuthorId <$> getInteger query "author_id"
+        eDescription <- AuthorDescription <$> getText query "description"
+        Right $ EditAuthor {..}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right author -> do
@@ -107,7 +105,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- Handler.delete (handle pool) authorId
+      result <- Handler.delete (handle pool) $ AuthorId authorId
       Logger.debug logger $ "Tried to delete author and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""

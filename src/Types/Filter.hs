@@ -1,25 +1,36 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Types.Filter where
 
 import Data.Text (Text)
+import Database.PostgreSQL.Simple.FromField (FromField)
+import Database.PostgreSQL.Simple.ToField (ToField)
+import qualified Types.Category as Category
+import qualified Types.Post as Post
+import qualified Types.Tag as Tag
+import qualified Types.User as User
 
-type Offset = Integer
+newtype Offset = Offset {getOffset :: Integer} deriving (Show, Eq, ToField, FromField)
 
-type Limit = Integer
+newtype Limit = Limit {getLimit :: Integer} deriving (Show, Eq, Ord, ToField, FromField)
 
 data Filter = Filter
-  { dateAfter :: Maybe Text,
-    dateBefore :: Maybe Text,
-    dateAt :: Maybe Text,
-    authorName :: Maybe Text,
-    categoryId :: Maybe Integer,
-    tagId :: Maybe Integer,
-    tag :: Maybe Text,
-    tagIn :: Maybe [Integer],
-    tagAll :: Maybe [Integer],
-    postName :: Maybe Text,
+  { dateAfter :: Maybe Post.Date,
+    dateBefore :: Maybe Post.Date,
+    dateAt :: Maybe Post.Date,
+    authorName :: Maybe User.Name,
+    categoryId :: Maybe Category.CategoryId,
+    tagId :: Maybe Tag.TagId,
+    tag :: Maybe Tag.Name,
+    tagIn :: Maybe [Tag.TagId],
+    tagAll :: Maybe [Tag.TagId],
+    postName :: Maybe Post.Name,
     text :: Maybe Text,
     substring :: Maybe Text
   }
   deriving (Show)
 
 data Order = ByDate | ByAuthor | ByCategory | ByPhotosNumber | None deriving (Show)
+
+postsOnPage :: Limit
+postsOnPage = Limit 10

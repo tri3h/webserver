@@ -1,38 +1,42 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types.Comment where
 
 import Data.Aeson
-  ( Options (sumEncoding),
-    SumEncoding (UntaggedValue),
-    ToJSON (toEncoding),
-    defaultOptions,
-    genericToEncoding,
+  ( KeyValue ((.=)),
+    ToJSON (toJSON),
+    object,
   )
 import Data.Text (Text)
-import GHC.Generics (Generic)
+import Database.PostgreSQL.Simple.FromField (FromField)
+import Database.PostgreSQL.Simple.ToField (ToField)
+import Types.PostComment (PostId)
+import Types.User (UserId)
 
-type CommentId = Integer
+newtype CommentId = CommentId {getCommentId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-data Comment
-  = CommentToCreate
-      { postId :: Integer,
-        userId :: Integer,
-        text :: Text
-      }
-  | CommentToGet
-      { commentId :: Integer,
-        userId :: Integer,
-        text :: Text
-      }
-  deriving (Show, Eq, Generic)
+data CreateComment = CreateComment
+  { cPostId :: PostId,
+    cUserId :: UserId,
+    cText :: Text
+  }
+  deriving (Show, Eq)
 
-instance ToJSON Comment where
-  toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+data GetComment = GetComment
+  { gCommentId :: CommentId,
+    gUserId :: Maybe UserId,
+    gText :: Text
+  }
+  deriving (Show, Eq)
+
+instance ToJSON GetComment where
+  toJSON comment =
+    object
+      [ "comment_id" .= gCommentId comment,
+        "user_id" .= gUserId comment,
+        "text" .= gText comment
+      ]
 
 commentNotExist :: Text
 commentNotExist = "Comment with such id doesn't exist"
-
-malformedComment :: Text
-malformedComment = "Malformed comments"

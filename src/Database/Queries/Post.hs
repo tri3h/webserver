@@ -3,7 +3,6 @@
 
 module Database.Queries.Post where
 
-import Data.Maybe (fromMaybe)
 import Data.Text (Text, append, pack)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -12,25 +11,20 @@ import Database.PostgreSQL.Simple
     query,
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
+import qualified Types.Category as Category
 import Types.Filter (Limit, Offset)
 import Types.Image (Image (Id))
 import Types.Post
-  ( Post
-      ( ShortPost,
-        authorId,
-        categoryId,
-        date,
-        mainPhoto,
-        name,
-        postId,
-        text
-      ),
-    PostId,
+  ( Date (Date),
+    Name (Name),
+    ShortPost (..),
     postNotExist,
   )
+import Types.PostComment (PostId)
 import qualified Types.Tag as Tag
+import qualified Types.User as User
 
-get :: [PostId] -> Connection -> IO [Post]
+get :: [PostId] -> Connection -> IO [ShortPost]
 get pId conn = do
   result <-
     query
@@ -41,19 +35,17 @@ get pId conn = do
       (Only $ In pId)
   let posts =
         map
-          ( \( postId,
-               maybeAuthorId,
-               maybeCategoryId,
-               name,
+          ( \( sPostId,
+               sAuthorId,
+               sCategoryId,
+               sName,
                date,
-               text,
+               sText,
                mainPhoto
                ) ->
                 ShortPost
-                  { date = pack $ show (date :: Time.Date),
-                    mainPhoto = Id mainPhoto,
-                    authorId = fromMaybe 0 maybeAuthorId,
-                    categoryId = fromMaybe 0 maybeCategoryId,
+                  { sDate = Date . pack $ show (date :: Time.Date),
+                    sMainPhoto = Id mainPhoto,
                     ..
                   }
           )
@@ -85,22 +77,22 @@ getMinorPhotos postId conn = do
           xs
   return xs'
 
-filterByDateBefore :: Text -> Connection -> IO [PostId]
+filterByDateBefore :: Date -> Connection -> IO [PostId]
 filterByDateBefore date conn = do
   xs <- query conn "SELECT post_id FROM posts WHERE date < ?" $ Only date
   return $ map fromOnly xs
 
-filterByDateAfter :: Text -> Connection -> IO [PostId]
+filterByDateAfter :: Date -> Connection -> IO [PostId]
 filterByDateAfter date conn = do
   xs <- query conn "SELECT post_id FROM posts WHERE date > ?" $ Only date
   return $ map fromOnly xs
 
-filterByDateAt :: Text -> Connection -> IO [PostId]
+filterByDateAt :: Date -> Connection -> IO [PostId]
 filterByDateAt date conn = do
   xs <- query conn "SELECT post_id FROM posts WHERE date = ?" $ Only date
   return $ map fromOnly xs
 
-filterByAuthorName :: Text -> Connection -> IO [PostId]
+filterByAuthorName :: User.Name -> Connection -> IO [PostId]
 filterByAuthorName name conn = do
   xs <-
     query
@@ -111,7 +103,7 @@ filterByAuthorName name conn = do
       $ Only name
   return $ map fromOnly xs
 
-filterByCategoryId :: Integer -> Connection -> IO [PostId]
+filterByCategoryId :: Category.CategoryId -> Connection -> IO [PostId]
 filterByCategoryId catId conn = do
   xs <-
     query
@@ -121,12 +113,12 @@ filterByCategoryId catId conn = do
       $ Only catId
   return $ map fromOnly xs
 
-filterByTagId :: Integer -> Connection -> IO [PostId]
+filterByTagId :: Tag.TagId -> Connection -> IO [PostId]
 filterByTagId tagId conn = do
   xs <- query conn "SELECT post_id FROM post_tags WHERE tag_id = ?" $ Only tagId
   return $ map fromOnly xs
 
-filterByTag :: Text -> Connection -> IO [PostId]
+filterByTag :: Tag.Name -> Connection -> IO [PostId]
 filterByTag name conn = do
   xs <-
     query
@@ -156,8 +148,8 @@ filterByAllOfTags tagId conn = do
       (In tagId, length tagId)
   return $ map fromOnly xs
 
-filterByPostName :: Text -> Connection -> IO [PostId]
-filterByPostName name conn = do
+filterByPostName :: Name -> Connection -> IO [PostId]
+filterByPostName (Name name) conn = do
   let fullName = "%" `append` name `append` "%"
   xs <- query conn "SELECT post_id FROM posts WHERE name LIKE ?" $ Only fullName
   return $ map fromOnly xs

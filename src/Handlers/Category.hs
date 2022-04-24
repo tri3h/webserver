@@ -2,18 +2,18 @@ module Handlers.Category where
 
 import Data.Text (Text)
 import Types.Category
-  ( Category (Category, CategoryToCreate, parentId),
-    CategoryId,
+  ( CategoryId,
+    CreateCategory (cParentId),
+    GetCategory,
     Name,
     ParentId,
     invalidParent,
-    malformedCategory,
     noDeleteHasChildren,
   )
 
 data Handle m = Handle
-  { hCreate :: Category -> m (),
-    hGet :: CategoryId -> m Category,
+  { hCreate :: CreateCategory -> m (),
+    hGet :: CategoryId -> m GetCategory,
     hDelete :: CategoryId -> m (),
     hEditName :: CategoryId -> Name -> m (),
     hEditParent :: CategoryId -> ParentId -> m (),
@@ -21,19 +21,15 @@ data Handle m = Handle
     hGetChildren :: CategoryId -> m [CategoryId]
   }
 
-create :: Monad m => Handle m -> Category -> m (Either Text ())
+create :: Monad m => Handle m -> CreateCategory -> m (Either Text ())
 create handle categ = do
-  let isFormatCorrect = case categ of CategoryToCreate {} -> True; _ -> False
-  if isFormatCorrect
-    then do
-      correct <- isParentCorrect
-      if correct
-        then Right <$> hCreate handle categ
-        else return $ Left invalidParent
-    else return $ Left malformedCategory
+  correct <- isParentCorrect
+  if correct
+    then Right <$> hCreate handle categ
+    else return $ Left invalidParent
   where
     isParentCorrect =
-      case parentId categ of
+      case cParentId categ of
         Nothing -> return True
         Just b -> do
           exist <- hDoesExist handle b
@@ -41,16 +37,11 @@ create handle categ = do
             Right () -> True
             _ -> False
 
-get :: Monad m => Handle m -> CategoryId -> m (Either Text Category)
+get :: Monad m => Handle m -> CategoryId -> m (Either Text GetCategory)
 get handle categId = do
   exist <- hDoesExist handle categId
   case exist of
-    Right _ -> do
-      categ <- hGet handle categId
-      let isFormatCorrect = case categ of Category {} -> True; _ -> False
-      if isFormatCorrect
-        then return $ Right categ
-        else return $ Left malformedCategory
+    Right _ -> Right <$> hGet handle categId
     Left l -> return $ Left l
 
 delete :: Monad m => Handle m -> CategoryId -> m (Either Text ())

@@ -8,62 +8,48 @@ import Data.List (elemIndex, zipWith7)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Types.Author as A
-import Types.Category (Category, CategoryId)
-import Types.Comment (Comment)
+import Types.Category (CategoryId, GetCategory)
+import Types.Comment (GetComment)
 import Types.Config (ServerAddress)
 import qualified Types.Filter as F
 import Types.Image (Image)
 import Types.Post
-  ( Post
-      ( FullPost,
-        ShortPost,
-        author,
-        authorId,
-        category,
-        categoryId,
-        comment,
-        date,
-        mainPhoto,
-        minorPhoto,
-        name,
-        postId,
-        tag,
-        text,
-        user
-      ),
-    PostId,
-    malformedPost,
+  ( Date,
+    FullPost (..),
+    Name,
+    ShortPost (..),
     noPost,
   )
-import Types.Tag (Tag, TagId)
-import Types.User (User, UserId)
+import Types.PostComment (PostId)
+import qualified Types.Tag as Tag
+import qualified Types.User as User
 import Utility (imagesToLinks)
 
 data Handle m = Handle
   { hFilterHandle :: FilterHandle m,
     hOrderHandle :: OrderHandle m,
-    hGet :: [PostId] -> m [Post],
+    hGet :: [PostId] -> m [ShortPost],
     hGetAll :: m [PostId],
     hGetMinorPhotos :: PostId -> m [Image],
-    hGetAuthor :: A.AuthorId -> m (Maybe A.Author),
-    hGetUser :: UserId -> m (Maybe User),
-    hGetCategory :: CategoryId -> m [Category],
-    hGetTag :: PostId -> m [Tag],
-    hGetComment :: PostId -> m [Comment],
+    hGetAuthor :: Maybe A.AuthorId -> m (Maybe A.GetAuthor),
+    hGetUser :: Maybe User.UserId -> m (Maybe User.GetUser),
+    hGetCategory :: Maybe CategoryId -> m [GetCategory],
+    hGetTag :: PostId -> m [Tag.Tag],
+    hGetComment :: PostId -> m [GetComment],
     hApplyLimitOffset :: [PostId] -> F.Limit -> F.Offset -> m [PostId]
   }
 
 data FilterHandle m = FilterHandle
-  { hByDateBefore :: Text -> m [PostId],
-    hByDateAfter :: Text -> m [PostId],
-    hByDateAt :: Text -> m [PostId],
-    hByAuthorName :: Text -> m [PostId],
-    hByCategoryId :: Integer -> m [PostId],
-    hByTagId :: TagId -> m [PostId],
-    hByTag :: Text -> m [PostId],
-    hByOneOfTags :: [TagId] -> m [PostId],
-    hByAllOfTags :: [TagId] -> m [PostId],
-    hByPostName :: Text -> m [PostId],
+  { hByDateBefore :: Date -> m [PostId],
+    hByDateAfter :: Date -> m [PostId],
+    hByDateAt :: Date -> m [PostId],
+    hByAuthorName :: User.Name -> m [PostId],
+    hByCategoryId :: CategoryId -> m [PostId],
+    hByTagId :: Tag.TagId -> m [PostId],
+    hByTag :: Tag.Name -> m [PostId],
+    hByOneOfTags :: [Tag.TagId] -> m [PostId],
+    hByAllOfTags :: [Tag.TagId] -> m [PostId],
+    hByPostName :: Name -> m [PostId],
     hByText :: Text -> m [PostId],
     hBySubstring :: Text -> m [PostId]
   }
@@ -75,7 +61,7 @@ data OrderHandle m = OrderHandle
     hByPhotosNumber :: [PostId] -> m [PostId]
   }
 
-get :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Text [Post])
+get :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Text [FullPost])
 get handle server params order limit offset = do
   let isFiltersEmpty =
         all
@@ -103,41 +89,38 @@ get handle server params order limit offset = do
     then return $ Left noPost
     else do
       posts <- hGet handle limitedOffseted
-      let isFormatCorrect = all (\case ShortPost {} -> True; _ -> False) posts
-      if isFormatCorrect
-        then makeFullPost handle server posts limitedOffseted
-        else return $ Left malformedPost
+      makeFullPost handle server posts limitedOffseted
 
-orderFullPost :: [PostId] -> [Post] -> [Post]
+orderFullPost :: [PostId] -> [FullPost] -> [FullPost]
 orderFullPost orderedId posts =
-  let p = map postId posts
+  let p = map fPostId posts
       index = map (fromJust . (`elemIndex` p)) orderedId
    in map (posts !!) index
 
-makeFullPost :: Monad m => Handle m -> ServerAddress -> [Post] -> [PostId] -> m (Either Text [Post])
+makeFullPost :: Monad m => Handle m -> ServerAddress -> [ShortPost] -> [PostId] -> m (Either Text [FullPost])
 makeFullPost handle server posts orderedId = do
-  authors <- mapM (hGetAuthor handle . authorId) posts
-  users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle $ A.userId a) authors
-  categories <- mapM (hGetCategory handle . categoryId) posts
-  tags <- mapM (hGetTag handle . postId) posts
-  comments <- mapM (hGetComment handle . postId) posts
-  minorPhotos <- mapM (hGetMinorPhotos handle . postId) posts
-  let mainPhotoLink = imagesToLinks server $ map mainPhoto posts
+  authors <- mapM (hGetAuthor handle . sAuthorId) posts
+  users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle $ A.gUserId a) authors
+  categories <- mapM (hGetCategory handle . sCategoryId) posts
+  tags <- mapM (hGetTag handle . sPostId) posts
+  comments <- mapM (hGetComment handle . sPostId) posts
+  minorPhotos <- mapM (hGetMinorPhotos handle . sPostId) posts
+  let mainPhotoLink = imagesToLinks server $ map sMainPhoto posts
   let minorPhotoLink = mapM (imagesToLinks server) minorPhotos
   case mainPhotoLink of
     Right mainLinks ->
-      let postsWithLinks = zipWith (\post link -> post {mainPhoto = link}) posts mainLinks
+      let postsWithLinks = zipWith (\post link -> post {sMainPhoto = link}) posts mainLinks
        in case minorPhotoLink of
             Right minorLinks -> do
               let fullPosts =
                     zipWith7
-                      ( \post author user category tag comment minorPhoto ->
+                      ( \post fAuthor fUser fCategory fTag fComment fMinorPhoto ->
                           FullPost
-                            { postId = postId post,
-                              name = name post,
-                              date = date post,
-                              text = text post,
-                              mainPhoto = mainPhoto post,
+                            { fPostId = sPostId post,
+                              fName = sName post,
+                              fDate = sDate post,
+                              fText = sText post,
+                              fMainPhoto = sMainPhoto post,
                               ..
                             }
                       )

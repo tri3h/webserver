@@ -4,7 +4,6 @@
 
 module Database.Queries.Draft where
 
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -14,13 +13,13 @@ import Database.PostgreSQL.Simple
     query,
   )
 import Types.Category (CategoryId)
-import Types.Draft (Description, Draft (..), DraftId, Name, draftNotExist)
+import Types.Draft (CreateDraft (..), DraftId, GetDraft (..), Name, draftNotExist)
 import Types.Image (Image (..), ImageId)
 import Types.Tag (TagId)
 
-create :: Draft -> Connection -> IO ()
+create :: CreateDraft -> Connection -> IO ()
 create draft conn = do
-  let (Image image imageType) = mainPhoto draft
+  let (Image image imageType) = cMainPhoto draft
   [Only imageId] <-
     query
       conn
@@ -33,43 +32,40 @@ create draft conn = do
       "INSERT INTO drafts \
       \(category_id, name, text, image_id, author_id) VALUES (?,?,?,?,?) \
       \RETURNING draft_id"
-      (categoryId draft, name draft, description draft, imageId :: Integer, authorId draft)
-  let tags = map (draftId,) $ tagId draft
+      (cCategoryId draft, cName draft, cText draft, imageId :: Integer, cAuthorId draft)
+  let tags = map (draftId,) $ cTagId draft
   _ <-
     executeMany
       conn
       "INSERT INTO draft_tags (draft_id, tag_id) \
       \VALUES (?,?)"
-      (tags :: [(Integer, Integer)])
+      (tags :: [(Integer, TagId)])
   return ()
 
-get :: DraftId -> Connection -> IO Draft
-get draftId conn = do
-  [(postId, maybeAuthorId, maybeCategoryId, name, description, mainPhotoId)] <-
+get :: DraftId -> Connection -> IO GetDraft
+get gDraftId conn = do
+  [(gPostId, gAuthorId, gCategoryId, gName, gText, mainPhotoId)] <-
     query
       conn
       "SELECT post_id, author_id, category_id, name, \
       \text, image_id FROM drafts WHERE draft_id = ?"
-      (Only draftId)
-  tagIds <- query conn "SELECT tag_id FROM draft_tags WHERE draft_id = ?" (Only draftId)
+      (Only gDraftId)
+  tagIds <- query conn "SELECT tag_id FROM draft_tags WHERE draft_id = ?" (Only gDraftId)
   minorPhotoId <-
     query
       conn
       "SELECT image_id \
       \FROM draft_minor_photos WHERE draft_id = ?"
-      (Only draftId)
+      (Only gDraftId)
   return $
-    Draft
-      { tagId = map (\(Only x) -> x) tagIds,
-        mainPhoto = Id mainPhotoId,
-        minorPhoto =
+    GetDraft
+      { gTagId = map (\(Only x) -> x) tagIds,
+        gMainPhoto = Id mainPhotoId,
+        gMinorPhoto =
           map
             ( \(Only x) -> Id x
             )
             minorPhotoId,
-        authorId = fromMaybe 0 maybeAuthorId,
-        categoryId = fromMaybe 0 maybeCategoryId,
-        draftId = Just draftId,
         ..
       }
 
@@ -95,9 +91,9 @@ editName draftId name conn = do
   _ <- execute conn "UPDATE drafts SET name = ? WHERE draft_id = ?" (name, draftId)
   return ()
 
-editDescription :: DraftId -> Description -> Connection -> IO ()
-editDescription draftId descr conn = do
-  _ <- execute conn "UPDATE drafts SET text = ? WHERE draft_id = ?" (descr, draftId)
+editText :: DraftId -> Text -> Connection -> IO ()
+editText draftId text conn = do
+  _ <- execute conn "UPDATE drafts SET text = ? WHERE draft_id = ?" (text, draftId)
   return ()
 
 editMainPhoto :: DraftId -> Image -> Connection -> IO ()
@@ -149,22 +145,22 @@ delete draftId conn = do
   _ <- execute conn "DELETE FROM drafts WHERE drafts.draft_id = ?" (Only draftId)
   return ()
 
-publish :: Draft -> String -> Connection -> IO ()
+publish :: GetDraft -> String -> Connection -> IO ()
 publish draft date conn = do
   [Only postId] <-
     query
       conn
       "INSERT INTO posts (author_id, category_id, \
       \name, date, text) VALUES (?,?,?,?,?) RETURNING post_id"
-      ( authorId draft,
-        categoryId draft,
-        name draft,
+      ( gAuthorId draft,
+        gCategoryId draft,
+        gName draft,
         date,
-        description draft
+        gText draft
       )
-  [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ draftId draft)
+  [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ gDraftId draft)
   _ <- execute conn "UPDATE posts SET image_id = ? WHERE post_id = ?" (mainPhotoId :: Integer, postId)
-  photoIds <- query conn "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?" (Only $ draftId draft)
+  photoIds <- query conn "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?" (Only $ gDraftId draft)
   let postPhotos = map (\(Only y) -> (postId :: Integer, y)) (photoIds :: [Only Integer])
   _ <-
     executeMany
@@ -172,31 +168,31 @@ publish draft date conn = do
       "INSERT INTO post_minor_photos (post_id, image_id) \
       \VALUES (?,?)"
       postPhotos
-  let postTags = map (postId,) $ tagId draft
+  let postTags = map (postId,) $ gTagId draft
   _ <- executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
   return ()
 
-update :: Draft -> Connection -> IO ()
+update :: GetDraft -> Connection -> IO ()
 update draft conn = do
-  _ <- execute conn "DELETE FROM post_tags WHERE post_id = ?" (Only $ postId draft)
-  _ <- execute conn "DELETE FROM post_minor_photos WHERE post_id = ?" (Only $ postId draft)
-  photoIds <- query conn "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?" (Only $ draftId draft)
-  let postPhotos = map (\(Only y) -> (postId draft, y)) (photoIds :: [Only Integer])
+  _ <- execute conn "DELETE FROM post_tags WHERE post_id = ?" (Only $ gPostId draft)
+  _ <- execute conn "DELETE FROM post_minor_photos WHERE post_id = ?" (Only $ gPostId draft)
+  photoIds <- query conn "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?" (Only $ gDraftId draft)
+  let postPhotos = map (\(Only y) -> (gPostId draft, y)) (photoIds :: [Only Integer])
   _ <-
     executeMany
       conn
       "INSERT INTO post_minor_photos (post_id, image_id) \
       \VALUES (?,?)"
       postPhotos
-  let postTags = map (postId draft,) $ tagId draft
+  let postTags = map (gPostId draft,) $ gTagId draft
   _ <- executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
-  [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ draftId draft)
+  [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ gDraftId draft)
   _ <-
     execute
       conn
       "UPDATE posts SET category_id = ?, \
       \name = ?, text = ?, image_id = ? WHERE post_id = ?"
-      (categoryId draft, name draft, description draft, mainPhotoId :: Integer, postId draft)
+      (gCategoryId draft, gName draft, gText draft, mainPhotoId :: Integer, gPostId draft)
   return ()
 
 hasPost :: DraftId -> Connection -> IO Bool
