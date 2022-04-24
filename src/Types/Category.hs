@@ -1,47 +1,49 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types.Category where
 
 import Data.Aeson
-  ( Options (sumEncoding),
-    SumEncoding (UntaggedValue),
-    ToJSON (toEncoding),
-    defaultOptions,
-    genericToEncoding,
+  ( KeyValue ((.=)),
+    ToJSON (toJSON),
+    object,
   )
 import Data.Text (Text)
-import GHC.Generics (Generic)
+import Database.PostgreSQL.Simple.FromField (FromField)
+import Database.PostgreSQL.Simple.ToField (ToField)
 
-type CategoryId = Integer
+newtype CategoryId = CategoryId {getCategoryId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type Name = Text
+newtype Name = Name {getName :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type ParentId = Integer
+type ParentId = CategoryId
 
-data Category
-  = Category
-      { categoryId :: Integer,
-        name :: Text,
-        parentId :: Maybe Integer
-      }
-  | CategoryToCreate
-      { name :: Text,
-        parentId :: Maybe Integer
-      }
-  deriving (Show, Eq, Generic)
+data CreateCategory = CreateCategory
+  { cName :: Name,
+    cParentId :: Maybe CategoryId
+  }
+  deriving (Show, Eq)
 
-instance ToJSON Category where
-  toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+data GetCategory = GetCategory
+  { gCategoryId :: CategoryId,
+    gName :: Name,
+    gParentId :: Maybe ParentId
+  }
+  deriving (Show, Eq)
+
+instance ToJSON GetCategory where
+  toJSON categ =
+    object
+      [ "category_id" .= gCategoryId categ,
+        "name" .= gName categ,
+        "parent_id" .= gParentId categ
+      ]
 
 categoryNotExist :: Text
 categoryNotExist = "Category with such id doesn't exist"
 
 invalidParent :: Text
 invalidParent = "Invalid parent id"
-
-malformedCategory :: Text
-malformedCategory = "Malformed category"
 
 noDeleteHasChildren :: Text
 noDeleteHasChildren = "Impossible to delete: the category has children"

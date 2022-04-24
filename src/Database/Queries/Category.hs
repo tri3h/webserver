@@ -11,21 +11,22 @@ import Database.PostgreSQL.Simple
     query,
   )
 import Types.Category
-  ( Category (Category, categoryId, name, parentId),
-    CategoryId,
+  ( CategoryId,
+    CreateCategory (..),
+    GetCategory (..),
     Name,
     ParentId,
     categoryNotExist,
   )
 
-create :: Category -> Connection -> IO ()
+create :: CreateCategory -> Connection -> IO ()
 create cat conn = do
   _ <-
     execute
       conn
       "INSERT INTO categories (name, parent_id) \
       \VALUES (?,?)"
-      (name cat, parentId cat)
+      (cName cat, cParentId cat)
   return ()
 
 delete :: CategoryId -> Connection -> IO ()
@@ -38,15 +39,15 @@ delete catId conn = do
       (Only catId)
   return ()
 
-get :: CategoryId -> Connection -> IO Category
+get :: CategoryId -> Connection -> IO GetCategory
 get catId conn = do
-  [(categoryId, name, parentId)] <-
+  [(gCategoryId, gName, gParentId)] <-
     query
       conn
       "SELECT category_id, name, parent_id FROM categories \
       \WHERE categories.category_id = ?"
       (Only catId)
-  return Category {..}
+  return GetCategory {..}
 
 editName :: CategoryId -> Name -> Connection -> IO ()
 editName categoryId name conn = do

@@ -10,7 +10,7 @@ import qualified Data.ByteString as BS
 import Data.ByteString.Lazy (toStrict)
 import Data.Pool (Pool)
 import Data.String (IsString (fromString))
-import Data.Text (Text, unpack)
+import Data.Text (unpack)
 import Database.Connection (makePool)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Draft
@@ -29,6 +29,7 @@ import qualified Post
 import qualified Tag
 import Types.Config (Config (database, server), ServerConfig (sAddress, sHost, sPort))
 import qualified Types.Config as Config
+import Types.User (Token (Token))
 import qualified User
 
 run :: Logger.Handle IO -> Config.Config -> IO ()
@@ -42,11 +43,11 @@ run logger config = do
     Logger.debug logger $ "Received query: " ++ show query
     body <- toStrict <$> strictRequestBody req
     Logger.debug logger $ "Received body: " ++ show body
-    response <- case join $ lookup "token" query of
-      Just t -> do
-        isValid <- User.isTokenValid pool t
+    response <- case Token <$> join (lookup "token" query) of
+      Just token -> do
+        isValid <- User.isTokenValid pool token
         if isValid
-          then makeTokenResponse logger config pool req body t
+          then makeTokenResponse logger config pool req body token
           else do
             let err = "Invalid token"
             Logger.debug logger $ show err
@@ -68,7 +69,7 @@ makeNoTokenResponse logger pool req body = do
       _ -> return $ responseLBS status404 [] ""
     _ -> return $ responseLBS status404 [] ""
 
-makeTokenResponse :: Logger.Handle IO -> Config.Config -> Pool Connection -> Request -> BS.ByteString -> Text -> IO Response
+makeTokenResponse :: Logger.Handle IO -> Config.Config -> Pool Connection -> Request -> BS.ByteString -> Token -> IO Response
 makeTokenResponse logger config pool req body token = do
   isAdmin <- User.isAdmin pool token
   let query = queryToQueryText $ queryString req

@@ -2,50 +2,36 @@ module Handlers.Author where
 
 import Data.Text (Text)
 import Types.Author
-  ( Author
-      ( AuthorToCreate,
-        AuthorToEdit,
-        AuthorToGet,
-        authorId,
-        userId
-      ),
-    AuthorId,
-    malformedAuthor,
+  ( AuthorId,
+    CreateAuthor (cUserId),
+    EditAuthor (eAuthorId),
+    GetAuthor,
   )
 import Types.User (UserId)
 
 data Handle m = Handle
-  { hCreate :: Author -> m (),
-    hGet :: AuthorId -> m Author,
+  { hCreate :: CreateAuthor -> m (),
+    hGet :: AuthorId -> m GetAuthor,
     hDelete :: AuthorId -> m (),
-    hEdit :: Author -> m (),
+    hEdit :: EditAuthor -> m (),
     hDoesExist :: AuthorId -> m (Either Text ()),
     hDoesUserExist :: UserId -> m (Either Text ())
   }
 
-create :: Monad m => Handle m -> Author -> m (Either Text ())
+create :: Monad m => Handle m -> CreateAuthor -> m (Either Text ())
 create handle author = do
-  let isFormatCorrect = case author of AuthorToCreate {} -> True; _ -> False
-  if isFormatCorrect
-    then do
-      exist <- hDoesUserExist handle $ userId author
-      case exist of
-        Right () -> do
-          hCreate handle author
-          return $ Right ()
-        Left l -> return $ Left l
-    else return $ Left malformedAuthor
+  exist <- hDoesUserExist handle $ cUserId author
+  case exist of
+    Right () -> do
+      hCreate handle author
+      return $ Right ()
+    Left l -> return $ Left l
 
-get :: Monad m => Handle m -> AuthorId -> m (Either Text Author)
+get :: Monad m => Handle m -> AuthorId -> m (Either Text GetAuthor)
 get handle authId = do
   exist <- hDoesExist handle authId
   case exist of
-    Right _ -> do
-      author <- hGet handle authId
-      let isFormatCorrect = case author of AuthorToGet {} -> True; _ -> False
-      if isFormatCorrect
-        then return $ Right author
-        else return $ Left malformedAuthor
+    Right _ -> Right <$> hGet handle authId
     Left l -> return $ Left l
 
 delete :: Monad m => Handle m -> AuthorId -> m (Either Text ())
@@ -57,15 +43,11 @@ delete handle authId = do
       return $ Right ()
     Left l -> return $ Left l
 
-edit :: Monad m => Handle m -> Author -> m (Either Text ())
+edit :: Monad m => Handle m -> EditAuthor -> m (Either Text ())
 edit handle author = do
-  let isFormatCorrect = case author of AuthorToEdit {} -> True; _ -> False
-  if isFormatCorrect
-    then do
-      exist <- hDoesExist handle $ authorId author
-      case exist of
-        Right () -> do
-          hEdit handle author
-          return $ Right ()
-        Left l -> return $ Left l
-    else return $ Left malformedAuthor
+  exist <- hDoesExist handle $ eAuthorId author
+  case exist of
+    Right () -> do
+      hEdit handle author
+      return $ Right ()
+    Left l -> return $ Left l

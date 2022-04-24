@@ -21,18 +21,18 @@ import Network.HTTP.Types.Status
   )
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
-import Types.Comment
-  ( Comment (CommentToCreate, postId, text, userId),
-  )
+import Types.Comment (CommentId (CommentId), CreateComment (..))
+import Types.PostComment (PostId (PostId))
+import Types.User (UserId (UserId))
 import Utility (getInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
   let info = do
-        postId <- getInteger query "post_id"
-        userId <- getInteger query "user_id"
-        text <- getText query "text"
-        Right CommentToCreate {..}
+        cPostId <- PostId <$> getInteger query "post_id"
+        cUserId <- UserId <$> getInteger query "user_id"
+        cText <- getText query "text"
+        Right CreateComment {..}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right comment -> do
@@ -55,7 +55,7 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right postId -> do
-      result <- Handler.get (handle pool) postId
+      result <- Handler.get (handle pool) $ PostId postId
       Logger.debug logger $ "Tried to get comment and got: " ++ show result
       case result of
         Right r ->
@@ -79,7 +79,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right commentId -> do
-      result <- Handler.delete (handle pool) commentId
+      result <- Handler.delete (handle pool) $ CommentId commentId
       Logger.debug logger $ "Tried to delete comment and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""

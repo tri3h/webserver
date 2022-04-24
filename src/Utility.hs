@@ -32,8 +32,8 @@ getIntegers query name = case join $ lookup name query of
           then noSpecified name
           else Right $ map (\(Just x) -> x) values
 
-getImage :: Text -> Text -> Either Text Text
-getImage body name =
+getImageBody :: Text -> Text -> Either Text Text
+getImageBody body name =
   let hasImage = ("name=\"" `append` name) `isInfixOf` body
    in if hasImage
         then
@@ -59,8 +59,8 @@ getMaybeIntegers query name = case join $ lookup name query of
   Nothing -> Nothing
   Just xs -> mapM (\x -> readMaybe $ unpack x :: Maybe Integer) (splitOn "," xs)
 
-getMaybeImage :: Text -> Text -> Maybe Text
-getMaybeImage body name =
+getMaybeImageBody :: Text -> Text -> Maybe Text
+getMaybeImageBody body name =
   let hasImage = ("name=\"" `append` name) `isInfixOf` body
    in if hasImage
         then

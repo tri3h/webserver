@@ -8,9 +8,9 @@ import Data.Text (append, pack)
 import qualified Handlers.Logger as Logger
 import System.Exit (exitFailure)
 import Types.Config
-  ( Config (Config, database, server),
-    DatabaseConfig (DatabaseConfig, dHost, dName, dPassword, dPort, dUser),
-    ServerConfig (ServerConfig, sAddress, sHost, sPort),
+  ( Config (..),
+    DatabaseConfig (..),
+    ServerConfig (..),
   )
 
 make :: Logger.Handle IO -> IO Config

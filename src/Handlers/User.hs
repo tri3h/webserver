@@ -9,34 +9,25 @@ import Data.Text.Encoding (encodeUtf8)
 import Types.Config (ServerAddress)
 import Types.Image (Image (Image), malformedImage)
 import Types.User
-  ( Login,
-    Password,
-    Token,
-    User
-      ( User,
-        UserToCreate,
-        UserToGet,
-        admin,
-        avatar,
-        date,
-        login,
-        name,
-        password,
-        surname,
-        token
-      ),
+  ( Admin (Admin),
+    CreateUser (..),
+    Date (Date),
+    FullUser (..),
+    GetUser (gAvatar),
+    Login,
+    Password (Password),
+    Token (Token),
     UserId,
     invalidData,
     loginTaken,
-    malformedUser,
   )
 import Utility (imageToLink)
 
 data Handle m = Handle
   { hIsLoginUnique :: Login -> m Bool,
     hIsTokenUnique :: Token -> m Bool,
-    hCreate :: User -> m (),
-    hGet :: Token -> m User,
+    hCreate :: FullUser -> m (),
+    hGet :: Token -> m GetUser,
     hDelete :: UserId -> m (),
     hGetRandomNumber :: m Integer,
     hGetCurrentTime :: m String,
@@ -46,42 +37,38 @@ data Handle m = Handle
     hDoesExist :: UserId -> m (Either Text ())
   }
 
-create :: Monad m => Handle m -> User -> m (Either Text Text)
-create handle partUser@UserToCreate {} = do
-  isUnique <- hIsLoginUnique handle $ login partUser
+create :: Monad m => Handle m -> CreateUser -> m (Either Text Token)
+create handle partUser = do
+  isUnique <- hIsLoginUnique handle $ cLogin partUser
   if isUnique
-    then case avatar partUser of
+    then case cAvatar partUser of
       Image _ _ -> do
-        token <- generateToken handle
+        fToken <- generateToken handle
         time <- hGetCurrentTime handle
-        let date = pack $ take 10 time
-        let hashPassw = hashPassword $ password partUser
+        let fDate = Date . pack $ take 10 time
+        let hashPassw = hashPassword $ cPassword partUser
         let user =
-              User
-                { name = name partUser,
-                  surname = surname partUser,
-                  avatar = avatar partUser,
-                  login = login partUser,
-                  password = hashPassw,
-                  admin = False,
+              FullUser
+                { fName = cName partUser,
+                  fSurname = cSurname partUser,
+                  fAvatar = cAvatar partUser,
+                  fLogin = cLogin partUser,
+                  fPassword = hashPassw,
+                  fAdmin = Admin False,
                   ..
                 }
         hCreate handle user
-        return $ Right token
+        return $ Right fToken
       _ -> return $ Left malformedImage
     else return $ Left loginTaken
-create _ _ = return $ Left malformedUser
 
-get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Text User)
+get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Text GetUser)
 get handle server token = do
   user <- hGet handle token
-  case user of
-    UserToGet {} -> do
-      let maybeLink = imageToLink server $ avatar user
-      case maybeLink of
-        Right link -> return $ Right user {avatar = link}
-        Left l -> return $ Left l
-    _ -> return $ Left malformedUser
+  let maybeLink = imageToLink server $ gAvatar user
+  case maybeLink of
+    Right link -> return $ Right user {gAvatar = link}
+    Left l -> return $ Left l
 
 delete :: Monad m => Handle m -> UserId -> m (Either Text ())
 delete handle userId = do
@@ -91,7 +78,7 @@ delete handle userId = do
     Left l -> return $ Left l
 
 hashPassword :: Password -> Password
-hashPassword p = pack . show . hashWith SHA256 $ encodeUtf8 p
+hashPassword (Password p) = Password . pack . show . hashWith SHA256 $ encodeUtf8 p
 
 getNewToken :: Monad m => Handle m -> Login -> Password -> m (Either Text Token)
 getNewToken handle login password = do
@@ -108,10 +95,10 @@ getNewToken handle login password = do
         else return $ Left invalidData
     else return $ Left invalidData
 
-generateToken :: Monad m => Handle m -> m Text
+generateToken :: Monad m => Handle m -> m Token
 generateToken handle = do
   number <- hGetRandomNumber handle
-  let token = pack . show . hashWith SHA256 . Char8.pack $ show number
+  let token = Token . pack . show . hashWith SHA256 . Char8.pack $ show number
   isUnique <- hIsTokenUnique handle token
   if isUnique
     then return token

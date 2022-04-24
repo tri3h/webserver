@@ -5,9 +5,7 @@ module User where
 
 import Data.Aeson (encode)
 import Data.ByteString (ByteString)
-import Data.ByteString.Lazy (append)
 import Data.Pool (Pool, withResource)
-import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
@@ -28,23 +26,21 @@ import Network.Wai (Response, responseLBS)
 import System.Random (randomIO)
 import Types.Config (ServerAddress)
 import Types.Image (Image (Image))
-import Types.User
-  ( User (UserToCreate, avatar, login, name, password, surname),
-  )
-import Utility (getImage, getInteger, getText)
+import Types.User (CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token, UserId (UserId))
+import Utility (getImageBody, getInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 create logger pool query body = do
   let info = do
-        name <- getText query "name"
-        surname <- getText query "surname"
-        login <- getText query "login"
-        password <- getText query "password"
+        cName <- Name <$> getText query "name"
+        cSurname <- Surname <$> getText query "surname"
+        cLogin <- Login <$> getText query "login"
+        cPassword <- Password <$> getText query "password"
         imageType <- getText query "image_type"
-        image <- getImage (decodeUtf8 body) "avatar"
+        image <- getImageBody (decodeUtf8 body) "avatar"
         Right $
-          UserToCreate
-            { avatar = Image image imageType,
+          CreateUser
+            { cAvatar = Image image imageType,
               ..
             }
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
@@ -55,11 +51,10 @@ create logger pool query body = do
       Logger.debug logger $ "Tried to create user and got: " ++ show result
       case result of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-        Right token -> do
-          let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict token) `append` "\"}"
-          return $ responseLBS status201 [(hContentType, "application/json")] a
+        Right token ->
+          return $ responseLBS status201 [(hContentType, "application/json")] $ encode token
 
-get :: Logger.Handle IO -> Pool Connection -> ServerAddress -> Text -> IO Response
+get :: Logger.Handle IO -> Pool Connection -> ServerAddress -> Token -> IO Response
 get logger pool server token = do
   result <- Handler.get (handle pool) server token
   Logger.debug logger $ "Tried to get user and got: " ++ show result
@@ -78,7 +73,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right userId -> do
-      result <- Handler.delete (handle pool) userId
+      result <- Handler.delete (handle pool) $ UserId userId
       Logger.debug logger $ "Tried to delete user and got: " ++ show result
       case result of
         Left l ->
@@ -96,7 +91,7 @@ getNewToken logger pool query = do
   let info = do
         login <- getText query "login"
         password <- getText query "password"
-        Right (login, password)
+        Right (Login login, Password password)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right (login, password) -> do
@@ -104,9 +99,8 @@ getNewToken logger pool query = do
       Logger.debug logger $ "Tried to get new token and got: " ++ show result
       case result of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
-        Right r -> do
-          let a = "{ \"token\" : \"" `append` encodeUtf8 (LazyText.fromStrict r) `append` "\"}"
-          return $ responseLBS status201 [(hContentType, "application/json")] a
+        Right token ->
+          return $ responseLBS status201 [(hContentType, "application/json")] $ encode token
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
 isAdmin :: Pool Connection -> Handler.Token -> IO Bool

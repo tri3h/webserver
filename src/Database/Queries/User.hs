@@ -10,24 +10,15 @@ import Database.PostgreSQL.Simple
     execute,
     query,
   )
-import Database.PostgreSQL.Simple.Time (Date)
+import qualified Database.PostgreSQL.Simple.Time as Time
 import Types.Image (Image (Id, Image))
 import Types.User
-  ( Login,
+  ( Date (Date),
+    FullUser (..),
+    GetUser (..),
+    Login,
     Password,
     Token,
-    User
-      ( UserToGet,
-        admin,
-        avatar,
-        date,
-        login,
-        name,
-        password,
-        surname,
-        token,
-        userId
-      ),
     UserId,
     userNotExist,
   )
@@ -82,9 +73,9 @@ isAdmin token conn = do
       (Only token)
   return admin
 
-create :: User -> Connection -> IO ()
+create :: FullUser -> Connection -> IO ()
 create user conn = do
-  let (Image image imageType) = avatar user
+  let (Image image imageType) = fAvatar user
   [Only imageId] <-
     query
       conn
@@ -98,14 +89,14 @@ create user conn = do
       "INSERT INTO users (name, surname, image_id, \
       \login, password, registration_date, admin, token) \
       \VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-      ( name user,
-        surname user,
+      ( fName user,
+        fSurname user,
         imageId :: Integer,
-        login user,
-        password user,
-        date user,
-        admin user,
-        token user
+        fLogin user,
+        fPassword user,
+        fDate user,
+        fAdmin user,
+        fToken user
       )
   return ()
 
@@ -114,37 +105,37 @@ delete userId conn = do
   _ <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
   return ()
 
-get :: Token -> Connection -> IO User
+get :: Token -> Connection -> IO GetUser
 get token conn = do
-  [(userId, name, surname, imageId, login, regDate)] <-
+  [(gUserId, gName, gSurname, imageId, gLogin, regDate)] <-
     query
       conn
       "SELECT user_id, name, surname, image_id, login, registration_date \
       \FROM users WHERE users.token = ?"
       (Only token)
   return
-    UserToGet
-      { avatar = Id imageId,
-        date = pack $ show (regDate :: Date),
+    GetUser
+      { gAvatar = Id imageId,
+        gDate = Date . pack $ show (regDate :: Time.Date),
         ..
       }
 
-getByUserId :: UserId -> Connection -> IO User
+getByUserId :: UserId -> Connection -> IO GetUser
 getByUserId uId conn = do
-  [(userId, name, surname, imageId, login, regDate)] <-
+  [(gUserId, gName, gSurname, imageId, gLogin, regDate)] <-
     query
       conn
       "SELECT user_id, name, surname, image_id, login, registration_date \
       \FROM users WHERE users.user_id = ?"
       (Only uId)
   return
-    UserToGet
-      { avatar = Id imageId,
-        date = pack $ show (regDate :: Date),
+    GetUser
+      { gAvatar = Id imageId,
+        gDate = Date . pack $ show (regDate :: Time.Date),
         ..
       }
 
-getMaybeByUserId :: UserId -> Connection -> IO (Maybe User)
+getMaybeByUserId :: UserId -> Connection -> IO (Maybe GetUser)
 getMaybeByUserId uId conn = do
   x <-
     query
@@ -153,12 +144,12 @@ getMaybeByUserId uId conn = do
       \FROM users WHERE users.user_id = ?"
       (Only uId)
   case x of
-    [(userId, name, surname, imageId, login, regDate)] ->
+    [(gUserId, gName, gSurname, imageId, gLogin, regDate)] ->
       return $
         Just
-          UserToGet
-            { avatar = Id imageId,
-              date = pack $ show (regDate :: Date),
+          GetUser
+            { gAvatar = Id imageId,
+              gDate = Date . pack $ show (regDate :: Time.Date),
               ..
             }
     _ -> return Nothing

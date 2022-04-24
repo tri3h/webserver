@@ -3,7 +3,6 @@
 
 module Database.Queries.Comment where
 
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -12,23 +11,24 @@ import Database.PostgreSQL.Simple
     query,
   )
 import Types.Comment
-  ( Comment (CommentToGet, commentId, postId, text, userId),
-    CommentId,
+  ( CommentId,
+    CreateComment (..),
+    GetComment (..),
     commentNotExist,
   )
-import Types.Post (PostId)
+import Types.PostComment (PostId)
 
-create :: Comment -> Connection -> IO ()
+create :: CreateComment -> Connection -> IO ()
 create comment conn = do
   _ <-
     execute
       conn
       "INSERT INTO comments (post_id, user_id, text) \
       \VALUES (?,?,?)"
-      (postId comment, userId comment, text comment)
+      (cPostId comment, cUserId comment, cText comment)
   return ()
 
-get :: PostId -> Connection -> IO [Comment]
+get :: PostId -> Connection -> IO [GetComment]
 get postId conn = do
   xs <-
     query
@@ -38,8 +38,8 @@ get postId conn = do
       (Only postId)
   let comments =
         map
-          ( \(commentId, maybeUserId, text) ->
-              CommentToGet {userId = fromMaybe 0 maybeUserId, ..}
+          ( \(gCommentId, gUserId, gText) ->
+              GetComment {..}
           )
           xs
   return comments

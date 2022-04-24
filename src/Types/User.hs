@@ -1,70 +1,81 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types.User where
 
 import Data.Aeson
-  ( Options (sumEncoding),
-    SumEncoding (UntaggedValue),
-    ToJSON (toEncoding),
-    defaultOptions,
-    genericToEncoding,
+  ( KeyValue ((.=)),
+    ToJSON (toJSON),
+    object,
   )
 import Data.Text (Text)
-import GHC.Generics (Generic)
+import Database.PostgreSQL.Simple.FromField (FromField)
+import Database.PostgreSQL.Simple.ToField (ToField)
 import Types.Image (Image)
 
-type Login = Text
+newtype Login = Login {getLogin :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type Token = Text
+newtype Token = Token {getToken :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type UserId = Integer
+newtype UserId = UserId {getUserId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type Password = Text
+newtype Password = Password {getPassword :: Text} deriving (Show, Eq, ToField, FromField)
 
-type Name = Text
+newtype Name = Name {getName :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-type Surname = Text
+newtype Surname = Surname {getSurname :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-data User
-  = User
-      { name :: Text,
-        surname :: Text,
-        avatar :: Image,
-        login :: Text,
-        password :: Text,
-        date :: Text,
-        admin :: Bool,
-        token :: Text
-      }
-  | UserToGet
-      { userId :: Integer,
-        name :: Text,
-        surname :: Text,
-        avatar :: Image,
-        login :: Text,
-        date :: Text
-      }
-  | UserToCreate
-      { name :: Text,
-        surname :: Text,
-        login :: Text,
-        password :: Text,
-        avatar :: Image
-      }
-  deriving (Show, Eq, Generic)
+newtype Admin = Admin {getAdmin :: Bool} deriving (Show, Eq, ToField, FromField)
 
-instance ToJSON User where
-  toEncoding = genericToEncoding defaultOptions {sumEncoding = UntaggedValue}
+newtype Date = Date {getDate :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
+
+data GetUser = GetUser
+  { gUserId :: UserId,
+    gName :: Name,
+    gSurname :: Surname,
+    gAvatar :: Image,
+    gLogin :: Login,
+    gDate :: Date
+  }
+  deriving (Show, Eq)
+
+data CreateUser = CreateUser
+  { cName :: Name,
+    cSurname :: Surname,
+    cLogin :: Login,
+    cPassword :: Password,
+    cAvatar :: Image
+  }
+  deriving (Show, Eq)
+
+data FullUser = FullUser
+  { fName :: Name,
+    fSurname :: Surname,
+    fAvatar :: Image,
+    fLogin :: Login,
+    fPassword :: Password,
+    fDate :: Date,
+    fAdmin :: Admin,
+    fToken :: Token
+  }
+  deriving (Show, Eq)
+
+instance ToJSON GetUser where
+  toJSON user =
+    object
+      [ "user_id" .= gUserId user,
+        "name" .= gName user,
+        "surname" .= gSurname user,
+        "avatar" .= gAvatar user,
+        "login" .= gLogin user,
+        "date" .= gDate user
+      ]
 
 userNotExist :: Text
 userNotExist = "User with such id doesn't exist"
 
 loginTaken :: Text
 loginTaken = "Login is already taken"
-
-malformedUser :: Text
-malformedUser = "Malformed user"
 
 invalidData :: Text
 invalidData = "Invalid data"
