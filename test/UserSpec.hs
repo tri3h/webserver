@@ -7,33 +7,29 @@ import Data.Text (Text, append, pack)
 import qualified Handlers.User as H
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Config (ServerAddress)
-import Types.Image (Image (Id, Image, Link), malformedImage, imageAddress)
+import Types.Image (Image (Id, Image, Link), imageAddress, malformedImage)
 import Types.User
-  ( User
-      ( User,
-        UserToCreate,
-        UserToGet,
-        admin,
-        avatar,
-        date,
-        login,
-        name,
-        password,
-        surname,
-        token,
-        userId
-      ),
+  ( Admin (Admin),
+    CreateUser (..),
+    Date (Date),
+    FullUser (..),
+    GetUser (..),
+    Login (Login),
+    Name (Name),
+    Password (Password),
+    Surname (Surname),
+    Token (Token),
+    UserId (UserId),
     invalidData,
     loginTaken,
-    malformedUser,
     userNotExist,
   )
 
 main :: IO ()
 main = hspec $ do
-  describe "Testing create user" $ do
+  describe "Testing create fullUser" $ do
     it "Should successfully create" $ do
-      let result = H.create handle userToCreate
+      let result = H.create handle createUser
       let token = H.generateToken handle
       result `shouldBe` (Right <$> token)
     it "Should fail if login isn't unique" $ do
@@ -41,69 +37,49 @@ main = hspec $ do
             handle
               { H.hIsLoginUnique = \_ -> return False
               }
-      let result = H.create handleCase userToCreate
+      let result = H.create handleCase createUser
       result `shouldBe` return (Left loginTaken)
     it "Should fail if avatar format is incorrect" $ do
       let createUserCase =
-            userToCreate
-              { avatar = avatarLink
+            createUser
+              { cAvatar = avatarLink
               }
       let result = H.create handle createUserCase
       result `shouldBe` return (Left malformedImage)
-    it "Should fail if user format is incorrect (User)" $ do
-      let result = H.create handle user
-      result `shouldBe` return (Left malformedUser)
-    it "Should fail if user format is incorrect (UserToGet)" $ do
-      let result = H.create handle userToGet
-      result `shouldBe` return (Left malformedUser)
-  describe "Testing get user" $ do
+  describe "Testing get fullUser" $ do
     it "Should successfully get" $ do
-      let result = H.get handle serverAddress "1234"
-      result `shouldBe` return (Right userToGet)
+      let result = H.get handle serverAddress testToken
+      result `shouldBe` return (Right getUser)
     it "Should fail if avatar format is incorrect (Image)" $ do
       let userToGetCase =
-            userToGet
-              { avatar = avatarImage
+            getUser
+              { gAvatar = avatarImage
               }
       let handleCase =
             handle
               { H.hGet = \_ -> return userToGetCase
               }
-      let result = H.get handleCase serverAddress "1234"
+      let result = H.get handleCase serverAddress testToken
       result `shouldBe` return (Left malformedImage)
-    it "Should fail if user format is incorrect (User)" $ do
-      let handleCase =
-            handle
-              { H.hGet = \_ -> return user
-              }
-      let result = H.get handleCase serverAddress "1234"
-      result `shouldBe` return (Left malformedUser)
-    it "Should fail if user format is incorrect (UserToCreate)" $ do
-      let handleCase =
-            handle
-              { H.hGet = \_ -> return userToCreate
-              }
-      let result = H.get handleCase serverAddress "1234"
-      result `shouldBe` return (Left malformedUser)
-  describe "Testing delete user" $ do
+  describe "Testing delete fullUser" $ do
     it "Should successfully delete" $ do
-      let result = H.delete handle 1
+      let result = H.delete handle testUserId
       result `shouldBe` return (Right ())
-    it "Should fail if user doesn't exist" $ do
+    it "Should fail if fullUser doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return $ Left userNotExist
               }
-      let result = H.delete handleCase 1
+      let result = H.delete handleCase testUserId
       result `shouldBe` return (Left userNotExist)
   describe "Testing get new token" $ do
     it "Should successfully get" $ do
-      let hashPass = H.hashPassword "password"
+      let hashPass = H.hashPassword testPassword
       let handleCase =
             handle
               { H.hFindPassword = \_ -> return hashPass
               }
-      let result = H.getNewToken handleCase "login" "password"
+      let result = H.getNewToken handleCase testLogin testPassword
       let token = H.generateToken handleCase
       result `shouldBe` (Right <$> token)
     it "Should fail if login isn't valid" $ do
@@ -111,14 +87,14 @@ main = hspec $ do
             handle
               { H.hIsLoginValid = \_ -> return False
               }
-      let result = H.getNewToken handleCase "login" "password"
+      let result = H.getNewToken handleCase testLogin testPassword
       result `shouldBe` return (Left invalidData)
     it "Should fail if password isn't valid" $ do
       let handleCase =
             handle
-              { H.hFindPassword = \_ -> return "1111"
+              { H.hFindPassword = \_ -> return $ Password "1111"
               }
-      let result = H.getNewToken handleCase "login" "2222"
+      let result = H.getNewToken handleCase testLogin testPassword
       result `shouldBe` return (Left invalidData)
 
 handle :: H.Handle Identity
@@ -127,51 +103,69 @@ handle =
     { H.hIsLoginUnique = \_ -> return True,
       H.hIsTokenUnique = \_ -> return True,
       H.hCreate = \_ -> return (),
-      H.hGet = \_ -> return userToGet,
+      H.hGet = \_ -> return getUser,
       H.hDelete = \_ -> return (),
       H.hGetRandomNumber = return 1,
       H.hGetCurrentTime = return "01-01-2020",
       H.hIsLoginValid = \_ -> return True,
-      H.hFindPassword = \_ -> return "password",
+      H.hFindPassword = \_ -> return $ Password "password",
       H.hUpdateToken = \_ _ -> return (),
       H.hDoesExist = \_ -> return $ Right ()
     }
 
-user =
-  User
-    { name = "name",
-      surname = "surname",
-      avatar = avatarImage,
-      login = "login",
-      password = "password",
-      date = "10-10-2020",
-      admin = False,
-      token = "1234"
+fullUser :: FullUser
+fullUser =
+  FullUser
+    { fName = Name "name",
+      fSurname = Surname "surname",
+      fAvatar = avatarImage,
+      fLogin = Login "login",
+      fPassword = Password "password",
+      fDate = Date "10-10-2020",
+      fAdmin = Admin False,
+      fToken = Token "1234"
     }
 
-userToGet =
-  UserToGet
-    { userId = 1,
-      name = "name",
-      surname = "surname",
-      avatar = avatarLink,
-      login = "login",
-      date = "10-10-2020"
+getUser :: GetUser
+getUser =
+  GetUser
+    { gUserId = UserId 1,
+      gName = Name "name",
+      gSurname = Surname "surname",
+      gAvatar = avatarLink,
+      gLogin = Login "login",
+      gDate = Date "10-10-2020"
     }
 
-userToCreate =
-  UserToCreate
-    { name = "name",
-      surname = "surname",
-      login = "login",
-      password = "password",
-      avatar = avatarImage
+createUser :: CreateUser
+createUser =
+  CreateUser
+    { cName = Name "name",
+      cSurname = Surname "surname",
+      cLogin = Login "login",
+      cPassword = Password "password",
+      cAvatar = avatarImage
     }
 
+testToken :: Token
+testToken = Token "123"
+
+testLogin :: Login
+testLogin = Login "login"
+
+testPassword :: Password
+testPassword = Password "Password"
+
+testUserId :: UserId
+testUserId = UserId 1
+
+avatarLink :: Image
 avatarLink = Link $ imageAddress `append` pack (show avatarId)
 
+avatarImage :: Image
 avatarImage = Image "image" "imageType"
 
+avatarId :: Image
 avatarId = Id 1
 
 serverAddress :: ServerAddress

@@ -170,6 +170,7 @@ publish draft date conn = do
       postPhotos
   let postTags = map (postId,) $ gTagId draft
   _ <- executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
+  _ <- execute conn "UPDATE drafts SET post_id = ? WHERE draft_id = ?" (postId, gDraftId draft)
   return ()
 
 update :: GetDraft -> Connection -> IO ()

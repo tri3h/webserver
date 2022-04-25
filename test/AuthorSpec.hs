@@ -6,38 +6,39 @@ import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text)
 import qualified Handlers.Author as H
 import Test.Hspec (describe, hspec, it, shouldBe)
-import Types.Author (Author (..), authorNotExist, malformedAuthor)
-import Types.User (userNotExist)
+import Types.Author
+  ( Description (Description),
+    AuthorId (AuthorId),
+    CreateAuthor (..),
+    EditAuthor (..),
+    GetAuthor (..),
+    authorNotExist,
+  )
+import Types.User (UserId (UserId), userNotExist)
 
 main :: IO ()
 main = hspec $ do
   describe "Testing create author" $ do
     it "Should successfully create" $ do
-      let result = H.create handle authorToCreate
+      let result = H.create handle createAuthor
       result `shouldBe` return (Right ())
-    it "Should fail if author format is incorrect (AuthorToEdit)" $ do
-      let result = H.create handle authorToEdit
-      result `shouldBe` return (Left malformedAuthor)
-    it "Should fail if author format is incorrect (AuthorToGet)" $ do
-      let result = H.create handle authorToGet
-      result `shouldBe` return (Left malformedAuthor)
     it "Should fail if user doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesUserExist = \_ -> return $ Left userNotExist
               }
-      let result = H.create handleCase authorToCreate
+      let result = H.create handleCase createAuthor
       result `shouldBe` return (Left userNotExist)
   describe "Testing get author" $ do
     it "Should successfully get" $ do
-      let authorId = 1
+      let authorId = AuthorId 1
       let author =
-            authorToGet
-              { authorId = authorId
+            getAuthor
+              { gAuthorId = authorId
               }
       let handleCase =
             handle
-              { H.hGet = \aId -> return author
+              { H.hGet = \_ -> return author
               }
       let result = H.get handle authorId
       result `shouldBe` return (Right author)
@@ -46,80 +47,63 @@ main = hspec $ do
             handle
               { H.hDoesExist = \_ -> return $ Left authorNotExist
               }
-      let result = H.get handleCase 1
+      let result = H.get handleCase testAuthorId
       result `shouldBe` return (Left authorNotExist)
-    it "Should fail if author format is incorrect (AuthorToEdit)" $ do
-      let handleCase =
-            handle
-              { H.hGet = \_ -> return authorToEdit
-              }
-      let result = H.get handleCase 1
-      result `shouldBe` return (Left malformedAuthor)
-    it "Should fail if author format is incorrect (AuthorToCreate)" $ do
-      let handleCase =
-            handle
-              { H.hGet = \_ -> return authorToCreate
-              }
-      let result = H.get handleCase 1
-      result `shouldBe` return (Left malformedAuthor)
   describe "Testing delete author" $ do
     it "Should successfully delete" $ do
-      let result = H.delete handle 1
+      let result = H.delete handle testAuthorId
       result `shouldBe` return (Right ())
     it "Should fail if author doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return $ Left authorNotExist
               }
-      let result = H.delete handleCase 1
+      let result = H.delete handleCase testAuthorId
       result `shouldBe` return (Left authorNotExist)
   describe "Testing edit author" $ do
     it "Should successfully edit" $ do
-      let result = H.edit handle authorToEdit
+      let result = H.edit handle editAuthor
       result `shouldBe` return (Right ())
-    it "Should fail if author format is incorrect (AuthorToCreate)" $ do
-      let result = H.edit handle authorToCreate
-      result `shouldBe` return (Left malformedAuthor)
-    it "Should fail if author format is incorrect (AuthorToGet)" $ do
-      let result = H.edit handle authorToGet
-      result `shouldBe` return (Left malformedAuthor)
     it "Should fail if author doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return $ Left authorNotExist
               }
-      let result = H.edit handleCase authorToEdit
+      let result = H.edit handleCase editAuthor
       result `shouldBe` return (Left authorNotExist)
 
 handle :: H.Handle Identity
 handle =
   H.Handle
     { H.hCreate = \_ -> return (),
-      H.hGet = \_ -> return authorToGet,
+      H.hGet = \_ -> return getAuthor,
       H.hDelete = \_ -> return (),
       H.hEdit = \_ -> return (),
       H.hDoesExist = \_ -> return $ Right (),
       H.hDoesUserExist = \_ -> return $ Right ()
     }
 
-authorToEdit :: Author
-authorToEdit =
-  AuthorToEdit
-    { authorId = 1,
-      description = "edit"
+editAuthor :: EditAuthor
+editAuthor =
+  EditAuthor
+    { eAuthorId = AuthorId 1,
+      eDescription = Description "edit"
     }
 
-authorToCreate :: Author
-authorToCreate =
-  AuthorToCreate
-    { userId = 1,
-      description = "create"
+createAuthor :: CreateAuthor
+createAuthor =
+  CreateAuthor
+    { cUserId = UserId 1,
+      cDescription = Description "create"
     }
 
-authorToGet :: Author
-authorToGet =
-  AuthorToGet
-    { authorId = 1,
-      userId = 1,
-      description = "get"
+getAuthor :: GetAuthor
+getAuthor =
+  GetAuthor
+    { gAuthorId = AuthorId 1,
+      gUserId = Just $ UserId 1,
+      gDescription = Description "get"
     }
+
+testAuthorId :: AuthorId
+testAuthorId = AuthorId 1

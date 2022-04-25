@@ -4,6 +4,7 @@ module Category where
 
 import Data.Aeson (encode)
 import Data.Pool (Pool, withResource)
+import Data.Text (Text)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple (Connection)
@@ -23,19 +24,20 @@ import Types.Category
   ( CategoryId (CategoryId),
     CreateCategory (..),
     Name (Name),
+    ParentId,
   )
 import Utility (getInteger, getMaybeInteger, getMaybeText, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
-  let info = getText query "name"
+  let info = getName query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right name -> do
       let category =
             CreateCategory
-              { cParentId = CategoryId <$> getMaybeInteger query "parent_id",
-                cName = Name name
+              { cParentId = getParentId query,
+                cName = name
               }
       result <- Handler.create (handle pool) category
       Logger.debug logger $ "Tried to create category and got: " ++ show result
@@ -52,11 +54,11 @@ create logger pool query = do
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
-  let info = getInteger query "category_id"
+  let info = getCategoryId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
-      result <- Handler.get (handle pool) $ CategoryId categoryId
+      result <- Handler.get (handle pool) categoryId
       Logger.debug logger $ "Tried to get category and got: " ++ show result
       case result of
         Right r ->
@@ -76,13 +78,13 @@ get logger pool query = do
 
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
-  let info = getInteger query "category_id"
+  let info = getCategoryId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
-      let parentId = CategoryId <$> getMaybeInteger query "parent_id"
-      let name = Name <$> getMaybeText query "name"
-      result <- Handler.edit (handle pool) (CategoryId categoryId) name parentId
+      let parentId = getParentId query
+      let name = getMaybeName query
+      result <- Handler.edit (handle pool) categoryId name parentId
       Logger.debug logger $ "Tried to edit category and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
@@ -97,11 +99,11 @@ edit logger pool query = do
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
-  let info = getInteger query "category_id"
+  let info = getCategoryId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right categoryId -> do
-      result <- Handler.delete (handle pool) $ CategoryId categoryId
+      result <- Handler.delete (handle pool) categoryId
       Logger.debug logger $ "Tried to delete category and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
@@ -113,6 +115,18 @@ delete logger pool query = do
               . encodeUtf8
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+
+getName :: QueryText -> Either Text Name
+getName query = Name <$> getText query "name"
+
+getMaybeName :: QueryText -> Maybe Name
+getMaybeName query = Name <$> getMaybeText query "name"
+
+getParentId :: QueryText -> Maybe ParentId
+getParentId query = CategoryId <$> getMaybeInteger query "parent_id"
+
+getCategoryId :: QueryText -> Either Text CategoryId
+getCategoryId query = CategoryId <$> getInteger query "category_id"
 
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =

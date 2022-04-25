@@ -6,168 +6,177 @@ import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text, append, pack)
 import qualified Handlers.Draft as H
 import Test.Hspec (describe, hspec, it, shouldBe)
-import Types.Author (authorNotExist)
-import Types.Category (categoryNotExist)
+import Types.Author (authorNotExist, AuthorId (AuthorId))
+import Types.Category (categoryNotExist, CategoryId (CategoryId))
 import Types.Config (ServerAddress)
-import Types.Draft (Draft (..), EditParams (..), draftNotExist, noDeleteHasPost, noDraftAuthor, userNotAuthor)
-import Types.Image (Image (..), malformedImage, imageAddress)
-import Types.Tag (tagNotExist)
+import Types.Draft
+  ( CreateDraft (..),
+    EditParams (..),
+    GetDraft (..),
+    draftNotExist,
+    noDeleteHasPost,
+    noDraftAuthor,
+    userNotAuthor, DraftId (DraftId), Name (Name)
+  )
+import Types.Image (Image (..), imageAddress, malformedImage)
+import Types.Tag (tagNotExist, TagId (TagId))
+import Types.User (Token(Token))
 
 main :: IO ()
 main = hspec $ do
   describe "Testing create draft" $ do
     it "Should successfully create" $ do
-      let result = H.create handle draft
+      let result = H.create handle createDraft
       result `shouldBe` return (Right ())
     it "Should fail if author doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesAuthorExist = \_ -> return (Left authorNotExist)
               }
-      let result = H.create handleCase draft
+      let result = H.create handleCase createDraft
       result `shouldBe` return (Left authorNotExist)
     it "Should fail if category doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesCategoryExist = \_ -> return (Left categoryNotExist)
               }
-      let result = H.create handleCase draft
+      let result = H.create handleCase createDraft
       result `shouldBe` return (Left categoryNotExist)
     it "Should fail if tag doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesTagExist = \_ -> return (Left tagNotExist)
               }
-      let result = H.create handleCase draft
+      let result = H.create handleCase createDraft
       result `shouldBe` return (Left tagNotExist)
     it "Should fail if main photo format is incorrect" $ do
       let draftCase =
-            draft
-              { mainPhoto = link
+            createDraft
+              { cMainPhoto = link
               }
       let result = H.create handle draftCase
       result `shouldBe` return (Left malformedImage)
   describe "Testing get draft" $ do
     it "Should successfully get" $ do
       let draftCase =
-            draft
-              { mainPhoto = link
+            getDraft
+              { gMainPhoto = link
               }
       let handleCase =
             handle
               { H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase serverAddress 1 "1234"
+      let result = H.get handleCase serverAddress testDraftId testToken
       result `shouldBe` return (Right draftCase)
     it "Should fail if main photo format is incorrect" $ do
-      let result = H.get handle serverAddress 1 "1234"
+      let result = H.get handle serverAddress testDraftId testToken
       result `shouldBe` return (Left malformedImage)
     it "Should fail if minor photo format is incorrect" $ do
       let draftCase =
-            draft
-              { minorPhoto = [image]
+            getDraft
+              { gMinorPhoto = [image]
               }
       let handleCase =
             handle
               { H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase serverAddress 1 "1234"
+      let result = H.get handleCase serverAddress testDraftId testToken
       result `shouldBe` return (Left malformedImage)
     it "Should fail if draft doesn't exist" $ do
       let draftCase =
-            draft
-              { mainPhoto = link
+            getDraft
+              { gMainPhoto = link
               }
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return (Left draftNotExist),
                 H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase serverAddress 1 "1234"
+      let result = H.get handleCase serverAddress testDraftId testToken
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author of draft" $ do
       let draftCase =
-            draft
-              { mainPhoto = link
+            getDraft
+              { gMainPhoto = link
               }
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return 2,
+              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2,
                 H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase serverAddress 1 "1234"
+      let result = H.get handleCase serverAddress testDraftId testToken
       result `shouldBe` return (Left noDraftAuthor)
     it "Shoudl fail if user is not author at all" $ do
       let draftCase =
-            draft
-              { mainPhoto = link
+            getDraft
+              { gMainPhoto = link
               }
       let handleCase =
             handle
               { H.hIsAuthor = \_ -> return False,
                 H.hGet = \_ -> return draftCase
               }
-      let result = H.get handleCase serverAddress 1 "1234"
+      let result = H.get handleCase serverAddress testDraftId testToken
       result `shouldBe` return (Left userNotAuthor)
   describe "Testing edit draft" $ do
     it "Should successfully edit" $ do
-      let result = H.edit handle 1 "1234" editParams
+      let result = H.edit handle testDraftId testToken editParams
       result `shouldBe` return (Right ())
     it "Should edit main photo" $ do
       let editParamsCase =
             editParams
               { eMainPhoto = Just image
               }
-      let result = H.edit handle 1 "1234" editParamsCase
+      let result = H.edit handle testDraftId testToken editParamsCase
       result `shouldBe` return (Right ())
     it "Should edit category id" $ do
       let editParamsCase =
             editParams
-              { eCategoryId = Just 1
+              { eCategoryId = Just $ CategoryId 1
               }
-      let result = H.edit handle 1 "1234" editParamsCase
+      let result = H.edit handle testDraftId testToken editParamsCase
       result `shouldBe` return (Right ())
     it "Should edit tag id" $ do
       let editParamsCase =
             editParams
-              { eTagId = Just [1]
+              { eTagId = Just [TagId 1]
               }
-      let result = H.edit handle 1 "1234" editParamsCase
+      let result = H.edit handle testDraftId testToken editParamsCase
       result `shouldBe` return (Right ())
     it "Should edit name" $ do
       let editParamsCase =
             editParams
-              { eName = Just "name"
+              { eName = Just $ Name"name"
               }
-      let result = H.edit handle 1 "1234" editParamsCase
+      let result = H.edit handle testDraftId testToken editParamsCase
       result `shouldBe` return (Right ())
     it "Should edit description" $ do
       let editParamsCase =
             editParams
-              { eDescription = Just "d"
+              { eText = Just "d"
               }
-      let result = H.edit handle 1 "1234" editParamsCase
+      let result = H.edit handle testDraftId testToken editParamsCase
       result `shouldBe` return (Right ())
     it "Should fail if draft doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return (Left draftNotExist)
               }
-      let result = H.edit handleCase 1 "1234" editParams
+      let result = H.edit handleCase testDraftId testToken editParams
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author of the draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return 2
+              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2
               }
-      let result = H.edit handleCase 1 "1234" editParams
+      let result = H.edit handleCase testDraftId testToken editParams
       result `shouldBe` return (Left noDraftAuthor)
     it "Should fail if main photo format is incorrect" $ do
       let editParamsCase =
             editParams
               { eMainPhoto = Just link
               }
-      let result = H.edit handle 1 "1234" editParamsCase
+      let result = H.edit handle testDraftId testToken editParamsCase
       result `shouldBe` return (Left malformedImage)
     it "Should fail if category doesn't exist" $ do
       let handleCase =
@@ -176,9 +185,9 @@ main = hspec $ do
               }
       let editParamsCase =
             editParams
-              { eCategoryId = Just 2
+              { eCategoryId = Just $ CategoryId 2
               }
-      let result = H.edit handleCase 1 "1234" editParamsCase
+      let result = H.edit handleCase testDraftId testToken editParamsCase
       result `shouldBe` return (Left categoryNotExist)
     it "Should fail if tag doesn't exist" $ do
       let handleCase =
@@ -187,9 +196,9 @@ main = hspec $ do
               }
       let editParamsCase =
             editParams
-              { eTagId = Just [1]
+              { eTagId = Just [TagId 1]
               }
-      let result = H.edit handleCase 1 "1234" editParamsCase
+      let result = H.edit handleCase testDraftId testToken editParamsCase
       result `shouldBe` return (Left tagNotExist)
   describe "Testing delete draft" $ do
     it "Should successfully delete" $ do
@@ -197,7 +206,7 @@ main = hspec $ do
             handle
               { H.hHasPost = \_ -> return False
               }
-      let result = H.delete handleCase 1 "1234"
+      let result = H.delete handleCase testDraftId testToken
       result `shouldBe` return (Right ())
     it "Should fail if draft doesn't exist" $ do
       let handleCase =
@@ -205,89 +214,89 @@ main = hspec $ do
               { H.hDoesExist = \_ -> return (Left draftNotExist),
                 H.hHasPost = \_ -> return False
               }
-      let result = H.delete handleCase 1 "1234"
+      let result = H.delete handleCase testDraftId testToken
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author of draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return 2,
+              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2,
                 H.hHasPost = \_ -> return False
               }
-      let result = H.delete handleCase 1 "1234"
+      let result = H.delete handleCase testDraftId testToken
       result `shouldBe` return (Left noDraftAuthor)
     it "Should fail if draft has post" $ do
-      let result = H.delete handle 1 "1234"
+      let result = H.delete handle testDraftId testToken
       result `shouldBe` return (Left noDeleteHasPost)
   describe "Testing publish draft" $ do
     it "Should successfully publish if has post" $ do
-      let result = H.publish handle 1 "1234"
+      let result = H.publish handle testDraftId testToken
       result `shouldBe` return (Right ())
     it "Should successfully publish if has no post" $ do
       let handleCase =
             handle
               { H.hHasPost = \_ -> return False
               }
-      let result = H.publish handleCase 1 "1234"
+      let result = H.publish handleCase testDraftId testToken
       result `shouldBe` return (Right ())
     it "Should fail if draft doesn't exist" $ do
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return (Left draftNotExist)
               }
-      let result = H.publish handleCase 1 "1234"
+      let result = H.publish handleCase testDraftId testToken
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author at all" $ do
       let handleCase =
             handle
               { H.hIsAuthor = \_ -> return False
               }
-      let result = H.publish handleCase 1 "1234"
+      let result = H.publish handleCase testDraftId testToken
       result `shouldBe` return (Left userNotAuthor)
     it "Should fail if user is not author of draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return 2
+              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2
               }
-      let result = H.publish handleCase 1 "1234"
+      let result = H.publish handleCase testDraftId testToken
       result `shouldBe` return (Left noDraftAuthor)
   describe "Testing add minor photos" $ do
     it "Should add minor photo" $ do
-      let result = H.addMinorPhoto handle 1 "1234" image
+      let result = H.addMinorPhoto handle testDraftId testToken image
       result `shouldBe` return (Right ())
     it "Should fail if minor photo format is incorrect" $ do
-      let result = H.addMinorPhoto handle 1 "1234" link
+      let result = H.addMinorPhoto handle testDraftId testToken link
       result `shouldBe` return (Left malformedImage)
     it "Should fail if draft doesn'exist" $ do
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return (Left draftNotExist)
               }
-      let result = H.addMinorPhoto handleCase 1 "1234" image
+      let result = H.addMinorPhoto handleCase testDraftId testToken image
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author of the draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return 2
+              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2
               }
-      let result = H.addMinorPhoto handleCase 1 "1234" image
+      let result = H.addMinorPhoto handleCase testDraftId testToken image
       result `shouldBe` return (Left noDraftAuthor)
   describe "Testing delete minor photos" $ do
     it "Should delete minor photo" $ do
-      let result = H.deleteMinorPhoto handle 1 "1234" 1
+      let result = H.deleteMinorPhoto handle testDraftId testToken 1
       result `shouldBe` return (Right ())
     it "Should fail if draft doesn'exist" $ do
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return (Left draftNotExist)
               }
-      let result = H.deleteMinorPhoto handleCase 1 "1234" 1
+      let result = H.deleteMinorPhoto handleCase testDraftId testToken 1
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author of the draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return 2
+              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2
               }
-      let result = H.deleteMinorPhoto handleCase 1 "1234" 1
+      let result = H.deleteMinorPhoto handleCase testDraftId testToken 1
       result `shouldBe` return (Left noDraftAuthor)
 
 handle :: H.Handle Identity
@@ -305,29 +314,42 @@ handle =
       H.hIsAuthor = \_ -> return True,
       H.hHasPost = \_ -> return True,
       H.hGetCurrentDate = return "01-01-2020",
-      H.hGet = \_ -> return draft,
-      H.hGetAuthor = \_ -> return 1,
+      H.hGet = \_ -> return getDraft,
+      H.hGetAuthor = \_ -> return $ AuthorId 1,
       H.hPublish = \_ _ -> return (),
       H.hUpdate = \_ -> return (),
-      H.hGetAuthorIdByToken = \_ -> return 1,
+      H.hGetAuthorIdByToken = \_ -> return $ AuthorId 1,
       H.hDoesExist = \_ -> return (Right ()),
       H.hDoesAuthorExist = \_ -> return (Right ()),
       H.hDoesCategoryExist = \_ -> return (Right ()),
       H.hDoesTagExist = \_ -> return (Right ())
     }
 
-draft :: Draft
-draft =
-  Draft
-    { draftId = Nothing,
-      postId = Nothing,
-      authorId = 1,
-      categoryId = 1,
-      tagId = [1],
-      name = "name",
-      description = "description",
-      mainPhoto = image,
-      minorPhoto = []
+getDraft :: GetDraft
+getDraft =
+  GetDraft
+    { gDraftId = DraftId 1,
+      gPostId = Nothing,
+      gAuthorId = Just $ AuthorId 1,
+      gCategoryId = Just $ CategoryId 1,
+      gTagId = [TagId 1],
+      gName = Name "name",
+      gText = "description",
+      gMainPhoto = image,
+      gMinorPhoto = []
+    }
+
+createDraft :: CreateDraft
+createDraft =
+  CreateDraft
+    { 
+      cPostId = Nothing,
+      cAuthorId = AuthorId 1,
+      cCategoryId = CategoryId 1,
+      cTagId = [TagId 1],
+      cName = Name "name",
+      cText = "description",
+      cMainPhoto = image
     }
 
 editParams :: EditParams
@@ -336,9 +358,15 @@ editParams =
     { eCategoryId = Nothing,
       eTagId = Nothing,
       eName = Nothing,
-      eDescription = Nothing,
+      eText = Nothing,
       eMainPhoto = Nothing
     }
+
+testDraftId :: DraftId
+testDraftId = DraftId 1
+
+testToken :: Token
+testToken = Token "123"
 
 image :: Image
 image = Image "image" "imageType"

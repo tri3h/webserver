@@ -18,6 +18,7 @@ import qualified Database.Queries.Draft as Db.Draft
 import qualified Database.Queries.Tag as Db.Tag
 import qualified Handlers.Draft as Handler
 import qualified Handlers.Logger as Logger
+import Image (getImageType)
 import Network.HTTP.Types.Header (hContentType)
 import Network.HTTP.Types.Status
   ( status200,
@@ -35,7 +36,7 @@ import Types.Draft
     EditParams (..),
     Name (Name),
   )
-import Types.Image (Image (..))
+import Types.Image (Image (..), ImageBody, ImageId)
 import Types.Tag (TagId (TagId))
 import Types.User (Token (Token))
 import Utility
@@ -54,12 +55,12 @@ create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> Toke
 create logger pool query body token = do
   author <- Handler.getAuthorIdByToken (handle pool) token
   let info = do
-        cCategoryId <- CategoryId <$> getInteger query "category_id"
-        cTagId <- map TagId <$> getIntegers query "tag_id"
-        cName <- Name <$> getText query "name"
+        cCategoryId <- getCategoryId query
+        cTagId <- getTagIds query
+        cName <- getName query
         cText <- getText query "description"
-        imageType <- getText query "image_type"
-        image <- getImageBody (decodeUtf8 body) "main_photo"
+        imageType <- getImageType query
+        image <- getMainPhotoBody body
         cAuthorId <- author
         Right $
           CreateDraft
@@ -141,9 +142,9 @@ edit logger pool query body = do
     Right (draftId, token) -> do
       let editParams =
             EditParams
-              { eCategoryId = CategoryId <$> getMaybeInteger query "category_id",
-                eTagId = map TagId <$> getMaybeIntegers query "tag_id",
-                eName = Name <$> getMaybeText query "name",
+              { eCategoryId = getMaybeCategoryId query,
+                eTagId = getMaybeTagId query,
+                eName = getMaybeName query,
                 eText = getMaybeText query "description",
                 eMainPhoto = getMainPhoto query body
               }
@@ -161,8 +162,8 @@ edit logger pool query body = do
 
 getMainPhoto :: QueryText -> ByteString -> Maybe Image
 getMainPhoto query body =
-  let imageType = getMaybeText query "image_type"
-      image = getMaybeImageBody (decodeUtf8 body) "main_photo"
+  let imageType = getMaybeImageType query
+      image = getMaybeMainPhotoBody body
    in case imageType of
         Nothing -> Nothing
         Just t -> case image of
@@ -196,11 +197,11 @@ publish logger pool query = do
 addMinorPhoto :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 addMinorPhoto logger pool query body = do
   let info = do
-        draftId <- getInteger query "draft_id"
-        token <- getText query "token"
-        imageType <- getText query "image_type"
-        image <- getImageBody (decodeUtf8 body) "minor_photo"
-        Right (DraftId draftId, Token token, image, imageType)
+        draftId <- getDraftId query
+        token <- getToken query
+        imageType <- getImageType query
+        image <- getMinorPhotoBody body
+        Right (draftId, token, image, imageType)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -214,10 +215,10 @@ addMinorPhoto logger pool query body = do
 deleteMinorPhoto :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 deleteMinorPhoto logger pool query = do
   let info = do
-        draftId <- getInteger query "draft_id"
-        token <- getText query "token"
-        imageId <- getInteger query "minor_photo_id"
-        Right (DraftId draftId, Token token, imageId)
+        draftId <- getDraftId query
+        token <- getToken query
+        imageId <- getMinorPhotoId query
+        Right (draftId, token, imageId)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -233,6 +234,45 @@ getDraftIdToken query = do
   draftId <- getInteger query "draft_id"
   token <- getText query "token"
   Right (DraftId draftId, Token token)
+
+getCategoryId :: QueryText -> Either Text CategoryId
+getCategoryId query = CategoryId <$> getInteger query "category_id"
+
+getTagIds :: QueryText -> Either Text [TagId]
+getTagIds query = map TagId <$> getIntegers query "tag_id"
+
+getName :: QueryText -> Either Text Name
+getName query = Name <$> getText query "name"
+
+getMainPhotoBody :: ByteString -> Either Text ImageBody
+getMainPhotoBody body = getImageBody (decodeUtf8 body) "main_photo"
+
+getMinorPhotoBody :: ByteString -> Either Text ImageBody
+getMinorPhotoBody body = getImageBody (decodeUtf8 body) "minor_photo"
+
+getMinorPhotoId :: QueryText -> Either Text ImageId
+getMinorPhotoId query = getInteger query "minor_photo_id"
+
+getDraftId :: QueryText -> Either Text DraftId
+getDraftId query = DraftId <$> getInteger query "draft_id"
+
+getToken :: QueryText -> Either Text Token
+getToken query = Token <$> getText query "token"
+
+getMaybeCategoryId :: QueryText -> Maybe CategoryId
+getMaybeCategoryId query = CategoryId <$> getMaybeInteger query "category_id"
+
+getMaybeTagId :: QueryText -> Maybe [TagId]
+getMaybeTagId query = map TagId <$> getMaybeIntegers query "tag_id"
+
+getMaybeName :: QueryText -> Maybe Name
+getMaybeName query = Name <$> getMaybeText query "name"
+
+getMaybeImageType :: QueryText -> Maybe Text
+getMaybeImageType query = getMaybeText query "image_type"
+
+getMaybeMainPhotoBody :: ByteString -> Maybe ImageBody
+getMaybeMainPhotoBody body = getMaybeImageBody (decodeUtf8 body) "main_photo"
 
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =

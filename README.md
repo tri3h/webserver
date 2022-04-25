@@ -6,9 +6,7 @@ The first file is **Server.config** that contains information about a port, a ho
 The second file is **Database.config** that contains information about a database.
 Also it may be necessary to use a command *stack setup*.
 
-After these two files are filled, the project may be started by typing *stack run 1* into command line while being in the project folder. The number 1 is needed to run database migrations that will be executed according to settings in the file Database.config.
-
-For the next runs when database migration is not needed, the project starts by typing *stack run* without additional arguments.
+After these two files are filled, the project may be started by typing *stack run* into command line while being in the project folder.
 
 Scripts from folder *scripts* may be run with bash like: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. Some of scripts take an image, they take it in the form of two parameters: a path to the file and a type of image, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg" -y "jpg"*. 
 
@@ -39,9 +37,7 @@ This part is responsible for work with database and contains queries to a databa
 **Migration.hs** is responsible for applying migrations to a database.
 
 
-Additional parts are folders */Types*, */scripts*, */DatabaseMigrations* and */test*:
-
-- *Types* files contain created types that used in this project.
+Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
 
 - *Scripts* contains sh scripts with curl requests in main folder and additional utility scripts in *utility* folder. 
 

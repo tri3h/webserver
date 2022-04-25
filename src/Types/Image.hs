@@ -14,7 +14,9 @@ type ImageId = Integer
 
 type ImageType = Text
 
-data Image = Id ImageId | Link Text | Image Text ImageType
+type ImageBody = Text
+
+data Image = Id ImageId | Link Text | Image ImageBody ImageType
   deriving (Show, Eq, Read)
 
 instance ToJSON Image where

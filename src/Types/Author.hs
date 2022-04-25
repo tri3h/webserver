@@ -15,24 +15,24 @@ import Types.User (UserId)
 
 newtype AuthorId = AuthorId {getAuthorId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
-newtype AuthorDescription = AuthorDescription {getAuthorDescirption :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
+newtype Description = Description {getDescirption :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
 data GetAuthor = GetAuthor
   { gAuthorId :: AuthorId,
     gUserId :: Maybe UserId,
-    gDescription :: AuthorDescription
+    gDescription :: Description
   }
   deriving (Show, Eq)
 
 data EditAuthor = EditAuthor
   { eAuthorId :: AuthorId,
-    eDescription :: AuthorDescription
+    eDescription :: Description
   }
   deriving (Show, Eq)
 
 data CreateAuthor = CreateAuthor
   { cUserId :: UserId,
-    cDescription :: AuthorDescription
+    cDescription :: Description
   }
   deriving (Show, Eq)
 

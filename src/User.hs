@@ -6,6 +6,7 @@ module User where
 import Data.Aeson (encode)
 import Data.ByteString (ByteString)
 import Data.Pool (Pool, withResource)
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
@@ -14,6 +15,7 @@ import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.User as Db
 import qualified Handlers.Logger as Logger
 import qualified Handlers.User as Handler
+import Image (getImageType)
 import Network.HTTP.Types.Header (hContentType)
 import Network.HTTP.Types.Status
   ( status200,
@@ -25,19 +27,19 @@ import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
 import System.Random (randomIO)
 import Types.Config (ServerAddress)
-import Types.Image (Image (Image))
+import Types.Image (Image (Image), ImageBody)
 import Types.User (CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token, UserId (UserId))
 import Utility (getImageBody, getInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 create logger pool query body = do
   let info = do
-        cName <- Name <$> getText query "name"
-        cSurname <- Surname <$> getText query "surname"
-        cLogin <- Login <$> getText query "login"
-        cPassword <- Password <$> getText query "password"
-        imageType <- getText query "image_type"
-        image <- getImageBody (decodeUtf8 body) "avatar"
+        cName <- getName query
+        cSurname <- getSurname query
+        cLogin <- getLogin query
+        cPassword <- getPassword query
+        imageType <- getImageType query
+        image <- getAvatarBody body
         Right $
           CreateUser
             { cAvatar = Image image imageType,
@@ -69,11 +71,11 @@ get logger pool server token = do
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
-  let info = getInteger query "user_id"
+  let info = getUserId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right userId -> do
-      result <- Handler.delete (handle pool) $ UserId userId
+      result <- Handler.delete (handle pool) userId
       Logger.debug logger $ "Tried to delete user and got: " ++ show result
       case result of
         Left l ->
@@ -89,9 +91,9 @@ delete logger pool query = do
 getNewToken :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 getNewToken logger pool query = do
   let info = do
-        login <- getText query "login"
-        password <- getText query "password"
-        Right (Login login, Password password)
+        login <- getLogin query
+        password <- getPassword query
+        Right (login, password)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right (login, password) -> do
@@ -102,6 +104,24 @@ getNewToken logger pool query = do
         Right token ->
           return $ responseLBS status201 [(hContentType, "application/json")] $ encode token
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+
+getName :: QueryText -> Either Text Name
+getName query = Name <$> getText query "name"
+
+getUserId :: QueryText -> Either Text UserId
+getUserId query = UserId <$> getInteger query "user_id"
+
+getSurname :: QueryText -> Either Text Surname
+getSurname query = Surname <$> getText query "surname"
+
+getLogin :: QueryText -> Either Text Login
+getLogin query = Login <$> getText query "login"
+
+getPassword :: QueryText -> Either Text Password
+getPassword query = Password <$> getText query "password"
+
+getAvatarBody :: ByteString -> Either Text ImageBody
+getAvatarBody body = getImageBody (decodeUtf8 body) "avatar"
 
 isAdmin :: Pool Connection -> Handler.Token -> IO Bool
 isAdmin pool = withResource pool . Db.isAdmin

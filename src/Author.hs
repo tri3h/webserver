@@ -22,20 +22,21 @@ import Network.HTTP.Types.Status
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
 import Types.Author
-  ( AuthorDescription (AuthorDescription),
+  ( Description (Description),
     AuthorId (AuthorId),
     CreateAuthor (..),
     EditAuthor (..),
   )
 import Types.User (UserId (UserId))
 import Utility (getInteger, getText)
+import Data.Text (Text)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
   let info = do
-        userId <- getInteger query "user_id"
-        description <- getText query "description"
-        Right (UserId userId, AuthorDescription description)
+        userId <- getUserId query
+        description <- getDescription query
+        Right (userId, description)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right (cUserId, cDescription) -> do
@@ -55,11 +56,11 @@ create logger pool query = do
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
-  let info = getInteger query "author_id"
+  let info = getAuthorId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- Handler.get (handle pool) $ AuthorId authorId
+      result <- Handler.get (handle pool) authorId
       Logger.debug logger $ "Tried to get author and got: " ++ show result
       case result of
         Right r ->
@@ -80,8 +81,8 @@ get logger pool query = do
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
   let info = do
-        eAuthorId <- AuthorId <$> getInteger query "author_id"
-        eDescription <- AuthorDescription <$> getText query "description"
+        eAuthorId <- getAuthorId query
+        eDescription <- getDescription query
         Right $ EditAuthor {..}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
@@ -101,11 +102,11 @@ edit logger pool query = do
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
-  let info = getInteger query "author_id"
+  let info = getAuthorId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- Handler.delete (handle pool) $ AuthorId authorId
+      result <- Handler.delete (handle pool) authorId
       Logger.debug logger $ "Tried to delete author and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
@@ -117,6 +118,15 @@ delete logger pool query = do
               . encodeUtf8
               $ LazyText.fromStrict l
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+
+getUserId :: QueryText -> Either Text UserId
+getUserId query = UserId <$> getInteger query "user_id"
+
+getDescription :: QueryText -> Either Text Description
+getDescription query = Description <$> getText query "description"
+
+getAuthorId :: QueryText -> Either Text AuthorId
+getAuthorId query = AuthorId <$> getInteger query "author_id"
 
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =

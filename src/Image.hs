@@ -5,7 +5,7 @@ module Image where
 import Data.Binary.Builder (fromByteString)
 import Data.ByteString.Base64 (decode)
 import Data.Pool (Pool, withResource)
-import Data.Text (append, pack)
+import Data.Text (Text, append, pack)
 import Data.Text.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Image as Db
@@ -14,8 +14,8 @@ import Network.HTTP.Types (hContentType)
 import Network.HTTP.Types.Status (status200, status400)
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseBuilder)
-import Types.Image (Image (Image))
-import Utility (getInteger)
+import Types.Image (Image (Image), ImageType)
+import Utility (getInteger, getText)
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
@@ -46,3 +46,6 @@ get logger pool query = do
             status200
             [(hContentType, encodeUtf8 $ "image/" `append` imageType)]
             $ fromByteString r
+
+getImageType :: QueryText -> Either Text ImageType
+getImageType query = getText query "image_type"
