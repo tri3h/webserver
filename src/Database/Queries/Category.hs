@@ -3,6 +3,7 @@
 
 module Database.Queries.Category where
 
+import Control.Monad (void)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -20,24 +21,22 @@ import Types.Category
   )
 
 create :: CreateCategory -> Connection -> IO ()
-create cat conn = do
-  _ <-
+create cat conn =
+  void $
     execute
       conn
       "INSERT INTO categories (name, parent_id) \
       \VALUES (?,?)"
       (cName cat, cParentId cat)
-  return ()
 
 delete :: CategoryId -> Connection -> IO ()
-delete catId conn = do
-  _ <-
+delete catId conn =
+  void $
     execute
       conn
       "DELETE FROM categories \
       \WHERE categories.category_id = ?"
       (Only catId)
-  return ()
 
 get :: CategoryId -> Connection -> IO GetCategory
 get catId conn = do
@@ -50,24 +49,22 @@ get catId conn = do
   return GetCategory {..}
 
 editName :: CategoryId -> Name -> Connection -> IO ()
-editName categoryId name conn = do
-  _ <-
+editName categoryId name conn =
+  void $
     execute
       conn
       "UPDATE categories SET name = ? \
       \WHERE categories.category_id = ?"
       (name, categoryId)
-  return ()
 
 editParent :: CategoryId -> ParentId -> Connection -> IO ()
-editParent categoryId parentId conn = do
-  _ <-
+editParent categoryId parentId conn =
+  void $
     execute
       conn
       "UPDATE categories SET parent_id = ? \
       \WHERE categories.category_id = ?"
       (parentId, categoryId)
-  return ()
 
 doesExist :: CategoryId -> Connection -> IO (Either Text ())
 doesExist catId conn = do

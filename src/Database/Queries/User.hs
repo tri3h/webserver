@@ -3,6 +3,7 @@
 
 module Database.Queries.User where
 
+import Control.Monad (void)
 import Data.Text (Text, pack)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -83,7 +84,7 @@ create user conn = do
       \VALUES (decode(?,'base64'), ?) \
       \   RETURNING image_id"
       (image, imageType)
-  _ <-
+  void $
     execute
       conn
       "INSERT INTO users (name, surname, image_id, \
@@ -98,12 +99,10 @@ create user conn = do
         fAdmin user,
         fToken user
       )
-  return ()
 
 delete :: UserId -> Connection -> IO ()
-delete userId conn = do
-  _ <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
-  return ()
+delete userId conn =
+  void $ execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
 
 get :: Token -> Connection -> IO GetUser
 get token conn = do
@@ -176,10 +175,9 @@ findPassword login conn = do
   return password
 
 updateToken :: Login -> Token -> Connection -> IO ()
-updateToken login token conn = do
-  _ <-
+updateToken login token conn =
+  void $
     execute
       conn
       "UPDATE users SET token = ? WHERE login = ?"
       (token, login)
-  return ()

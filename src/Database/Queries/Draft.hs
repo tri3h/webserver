@@ -4,6 +4,7 @@
 
 module Database.Queries.Draft where
 
+import Control.Monad (void)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -34,13 +35,12 @@ create draft conn = do
       \RETURNING draft_id"
       (cCategoryId draft, cName draft, cText draft, imageId :: Integer, cAuthorId draft)
   let tags = map (draftId,) $ cTagId draft
-  _ <-
+  void $
     executeMany
       conn
       "INSERT INTO draft_tags (draft_id, tag_id) \
       \VALUES (?,?)"
       (tags :: [(Integer, TagId)])
-  return ()
 
 get :: DraftId -> Connection -> IO GetDraft
 get gDraftId conn = do
@@ -70,9 +70,12 @@ get gDraftId conn = do
       }
 
 editCategoryId :: DraftId -> CategoryId -> Connection -> IO ()
-editCategoryId draftId catId conn = do
-  _ <- execute conn "UPDATE drafts SET category_id = ? WHERE draft_id = ?" (catId, draftId)
-  return ()
+editCategoryId draftId catId conn =
+  void $
+    execute
+      conn
+      "UPDATE drafts SET category_id = ? WHERE draft_id = ?"
+      (catId, draftId)
 
 editTagId :: DraftId -> [TagId] -> Connection -> IO ()
 editTagId draftId tagIds conn = do
@@ -83,18 +86,15 @@ editTagId draftId tagIds conn = do
       "DELETE FROM draft_tags dt INNER JOIN drafts d \
       \ON dt.draft_id = d.draft_id WHERE draft_id = ?"
       (Only draftId)
-  _ <- executeMany conn "INSERT INTO draft_tags (draft_id, tag_id) VALUES (?,?)" draftTags
-  return ()
+  void $ executeMany conn "INSERT INTO draft_tags (draft_id, tag_id) VALUES (?,?)" draftTags
 
 editName :: DraftId -> Name -> Connection -> IO ()
-editName draftId name conn = do
-  _ <- execute conn "UPDATE drafts SET name = ? WHERE draft_id = ?" (name, draftId)
-  return ()
+editName draftId name conn =
+  void $ execute conn "UPDATE drafts SET name = ? WHERE draft_id = ?" (name, draftId)
 
 editText :: DraftId -> Text -> Connection -> IO ()
-editText draftId text conn = do
-  _ <- execute conn "UPDATE drafts SET text = ? WHERE draft_id = ?" (text, draftId)
-  return ()
+editText draftId text conn =
+  void $ execute conn "UPDATE drafts SET text = ? WHERE draft_id = ?" (text, draftId)
 
 editMainPhoto :: DraftId -> Image -> Connection -> IO ()
 editMainPhoto draftId photo conn = do
@@ -105,23 +105,21 @@ editMainPhoto draftId photo conn = do
       "INSERT INTO images (image, image_type) \
       \VALUES (decode(?,'base64'), ?) RETURNING image_id"
       (image, imageType)
-  _ <-
+  void $
     execute
       conn
       "UPDATE drafts SET image_id = ? \
       \WHERE draft_id = ?"
       (imageId :: Integer, draftId)
-  return ()
 
 deleteMinorPhoto :: DraftId -> ImageId -> Connection -> IO ()
-deleteMinorPhoto draftId photoId conn = do
-  _ <-
+deleteMinorPhoto draftId photoId conn =
+  void $
     execute
       conn
       "DELETE FROM draft_minor_photos \
       \WHERE image_id = ? AND draft_id = ?"
       (photoId, draftId)
-  return ()
 
 addMinorPhoto :: DraftId -> Image -> Connection -> IO ()
 addMinorPhoto draftId photo conn = do
@@ -132,18 +130,16 @@ addMinorPhoto draftId photo conn = do
       "INSERT INTO images (image, image_type) \
       \VALUES (decode(?,'base64'), ?) RETURNING image_id"
       (image, imageType)
-  _ <-
+  void $
     execute
       conn
       "INSERT INTO draft_minor_photos (image_id, draft_id) \
       \VALUES (?,?)"
       (imageId :: Integer, draftId)
-  return ()
 
 delete :: DraftId -> Connection -> IO ()
-delete draftId conn = do
-  _ <- execute conn "DELETE FROM drafts WHERE drafts.draft_id = ?" (Only draftId)
-  return ()
+delete draftId conn =
+  void $ execute conn "DELETE FROM drafts WHERE drafts.draft_id = ?" (Only draftId)
 
 publish :: GetDraft -> String -> Connection -> IO ()
 publish draft date conn = do
@@ -170,8 +166,7 @@ publish draft date conn = do
       postPhotos
   let postTags = map (postId,) $ gTagId draft
   _ <- executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
-  _ <- execute conn "UPDATE drafts SET post_id = ? WHERE draft_id = ?" (postId, gDraftId draft)
-  return ()
+  void $ execute conn "UPDATE drafts SET post_id = ? WHERE draft_id = ?" (postId, gDraftId draft)
 
 update :: GetDraft -> Connection -> IO ()
 update draft conn = do
@@ -188,13 +183,12 @@ update draft conn = do
   let postTags = map (gPostId draft,) $ gTagId draft
   _ <- executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
   [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ gDraftId draft)
-  _ <-
+  void $
     execute
       conn
       "UPDATE posts SET category_id = ?, \
       \name = ?, text = ?, image_id = ? WHERE post_id = ?"
       (gCategoryId draft, gName draft, gText draft, mainPhotoId :: Integer, gPostId draft)
-  return ()
 
 hasPost :: DraftId -> Connection -> IO Bool
 hasPost draftId conn = do

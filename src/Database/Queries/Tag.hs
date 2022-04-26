@@ -3,6 +3,7 @@
 
 module Database.Queries.Tag where
 
+import Control.Monad (void)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -14,14 +15,12 @@ import Types.PostComment (PostId)
 import Types.Tag (Name, Tag (..), TagId, tagNotExist)
 
 create :: Name -> Connection -> IO ()
-create name conn = do
-  _ <- execute conn "INSERT INTO tags (name) VALUES (?)" (Only name)
-  return ()
+create name conn =
+  void $ execute conn "INSERT INTO tags (name) VALUES (?)" (Only name)
 
 delete :: TagId -> Connection -> IO ()
-delete tagId conn = do
-  _ <- execute conn "DELETE FROM tags WHERE tags.tag_id = ?" (Only tagId)
-  return ()
+delete tagId conn =
+  void $ execute conn "DELETE FROM tags WHERE tags.tag_id = ?" (Only tagId)
 
 get :: TagId -> Connection -> IO Tag
 get tId conn = do
@@ -45,14 +44,13 @@ getByPostId postId conn = do
   return xs'
 
 edit :: Tag -> Connection -> IO ()
-edit tag conn = do
-  _ <-
+edit tag conn =
+  void $
     execute
       conn
       "UPDATE tags SET name = ? \
       \WHERE tags.tag_id = ?"
       (name tag, tagId tag)
-  return ()
 
 doesExist :: TagId -> Connection -> IO (Either Text ())
 doesExist tagId conn = do
