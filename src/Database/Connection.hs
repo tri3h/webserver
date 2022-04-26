@@ -1,4 +1,4 @@
-module Database.Connection (makePool, openConnection) where
+module Database.Connection (makePool, tryOpenConnection) where
 
 import Data.Pool (Pool, createPool)
 import Database.PostgreSQL.Simple
@@ -8,11 +8,23 @@ import Database.PostgreSQL.Simple
     connect,
     defaultConnectInfo,
   )
+import GHC.IO (catchAny)
+import qualified Handlers.Logger as Logger
+import System.Exit (exitFailure)
 import Types.Config (DatabaseConfig (..))
+
+tryOpenConnection :: DatabaseConfig -> Logger.Handle IO -> IO Connection
+tryOpenConnection config logger =
+  catchAny
+    (openConnection config)
+    ( \e -> do
+        Logger.error logger $ show e
+        exitFailure
+    )
 
 openConnection :: DatabaseConfig -> IO Connection
 openConnection config =
-  connect
+  connect $
     defaultConnectInfo
       { connectHost = dHost config,
         connectPort = dPort config,
@@ -21,5 +33,5 @@ openConnection config =
         connectDatabase = dName config
       }
 
-makePool :: DatabaseConfig -> IO (Pool Connection)
-makePool config = createPool (openConnection config) close 1 10 10
+makePool :: DatabaseConfig -> Logger.Handle IO -> IO (Pool Connection)
+makePool config logger = createPool (tryOpenConnection config logger) close 1 10 10

@@ -10,5 +10,5 @@ main :: IO ()
 main = do
   logger <- Logger.make
   config <- Config.make logger
-  _ <- Database.Migration.execute (database config)
+  _ <- Database.Migration.execute (database config) logger
   Server.run logger config

@@ -37,7 +37,7 @@ run logger config = do
   let port = fromInteger . sPort $ server config
   let host = fromString . unpack . sHost $ server config
   let settings = Warp.setHost host $ Warp.setPort port Warp.defaultSettings
-  pool <- makePool $ database config
+  pool <- makePool (database config) logger
   Warp.runSettings settings $ \req f -> do
     let query = queryToQueryText $ queryString req
     Logger.debug logger $ "Received query: " ++ show query
