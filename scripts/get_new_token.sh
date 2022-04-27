@@ -14,4 +14,4 @@ done
 
 source utility/load_config.sh
 
-curl "$host:$port/tokens?login=$login&password=$password" -X GET
+curl "$host:$port/tokens?login=$login&password=$password" -X GET  | sed 's/"//g' > utility/token.txt
