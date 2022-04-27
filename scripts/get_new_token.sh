@@ -1,5 +1,8 @@
 #! /bin/sh
 
+login="login"
+password="password"
+
 #All parameters are required
 while getopts l:p: flag
 do

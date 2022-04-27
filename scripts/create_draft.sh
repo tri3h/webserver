@@ -1,5 +1,13 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+category_id="1"
+tag_id="1"
+name="draft"
+description="text"
+main_photo="utility/image.png"
+main_photo_image_type="png"
+
 #All parameters are required
 while getopts t:c:i:n:d:m:y: flag
 do

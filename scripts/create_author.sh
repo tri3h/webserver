@@ -1,5 +1,9 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+id="1"
+description=$( sed 's/[_ ]/+/g' <<< "good author")
+
 #All parameters are required
 while getopts t:i:d: flag
 do

@@ -1,5 +1,7 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+
 #Required parameters: t. Others are optional.
 while getopts t:a:c:g:i:n:p:e:s:z:y:x:b:o:l:h: flag
 do

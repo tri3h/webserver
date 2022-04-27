@@ -1,5 +1,9 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+draft_id="1"
+minor_photo="utility/image.png"
+minor_photo_image_type="png"
 
 #All parameters are required
 while getopts t:d:p:y: flag
@@ -15,6 +19,8 @@ done
 source utility/load_config.sh
 
 base64 $minor_photo > "image.dat"
+
+cat "image.dat"
 
 curl "$host:$port/drafts/minor_photo?token=$token&draft_id=$draft_id&image_type=$minor_photo_image_type" -X POST -F minor_photo=@image.dat
 
