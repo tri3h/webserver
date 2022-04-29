@@ -8,14 +8,10 @@ do
   t) token=${OPTARG};;
   d) draft_id=${OPTARG};;
   p) minor_photo=${OPTARG};;
-  y) minor_photo_image_type=${OPTARG};;
  esac
 done
 
 source utility/load_config.sh
 
-base64 $minor_photo > "image.dat"
+curl "$host:$port/drafts/minor_photo?token=$token&draft_id=$draft_id" -X POST -F "minor_photo=@$minor_photo"
 
-curl "$host:$port/drafts/minor_photo?token=$token&draft_id=$draft_id&image_type=$minor_photo_image_type" -X POST -F minor_photo=@image.dat
-
-rm "image.dat"

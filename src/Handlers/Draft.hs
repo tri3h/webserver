@@ -27,10 +27,10 @@ import Types.Draft
     noDraftAuthor,
     userNotAuthor,
   )
-import Types.Image (Image (Image), ImageId, malformedImage)
+import Types.Image (Image, ImageId, Link)
 import Types.Tag (TagId)
 import Types.User (Token)
-import Utility (imageToLink, imagesToLinks)
+import Utility (imageIdToLink)
 import Prelude hiding (words)
 
 data Handle m = Handle
@@ -45,11 +45,10 @@ data Handle m = Handle
     hDeleteMinorPhoto :: DraftId -> ImageId -> m (),
     hIsAuthor :: Token -> m Bool,
     hHasPost :: DraftId -> m Bool,
-    hGetCurrentDate :: m String,
-    hGet :: DraftId -> m GetDraft,
+    hGet :: DraftId -> (ImageId -> Link) -> m GetDraft,
     hGetAuthor :: DraftId -> m AuthorId,
-    hPublish :: GetDraft -> String -> m (),
-    hUpdate :: GetDraft -> m (),
+    hPublish :: DraftId -> m (),
+    hUpdate :: DraftId -> m (),
     hGetAuthorIdByToken :: Token -> m AuthorId,
     hDoesExist :: DraftId -> m (Either Text ()),
     hDoesAuthorExist :: AuthorId -> m (Either Text ()),
@@ -63,10 +62,7 @@ create handle draft = do
   categoryExist <- hDoesCategoryExist handle $ cCategoryId draft
   tagExist <- foldl1 (>>) $ map (hDoesTagExist handle) $ cTagId draft
   case authorExist >> categoryExist >> tagExist of
-    Right _ ->
-      case cMainPhoto draft of
-        Image {} -> Right <$> hCreate handle draft
-        _ -> return $ Left malformedImage
+    Right _ -> Right <$> hCreate handle draft
     Left l -> return $ Left l
 
 get :: Monad m => Handle m -> ServerAddress -> DraftId -> Token -> m (Either Text GetDraft)
@@ -74,20 +70,7 @@ get handle server draftId token = do
   access <- canAccess handle draftId token
   case access of
     Left l -> return $ Left l
-    Right _ -> do
-      draft <- hGet handle draftId
-      return $ checkPhoto server draft
-
-checkPhoto :: ServerAddress -> GetDraft -> Either Text GetDraft
-checkPhoto server draft =
-  let mainPhotoLink = imageToLink server $ gMainPhoto draft
-      minorPhotoLink = imagesToLinks server $ gMinorPhoto draft
-   in case mainPhotoLink of
-        Right mainLink ->
-          case minorPhotoLink of
-            Right minorLink -> Right draft {gMainPhoto = mainLink, gMinorPhoto = minorLink}
-            Left l -> Left l
-        Left l -> Left l
+    Right _ -> Right <$> hGet handle draftId (imageIdToLink server)
 
 edit :: Monad m => Handle m -> DraftId -> Token -> EditParams -> m (Either Text ())
 edit handle draftId token params = do
@@ -109,9 +92,7 @@ edit handle draftId token params = do
 editPhoto :: Monad m => Handle m -> DraftId -> EditParams -> m (Either Text ())
 editPhoto handle draftId params =
   case eMainPhoto params of
-    Just x -> case x of
-      Image {} -> Right <$> hEditMainPhoto handle draftId x
-      _ -> return $ Left malformedImage
+    Just x -> Right <$> hEditMainPhoto handle draftId x
     _ -> return $ Right ()
 
 editCategoryId :: Monad m => Handle m -> DraftId -> CategoryId -> m (Either Text ())
@@ -144,22 +125,16 @@ publish handle draftId token = do
     Left l -> return $ Left l
     Right _ -> do
       hasPost <- hHasPost handle draftId
-      draft <- hGet handle draftId
       if hasPost
-        then Right <$> hUpdate handle draft
-        else do
-          date <- hGetCurrentDate handle
-          Right <$> hPublish handle draft date
+        then Right <$> hUpdate handle draftId
+        else Right <$> hPublish handle draftId
 
 addMinorPhoto :: Monad m => Handle m -> DraftId -> Token -> Image -> m (Either Text ())
-addMinorPhoto handle draftId token image =
-  case image of
-    Image {} -> do
-      access <- canAccess handle draftId token
-      case access of
-        Left l -> return $ Left l
-        Right _ -> Right <$> hAddMinorPhoto handle draftId image
-    _ -> return $ Left malformedImage
+addMinorPhoto handle draftId token image = do
+  access <- canAccess handle draftId token
+  case access of
+    Left l -> return $ Left l
+    Right _ -> Right <$> hAddMinorPhoto handle draftId image
 
 deleteMinorPhoto :: Monad m => Handle m -> DraftId -> Token -> ImageId -> m (Either Text ())
 deleteMinorPhoto handle draftId token imageId = do

@@ -7,13 +7,12 @@ import qualified Data.ByteString.Char8 as Char8
 import Data.Text (Text, pack)
 import Data.Text.Encoding (encodeUtf8)
 import Types.Config (ServerAddress)
-import Types.Image (Image (Image), malformedImage)
+import Types.Image (ImageId, Link)
 import Types.User
   ( Admin (Admin),
     CreateUser (..),
-    Date (Date),
     FullUser (..),
-    GetUser (gAvatar),
+    GetUser,
     Login,
     Password (Password),
     Token (Token),
@@ -21,16 +20,15 @@ import Types.User
     invalidData,
     loginTaken,
   )
-import Utility (imageToLink)
+import Utility (imageIdToLink)
 
 data Handle m = Handle
   { hIsLoginUnique :: Login -> m Bool,
     hIsTokenUnique :: Token -> m Bool,
     hCreate :: FullUser -> m (),
-    hGet :: Token -> m GetUser,
+    hGet :: Token -> (ImageId -> Link) -> m GetUser,
     hDelete :: UserId -> m (),
     hGetRandomNumber :: m Integer,
-    hGetCurrentTime :: m String,
     hIsLoginValid :: Login -> m Bool,
     hFindPassword :: Login -> m Password,
     hUpdateToken :: Login -> Token -> m (),
@@ -41,34 +39,25 @@ create :: Monad m => Handle m -> CreateUser -> m (Either Text Token)
 create handle partUser = do
   isUnique <- hIsLoginUnique handle $ cLogin partUser
   if isUnique
-    then case cAvatar partUser of
-      Image _ _ -> do
-        fToken <- generateToken handle
-        time <- hGetCurrentTime handle
-        let fDate = Date . pack $ take 10 time
-        let hashPassw = hashPassword $ cPassword partUser
-        let user =
-              FullUser
-                { fName = cName partUser,
-                  fSurname = cSurname partUser,
-                  fAvatar = cAvatar partUser,
-                  fLogin = cLogin partUser,
-                  fPassword = hashPassw,
-                  fAdmin = Admin False,
-                  ..
-                }
-        hCreate handle user
-        return $ Right fToken
-      _ -> return $ Left malformedImage
+    then do
+      fToken <- generateToken handle
+      let hashPassw = hashPassword $ cPassword partUser
+      let user =
+            FullUser
+              { fName = cName partUser,
+                fSurname = cSurname partUser,
+                fAvatar = cAvatar partUser,
+                fLogin = cLogin partUser,
+                fPassword = hashPassw,
+                fAdmin = Admin False,
+                ..
+              }
+      hCreate handle user
+      return $ Right fToken
     else return $ Left loginTaken
 
 get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Text GetUser)
-get handle server token = do
-  user <- hGet handle token
-  let maybeLink = imageToLink server $ gAvatar user
-  case maybeLink of
-    Right link -> return $ Right user {gAvatar = link}
-    Left l -> return $ Left l
+get handle server token = Right <$> hGet handle token (imageIdToLink server)
 
 delete :: Monad m => Handle m -> UserId -> m (Either Text ())
 delete handle userId = do

@@ -59,8 +59,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * surname
         * login
         * password
-        * image_type
-    * Also there should be an image "avatar" in base64
+    * Also there should be an image "avatar"
     * Return a token in case of success
 
 - /tokens 
@@ -154,8 +153,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * description
         * tag_id
         * name
-        * image_type
-    * Also there should be an image "main_photo" in base64
+    * Also there should be an image "main_photo"
     * Return nothing in case of success
 
 - PUT /drafts
@@ -168,8 +166,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * tag_id
         * name
         * description
-        * image_type (need only with an image)
-    * Also there may be an image "main_photo" in base64 (in this case there also should be a parameter "image_type")
+    * Also there may be an image "main_photo"
     * Return nothing in case of success
 
 - DELETE /drafts
@@ -184,8 +181,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Required parameters:
         * token
         * draft_id
-        * image_type
-    * Also there should be an image "minor_photo" in base64
+    * Also there should be an image "minor_photo"
     * Return nothing in case of success
 
 - DELETE drafts/minor_photo

@@ -14,7 +14,7 @@ import Database.PostgreSQL.Simple.FromField (FromField)
 import Database.PostgreSQL.Simple.ToField (ToField)
 import Types.Author (AuthorId)
 import Types.Category (CategoryId)
-import Types.Image (Image)
+import Types.Image (Image, Link)
 import Types.PostComment (PostId)
 import Types.Tag (TagId)
 
@@ -30,8 +30,8 @@ data GetDraft = GetDraft
     gTagId :: [TagId],
     gName :: Name,
     gText :: Text,
-    gMainPhoto :: Image,
-    gMinorPhoto :: [Image]
+    gMainPhoto :: Link,
+    gMinorPhoto :: [Link]
   }
   deriving (Show, Eq)
 

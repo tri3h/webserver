@@ -3,9 +3,8 @@
 module Image where
 
 import Data.Binary.Builder (fromByteString)
-import Data.ByteString.Base64 (decode)
 import Data.Pool (Pool, withResource)
-import Data.Text (Text, append, pack)
+import Data.Text (Text, append)
 import Data.Text.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Image as Db
@@ -28,24 +27,12 @@ get logger pool query = do
         Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 l
         Right _ -> do
           (Image image imageType) <- withResource pool $ Db.get imageId
-          let decodeImage = decode $ encodeUtf8 image
-          send decodeImage imageType
+          return $
+            responseBuilder
+              status200
+              [(hContentType, encodeUtf8 $ "image/" `append` imageType)]
+              $ fromByteString image
     Left l -> return $ responseBuilder status400 [] . fromByteString $ encodeUtf8 l
-  where
-    send decodeImage imageType = case decodeImage of
-      Left l ->
-        return $
-          responseBuilder
-            status400
-            []
-            . fromByteString
-            $ encodeUtf8 $ pack l
-      Right r ->
-        return $
-          responseBuilder
-            status200
-            [(hContentType, encodeUtf8 $ "image/" `append` imageType)]
-            $ fromByteString r
 
 getImageType :: QueryText -> Either Text ImageType
 getImageType query = getText query "image_type"

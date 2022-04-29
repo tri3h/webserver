@@ -1,13 +1,26 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Utility where
+module Utility
+  ( getText,
+    getInteger,
+    getIntegers,
+    getImage,
+    getMaybeText,
+    getMaybeInteger,
+    getMaybeIntegers,
+    getMaybeImage,
+    imageIdToLink,
+  )
+where
 
 import Control.Monad (join)
-import Data.Text (Text, append, isInfixOf, null, pack, replace, splitOn, unpack)
+import qualified Data.ByteString as BS
+import Data.Text (Text, append, null, pack, splitOn, unpack)
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Network.HTTP.Types.URI (QueryText)
 import Text.Read (readMaybe)
 import Types.Config (ServerAddress)
-import Types.Image (Image (Id, Link), imageAddress, malformedImage)
+import Types.Image (Image (Image), ImageBody, ImageId (ImageId), ImageType, Link (Link), imageAddress)
 import Prelude hiding (null)
 
 getText :: QueryText -> Text -> Either Text Text
@@ -32,52 +45,54 @@ getIntegers query name = case join $ lookup name query of
           then noSpecified name
           else Right $ map (\(Just x) -> x) values
 
-getImageBody :: Text -> Text -> Either Text Text
-getImageBody body name =
-  let hasImage = ("name=\"" `append` name) `isInfixOf` body
-   in if hasImage
+getImage :: BS.ByteString -> BS.ByteString -> Either Text Image
+getImage body name =
+  let hasImage = "Content-Type: image/" `BS.isInfixOf` body
+      isCorrectName = ("name=\"" `BS.append` name) `BS.isInfixOf` body
+   in if hasImage && isCorrectName
         then
-          Right $
-            replace "\n" "" $
-              head $
-                tail $
-                  dropWhile (/= "") $ splitOn "\r\n" body
+          let imageType = getImageType body
+           in Right $ Image (getImageBody body imageType) imageType
         else Left noImage
 
+getImageBody :: BS.ByteString -> ImageType -> ImageBody
+getImageBody body t =
+  let delim1 = encodeUtf8 t `BS.append` "\r"
+      delim2 = "\r\n-"
+   in BS.drop (BS.length delim2) . fst
+        . BS.breakSubstring delim2
+        . BS.drop (BS.length delim1)
+        . snd
+        $ BS.breakSubstring delim1 body
+
+getImageType :: BS.ByteString -> ImageType
+getImageType =
+  let delim1 = "Content-Type: image/"
+      delim2 = "\r"
+   in decodeUtf8 . fst
+        . BS.breakSubstring delim2
+        . BS.drop (BS.length delim1)
+        . snd
+        . BS.breakSubstring delim1
+
 getMaybeText :: QueryText -> Text -> Maybe Text
-getMaybeText query name = case join $ lookup name query of
-  Nothing -> Nothing
-  Just x -> if null x then Nothing else Just x
+getMaybeText query name = eitherToMaybe $ getText query name
 
 getMaybeInteger :: QueryText -> Text -> Maybe Integer
-getMaybeInteger query name = case join $ lookup name query of
-  Nothing -> Nothing
-  Just x -> readMaybe $ unpack x
+getMaybeInteger query name = eitherToMaybe $ getInteger query name
 
 getMaybeIntegers :: QueryText -> Text -> Maybe [Integer]
-getMaybeIntegers query name = case join $ lookup name query of
-  Nothing -> Nothing
-  Just xs -> mapM (\x -> readMaybe $ unpack x :: Maybe Integer) (splitOn "," xs)
+getMaybeIntegers query name = eitherToMaybe $ getIntegers query name
 
-getMaybeImageBody :: Text -> Text -> Maybe Text
-getMaybeImageBody body name =
-  let hasImage = ("name=\"" `append` name) `isInfixOf` body
-   in if hasImage
-        then
-          Just $
-            replace "\n" "" $
-              head $
-                tail $
-                  dropWhile (/= "") $ splitOn "\r\n" body
-        else Nothing
+getMaybeImage :: BS.ByteString -> BS.ByteString -> Maybe Image
+getMaybeImage body name = eitherToMaybe $ getImage body name
 
-imageToLink :: ServerAddress -> Image -> Either Text Image
-imageToLink server (Id x) = Right . Link $ server `append` imageAddress `append` pack (show x)
-imageToLink _ link@(Link _) = Right link
-imageToLink _ _ = Left malformedImage
+imageIdToLink :: ServerAddress -> ImageId -> Link
+imageIdToLink server (ImageId x) = Link $ server `append` imageAddress `append` pack (show x)
 
-imagesToLinks :: ServerAddress -> [Image] -> Either Text [Image]
-imagesToLinks server = mapM (imageToLink server)
+eitherToMaybe :: Either a1 a2 -> Maybe a2
+eitherToMaybe (Right r) = Just r
+eitherToMaybe (Left _) = Nothing
 
 noSpecified :: Text -> Either Text b
 noSpecified name = Left $ "No " `append` name `append` " specified"
