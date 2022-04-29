@@ -80,7 +80,7 @@ editCategoryId draftId catId conn =
 editTagId :: DraftId -> [TagId] -> Connection -> IO ()
 editTagId draftId tagIds conn = do
   let draftTags = map (draftId,) tagIds
-  _ <-
+  void $
     execute
       conn
       "DELETE FROM draft_tags dt INNER JOIN drafts d \
@@ -155,33 +155,33 @@ publish draft date conn = do
         gText draft
       )
   [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ gDraftId draft)
-  _ <- execute conn "UPDATE posts SET image_id = ? WHERE post_id = ?" (mainPhotoId :: Integer, postId)
+  void $ execute conn "UPDATE posts SET image_id = ? WHERE post_id = ?" (mainPhotoId :: Integer, postId)
   photoIds <- query conn "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?" (Only $ gDraftId draft)
   let postPhotos = map (\(Only y) -> (postId :: Integer, y)) (photoIds :: [Only Integer])
-  _ <-
+  void $
     executeMany
       conn
       "INSERT INTO post_minor_photos (post_id, image_id) \
       \VALUES (?,?)"
       postPhotos
   let postTags = map (postId,) $ gTagId draft
-  _ <- executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
+  void $ executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
   void $ execute conn "UPDATE drafts SET post_id = ? WHERE draft_id = ?" (postId, gDraftId draft)
 
 update :: GetDraft -> Connection -> IO ()
 update draft conn = do
-  _ <- execute conn "DELETE FROM post_tags WHERE post_id = ?" (Only $ gPostId draft)
-  _ <- execute conn "DELETE FROM post_minor_photos WHERE post_id = ?" (Only $ gPostId draft)
+  void $ execute conn "DELETE FROM post_tags WHERE post_id = ?" (Only $ gPostId draft)
+  void $ execute conn "DELETE FROM post_minor_photos WHERE post_id = ?" (Only $ gPostId draft)
   photoIds <- query conn "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?" (Only $ gDraftId draft)
   let postPhotos = map (\(Only y) -> (gPostId draft, y)) (photoIds :: [Only Integer])
-  _ <-
+  void $
     executeMany
       conn
       "INSERT INTO post_minor_photos (post_id, image_id) \
       \VALUES (?,?)"
       postPhotos
   let postTags = map (gPostId draft,) $ gTagId draft
-  _ <- executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
+  void $ executeMany conn "INSERT INTO post_tags (post_id, tag_id) VALUES (?,?)" postTags
   [Only mainPhotoId] <- query conn "SELECT image_id FROM drafts WHERE draft_id = ?" (Only $ gDraftId draft)
   void $
     execute
