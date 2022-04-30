@@ -11,7 +11,6 @@ import Data.ByteString.Lazy (toStrict)
 import Data.Pool (Pool)
 import Data.String (IsString (fromString))
 import Data.Text (unpack)
-import Database.Connection (makePool)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Draft
 import qualified Handlers.Logger as Logger
@@ -27,17 +26,17 @@ import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Post
 import qualified Tag
-import Types.Config (Config (database, server), ServerConfig (sAddress, sHost, sPort))
+import Types.Config (Config (server), ServerConfig (sAddress, sHost, sPort))
 import qualified Types.Config as Config
 import Types.User (Token (Token))
 import qualified User
 
-run :: Logger.Handle IO -> Config.Config -> IO ()
-run logger config = do
+run :: Logger.Handle IO -> Config.Config -> Pool Connection -> IO ()
+run logger config pool = do
   let port = fromInteger . sPort $ server config
   let host = fromString . unpack . sHost $ server config
   let settings = Warp.setHost host $ Warp.setPort port Warp.defaultSettings
-  pool <- makePool $ database config
+  Logger.info logger "Starting server"
   Warp.runSettings settings $ \req f -> do
     let query = queryToQueryText $ queryString req
     Logger.debug logger $ "Received query: " ++ show query
