@@ -74,35 +74,22 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Required parameters:
         * image_id
     * Return an image in case of success
-</details>
-
-<details>
-<summary>Available for users (and admins)</summary>
-
-- GET /users
-    * Get a user
-    * Required parameters:
-        * token
-    * Return a user in case of success
 
 - GET /tags 
     * Get a tag
     * Required parameters:
-        * token
         * tag_id
     * Return a tag in case of success
 
 - GET /categories
     * Get a category
     * Required parameters:
-        * token
         * category_id
     * Return a category in case of success
 
 - GET /posts
     * Get posts
-    * Required parameters:
-        * token
+    * Required parameters: none
     * Optional parameters:
         * author_name
         * category_id
@@ -121,6 +108,16 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * limit
     * "sort_by" can be: "by_date" / "by_author" / "by_category" / "by_photos_number"
     * Return all posts (max at a time = 10) if there are no optional parameters. Return posts (max at a time = 10 or less if there is a limit parameter) only with corresponding parameters if there are optional paramaters. Return no post if there are no posts with such optional parameters
+</details>
+
+<details>
+<summary>Available for users (and admins)</summary>
+
+- GET /users
+    * Get a user
+    * Required parameters:
+        * token
+    * Return a user in case of success
 
 - GET /comments
     * Get all comments to a post

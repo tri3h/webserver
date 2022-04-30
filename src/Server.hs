@@ -43,7 +43,33 @@ run logger config = do
     Logger.debug logger $ "Received query: " ++ show query
     body <- toStrict <$> strictRequestBody req
     Logger.debug logger $ "Received body: " ++ show body
-    response <- case Token <$> join (lookup "token" query) of
+    response <- makeNoTokenResponse logger config pool req body
+    f response
+
+makeNoTokenResponse :: Logger.Handle IO -> Config.Config -> Pool Connection -> Request -> BS.ByteString -> IO Response
+makeNoTokenResponse logger config pool req body = do
+  let query = queryToQueryText $ queryString req
+  let address = sAddress $ server config
+  case pathInfo req of
+    ["users"] -> case requestMethod req of
+      "POST" -> User.create logger pool query body
+      _ -> chooseResponse query
+    ["tokens"] -> User.getNewToken logger pool query
+    ["images"] -> case requestMethod req of
+      "GET" -> Image.get logger pool query
+      _ -> chooseResponse query
+    ["posts"] -> case requestMethod req of
+      "GET" -> Post.get logger pool address query
+      _ -> chooseResponse query
+    ["tags"] -> case requestMethod req of
+      "GET" -> Tag.get logger pool query
+      _ -> chooseResponse query
+    ["categories"] -> case requestMethod req of
+      "GET" -> Category.get logger pool query
+      _ -> chooseResponse query
+    _ -> chooseResponse query
+  where
+    chooseResponse query = case Token <$> join (lookup "token" query) of
       Just token -> do
         isValid <- User.isTokenValid pool token
         if isValid
@@ -52,22 +78,7 @@ run logger config = do
             let err = "Invalid token"
             Logger.debug logger $ show err
             return $ responseLBS status400 [] err
-      Nothing -> makeNoTokenResponse logger pool req body
-    f response
-
-makeNoTokenResponse :: Logger.Handle IO -> Pool Connection -> Request -> BS.ByteString -> IO Response
-makeNoTokenResponse logger pool req body = do
-  let query = queryToQueryText $ queryString req
-  case pathInfo req of
-    ["users"] ->
-      if requestMethod req == "POST"
-        then User.create logger pool query body
-        else return $ responseLBS status400 [] "No token"
-    ["tokens"] -> User.getNewToken logger pool query
-    ["images"] -> case requestMethod req of
-      "GET" -> Image.get logger pool query
-      _ -> return $ responseLBS status404 [] ""
-    _ -> return $ responseLBS status404 [] ""
+      Nothing -> return $ responseLBS status404 [] ""
 
 makeTokenResponse :: Logger.Handle IO -> Config.Config -> Pool Connection -> Request -> BS.ByteString -> Token -> IO Response
 makeTokenResponse logger config pool req body token = do
@@ -77,15 +88,6 @@ makeTokenResponse logger config pool req body token = do
   case pathInfo req of
     ["users"] -> case requestMethod req of
       "GET" -> User.get logger pool address token
-      _ -> chooseResponse isAdmin
-    ["tags"] -> case requestMethod req of
-      "GET" -> Tag.get logger pool query
-      _ -> chooseResponse isAdmin
-    ["categories"] -> case requestMethod req of
-      "GET" -> Category.get logger pool query
-      _ -> chooseResponse isAdmin
-    ["posts"] -> case requestMethod req of
-      "GET" -> Post.get logger pool address query
       _ -> chooseResponse isAdmin
     ["comments"] -> case requestMethod req of
       "GET" -> Comment.get logger pool query
