@@ -9,7 +9,7 @@ import Data.Text (Text, append, pack)
 import Database.PostgreSQL.Simple
   ( Connection,
     In (In),
-    Only (Only),
+    Only (Only, fromOnly),
     query,
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
@@ -223,12 +223,7 @@ getMinorPhotos postId f conn = do
       "SELECT image_id FROM post_minor_photos \
       \WHERE post_id = ?"
       (Only postId)
-  let xs' =
-        map
-          ( \(Only x) -> f x
-          )
-          xs
-  return xs'
+  return $ map (f . fromOnly) xs
 
 doesExist :: PostId -> Connection -> IO (Either Text ())
 doesExist postId conn = do

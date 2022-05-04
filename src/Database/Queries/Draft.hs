@@ -9,7 +9,7 @@ import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Binary (Binary),
     Connection,
-    Only (Only),
+    Only (Only, fromOnly),
     execute,
     executeMany,
     query,
@@ -61,12 +61,11 @@ get gDraftId f conn = do
       (Only gDraftId)
   return $
     GetDraft
-      { gTagId = map (\(Only x) -> x) tagIds,
+      { gTagId = map fromOnly tagIds,
         gMainPhoto = f mainPhotoId,
         gMinorPhoto =
           map
-            ( \(Only x) -> f x
-            )
+            (f . fromOnly)
             minorPhotoId,
         ..
       }

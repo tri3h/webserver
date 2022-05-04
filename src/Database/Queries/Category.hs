@@ -111,5 +111,4 @@ getChildren parId conn = do
       \children ch WHERE ch.category_id = c.parent_id) SELECT category_id \
       \FROM children"
       (Only parId)
-  let xs' = map (\(Only x) -> x) xs
-  return xs'
+  return $ map fromOnly xs
