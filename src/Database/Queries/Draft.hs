@@ -161,14 +161,15 @@ publish draftId conn = do
     execute
       conn
       "INSERT INTO post_minor_photos (post_id, image_id) \
-      \VALUES (?, (SELECT image_id FROM draft_minor_photos WHERE draft_id = ?))"
-      (postId, draftId)
+      \(SELECT d.post_id, dmp.image_id FROM draft_minor_photos dmp INNER JOIN \
+      \drafts d ON dmp.draft_id = d.draft_id WHERE dmp.draft_id = ?)"
+      (Only draftId)
   void $
     execute
       conn
-      "INSERT INTO post_tags (post_id, tag_id) VALUES (?, \
-      \(SELECT tag_id FROM draft_tags WHERE draft_id = ?))"
-      (postId, draftId)
+      "INSERT INTO post_tags (post_id, tag_id) (SELECT d.post_id, dt.tag_id FROM draft_tags dt \
+      \INNER JOIN drafts d ON dt.draft_id = d.draft_id WHERE dt.draft_id = ?)"
+      (Only draftId)
 
 update :: DraftId -> Connection -> IO ()
 update draftId conn = do
@@ -178,15 +179,16 @@ update draftId conn = do
   void $
     execute
       conn
-      "INSERT INTO post_minor_photos (post_id, image_id) VALUES (?, (SELECT image_id \
-      \FROM draft_minor_photos WHERE draft_id = ?))"
-      (postId, draftId)
+      "INSERT INTO post_minor_photos (post_id, image_id) (SELECT d.post_id, dmp.image_id \
+      \FROM draft_minor_photos dmp INNER JOIN drafts d ON dmp.draft_id = d.draft_id \
+      \WHERE dmp.draft_id = ?)"
+      (Only draftId)
   void $
     execute
       conn
-      "INSERT INTO post_tags (post_id, tag_id) VALUES (?, (SELECT tag_id FROM draft_tags \
-      \WHERE draft_id = ?))"
-      (postId, draftId)
+      "INSERT INTO post_tags (post_id, tag_id) (SELECT d.post_id, dt.tag_id FROM draft_tags dt \
+      \INNER JOIN drafts d ON dt.draft_id = d.draft_id WHERE dt.draft_id = ?)"
+      (Only draftId)
   void $
     execute
       conn
