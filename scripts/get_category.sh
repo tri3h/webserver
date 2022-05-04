@@ -1,6 +1,6 @@
 #! /bin/sh
 
-#All parameters are required
+#Parameters are optional
 while getopts i: flag
 do
  case "$flag" in

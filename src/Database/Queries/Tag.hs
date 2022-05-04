@@ -9,6 +9,7 @@ import Database.PostgreSQL.Simple
     Only (Only),
     execute,
     query,
+    query_,
   )
 import Types.PostComment (PostId)
 import Types.Tag (Name, Tag (..), TagId, tagNotExist)
@@ -31,6 +32,11 @@ get tId conn = do
       "SELECT tag_id, name FROM tags WHERE tags.tag_id = ?"
       (Only tId)
   return Tag {..}
+
+getAll :: Connection -> IO [Tag]
+getAll conn = do
+  result <- query_ conn "SELECT tag_id, name FROM tags"
+  return $ map (\(tagId, name) -> Tag {..}) result
 
 getByPostId :: PostId -> Connection -> IO [Tag]
 getByPostId postId conn = do

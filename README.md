@@ -76,16 +76,18 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Return an image in case of success
 
 - GET /tags 
-    * Get a tag
-    * Required parameters:
+    * Get tags or a tag
+    * Required parameters: none
+    * Optional parameters:
         * tag_id
-    * Return a tag in case of success
+    * Return a list of tags if there are no parameters or a tag if there are in case of success
 
 - GET /categories
-    * Get a category
-    * Required parameters:
+    * Get categories or a category
+    * Required parameters: none
+    * Optional parameters:
         * category_id
-    * Return a category in case of success
+    * Return a list of categories if there are no parameters or a category if there are in case of success
 
 - GET /posts
     * Get posts

@@ -22,7 +22,7 @@ import Network.HTTP.Types.Status
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
 import Types.Tag (Name (Name), Tag (..), TagId (TagId))
-import Utility (getInteger, getText)
+import Utility (getInteger, getMaybeInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
@@ -45,12 +45,12 @@ create logger pool query = do
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
-  let info = getTagId query
+  let info = getMaybeTagId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Right tagId -> do
+    Just tagId -> do
       result <- Handler.get (handle pool) tagId
-      Logger.debug logger $ "Tried to get tag and got: " ++ show result
+      Logger.debug logger $ "Tried to get a tag and got: " ++ show result
       case result of
         Right r ->
           return $
@@ -65,7 +65,14 @@ get logger pool query = do
               []
               . encodeUtf8
               $ LazyText.fromStrict l
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+    Nothing -> do
+      result <- Handler.hGetAll (handle pool)
+      Logger.debug logger $ "Tried to get a list of tags and got: " ++ show result
+      return $
+        responseLBS
+          status200
+          [(hContentType, "application/json")]
+          $ encode result
 
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
@@ -115,11 +122,15 @@ getName query = Name <$> getText query "name"
 getTagId :: QueryText -> Either Text TagId
 getTagId query = TagId <$> getInteger query "tag_id"
 
+getMaybeTagId :: QueryText -> Maybe TagId
+getMaybeTagId query = TagId <$> getMaybeInteger query "tag_id"
+
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
   Handler.Handle
     { Handler.hCreate = withResource pool . Db.create,
       Handler.hGet = withResource pool . Db.get,
+      Handler.hGetAll = withResource pool Db.getAll,
       Handler.hDelete = withResource pool . Db.delete,
       Handler.hEdit = withResource pool . Db.edit,
       Handler.hDoesExist = withResource pool . Db.doesExist

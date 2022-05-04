@@ -6,6 +6,7 @@ import Types.Tag (Name, Tag (tagId), TagId)
 data Handle m = Handle
   { hCreate :: Name -> m (),
     hGet :: TagId -> m Tag,
+    hGetAll :: m [Tag],
     hDelete :: TagId -> m (),
     hEdit :: Tag -> m (),
     hDoesExist :: TagId -> m (Either Text ())

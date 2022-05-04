@@ -9,6 +9,7 @@ import Database.PostgreSQL.Simple
     Only (Only, fromOnly),
     execute,
     query,
+    query_,
   )
 import Types.Category
   ( CategoryId,
@@ -48,6 +49,11 @@ get catId conn = do
       \WHERE categories.category_id = ?"
       (Only catId)
   return GetCategory {..}
+
+getAll :: Connection -> IO [GetCategory]
+getAll conn = do
+  result <- query_ conn "SELECT category_id, name, parent_id FROM categories"
+  return $ map (\(gCategoryId, gName, gParentId) -> GetCategory {..}) result
 
 editName :: CategoryId -> Name -> Connection -> IO ()
 editName categoryId name conn = do

@@ -14,6 +14,7 @@ import Types.Category
 data Handle m = Handle
   { hCreate :: CreateCategory -> m (),
     hGet :: CategoryId -> m GetCategory,
+    hGetAll :: m [GetCategory],
     hDelete :: CategoryId -> m (),
     hEditName :: CategoryId -> Name -> m (),
     hEditParent :: CategoryId -> ParentId -> m (),

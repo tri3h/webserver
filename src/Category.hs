@@ -54,12 +54,12 @@ create logger pool query = do
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
-  let info = getCategoryId query
+  let info = getMaybeCategoryId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Right categoryId -> do
+    Just categoryId -> do
       result <- Handler.get (handle pool) categoryId
-      Logger.debug logger $ "Tried to get category and got: " ++ show result
+      Logger.debug logger $ "Tried to get a category and got: " ++ show result
       case result of
         Right r ->
           return $
@@ -74,7 +74,14 @@ get logger pool query = do
               []
               . encodeUtf8
               $ LazyText.fromStrict l
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+    Nothing -> do
+      result <- Handler.hGetAll (handle pool)
+      Logger.debug logger $ "Tried to get a list of categories and got: " ++ show result
+      return $
+        responseLBS
+          status200
+          [(hContentType, "application/json")]
+          $ encode result
 
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
@@ -128,11 +135,15 @@ getParentId query = CategoryId <$> getMaybeInteger query "parent_id"
 getCategoryId :: QueryText -> Either Text CategoryId
 getCategoryId query = CategoryId <$> getInteger query "category_id"
 
+getMaybeCategoryId :: QueryText -> Maybe CategoryId
+getMaybeCategoryId query = CategoryId <$> getMaybeInteger query "category_id"
+
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
   Handler.Handle
     { Handler.hCreate = withResource pool . Db.create,
       Handler.hGet = withResource pool . Db.get,
+      Handler.hGetAll = withResource pool Db.getAll,
       Handler.hDelete = withResource pool . Db.delete,
       Handler.hEditName = \a b -> withResource pool $ Db.editName a b,
       Handler.hEditParent = \a b -> withResource pool $ Db.editParent a b,
