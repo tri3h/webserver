@@ -3,16 +3,20 @@
 
 module Database.Queries.User where
 
+import Control.Exception (try)
+import Control.Monad (void)
 import Data.Text (Text, pack)
 import Database.PostgreSQL.Simple
   ( Binary (Binary),
     Connection,
     Only (Only),
+    SqlError (sqlErrorMsg),
     execute,
     query,
     query_,
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
+import Error (unknownError)
 import Types.Image (Image (Image), ImageId, Link)
 import Types.User
   ( Date (Date),
@@ -22,18 +26,9 @@ import Types.User
     Password,
     Token,
     UserId,
+    loginTaken,
     userNotExist,
   )
-
-isLoginUnique :: Login -> Connection -> IO Bool
-isLoginUnique login conn = do
-  [Only n] <-
-    query
-      conn
-      "SELECT COUNT(login) FROM users \
-      \WHERE users.login = ?"
-      (Only login)
-  return $ (n :: Integer) == 0
 
 isTokenUnique :: Token -> Connection -> IO Bool
 isTokenUnique token conn = do
@@ -75,30 +70,33 @@ isAdmin token conn = do
       (Only token)
   return admin
 
-create :: FullUser -> Connection -> IO ()
+create :: FullUser -> Connection -> IO (Either Text Token)
 create user conn = do
   let (Image image imageType) = fAvatar user
-  [Only imageId] <-
-    query
-      conn
-      "INSERT INTO images (image, image_type) \
-      \VALUES (?, ?) RETURNING image_id"
-      (Binary image, imageType)
-  _ <-
-    execute
-      conn
-      "INSERT INTO users (name, surname, image_id, \
-      \login, password, registration_date, admin, token) \
-      \VALUES (?, ?, ?, ?, ?, CURRENT_DATE, ?, ?)"
-      ( fName user,
-        fSurname user,
-        imageId :: Integer,
-        fLogin user,
-        fPassword user,
-        fAdmin user,
-        fToken user
-      )
-  return ()
+  result <-
+    try . void $
+      execute
+        conn
+        "WITH i AS (INSERT INTO images (image, image_type) \
+        \VALUES (?, ?) RETURNING image_id) \
+        \INSERT INTO users (name, surname, image_id, \
+        \login, password, registration_date, admin, token) \
+        \VALUES (?, ?, (SELECT image_id FROM i), ?, ?, CURRENT_DATE, ?, ?)"
+        ( Binary image,
+          imageType,
+          fName user,
+          fSurname user,
+          fLogin user,
+          fPassword user,
+          fAdmin user,
+          fToken user
+        ) ::
+      IO (Either SqlError ())
+  return $ case result of
+    Right _ -> Right $ fToken user
+    Left e -> case sqlErrorMsg e of
+      "duplicate key value violates unique constraint \"login_unique\"" -> Left loginTaken
+      _ -> Left unknownError
 
 delete :: UserId -> Connection -> IO ()
 delete userId conn = do
@@ -113,21 +111,6 @@ get token f conn = do
       "SELECT user_id, name, surname, image_id, login, registration_date \
       \FROM users WHERE users.token = ?"
       (Only token)
-  return
-    GetUser
-      { gAvatar = f imageId,
-        gDate = Date . pack $ show (regDate :: Time.Date),
-        ..
-      }
-
-getByUserId :: UserId -> (ImageId -> Link) -> Connection -> IO GetUser
-getByUserId uId f conn = do
-  [(gUserId, gName, gSurname, imageId, gLogin, regDate)] <-
-    query
-      conn
-      "SELECT user_id, name, surname, image_id, login, registration_date \
-      \FROM users WHERE users.user_id = ?"
-      (Only uId)
   return
     GetUser
       { gAvatar = f imageId,

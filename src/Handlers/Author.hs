@@ -3,29 +3,18 @@ module Handlers.Author where
 import Data.Text (Text)
 import Types.Author
   ( AuthorId,
-    CreateAuthor (cUserId),
+    CreateAuthor,
     EditAuthor (eAuthorId),
     GetAuthor,
   )
-import Types.User (UserId)
 
 data Handle m = Handle
-  { hCreate :: CreateAuthor -> m (),
+  { hCreate :: CreateAuthor -> m (Either Text ()),
     hGet :: AuthorId -> m GetAuthor,
     hDelete :: AuthorId -> m (),
     hEdit :: EditAuthor -> m (),
-    hDoesExist :: AuthorId -> m (Either Text ()),
-    hDoesUserExist :: UserId -> m (Either Text ())
+    hDoesExist :: AuthorId -> m (Either Text ())
   }
-
-create :: Monad m => Handle m -> CreateAuthor -> m (Either Text ())
-create handle author = do
-  exist <- hDoesUserExist handle $ cUserId author
-  case exist of
-    Right () -> do
-      hCreate handle author
-      return $ Right ()
-    Left l -> return $ Left l
 
 get :: Monad m => Handle m -> AuthorId -> m (Either Text GetAuthor)
 get handle authId = do

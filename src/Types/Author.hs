@@ -46,3 +46,6 @@ instance ToJSON GetAuthor where
 
 authorNotExist :: Text
 authorNotExist = "Author with such id doesn't exist"
+
+alreadyAuthor :: Text
+alreadyAuthor = "This user is already author"

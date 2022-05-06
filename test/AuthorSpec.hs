@@ -18,17 +18,6 @@ import Types.User (UserId (UserId), userNotExist)
 
 main :: IO ()
 main = hspec $ do
-  describe "Testing create author" $ do
-    it "Should successfully create" $ do
-      let result = H.create handle createAuthor
-      result `shouldBe` return (Right ())
-    it "Should fail if user doesn't exist" $ do
-      let handleCase =
-            handle
-              { H.hDoesUserExist = \_ -> return $ Left userNotExist
-              }
-      let result = H.create handleCase createAuthor
-      result `shouldBe` return (Left userNotExist)
   describe "Testing get author" $ do
     it "Should successfully get" $ do
       let authorId = AuthorId 1
@@ -75,12 +64,11 @@ main = hspec $ do
 handle :: H.Handle Identity
 handle =
   H.Handle
-    { H.hCreate = \_ -> return (),
+    { H.hCreate = \_ -> return $ Right (),
       H.hGet = \_ -> return getAuthor,
       H.hDelete = \_ -> return (),
       H.hEdit = \_ -> return (),
-      H.hDoesExist = \_ -> return $ Right (),
-      H.hDoesUserExist = \_ -> return $ Right ()
+      H.hDoesExist = \_ -> return $ Right ()
     }
 
 editAuthor :: EditAuthor
@@ -88,13 +76,6 @@ editAuthor =
   EditAuthor
     { eAuthorId = AuthorId 1,
       eDescription = Description "edit"
-    }
-
-createAuthor :: CreateAuthor
-createAuthor =
-  CreateAuthor
-    { cUserId = UserId 1,
-      cDescription = Description "create"
     }
 
 getAuthor :: GetAuthor

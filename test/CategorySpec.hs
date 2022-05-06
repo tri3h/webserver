@@ -14,6 +14,7 @@ import Types.Category
     categoryNotExist,
     invalidParent,
     noDeleteHasChildren,
+    categoryNameTaken
   )
 
 main :: IO ()
@@ -22,6 +23,13 @@ main = hspec $ do
     it "Should successfully create" $ do
       let result = H.create handle createCategory
       result `shouldBe` return (Right ())
+    it "Should fail if category name is already taken" $ do
+      let handleCase =
+            handle
+              { H.hCreate = \_ -> return $ Left categoryNameTaken
+              }
+      let result = H.create handleCase createCategory
+      result `shouldBe` return (Left categoryNameTaken)
     it "Should fail if parent doesn't exist" $ do
       let handleCase =
             handle
@@ -80,8 +88,9 @@ main = hspec $ do
 handle :: H.Handle Identity
 handle =
   H.Handle
-    { H.hCreate = \_ -> return (),
+    { H.hCreate = \_ -> return $ Right (),
       H.hGet = \_ -> return getCategory,
+      H.hGetAll = return [],
       H.hDelete = \_ -> return (),
       H.hEditName = \_ _ -> return (),
       H.hEditParent = \_ _ -> return (),

@@ -3,33 +3,45 @@
 
 module Database.Queries.Author where
 
+import Control.Exception (try)
+import Control.Monad (void)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only),
+    SqlError (sqlErrorMsg),
     execute,
     query,
   )
+import Error (unknownError)
 import Types.Author
   ( AuthorId,
     CreateAuthor (..),
     EditAuthor (..),
     GetAuthor (..),
+    alreadyAuthor,
     authorNotExist,
   )
 import Types.Draft (DraftId)
 import Types.PostComment (PostId)
-import Types.User (Token)
+import Types.User (Token, userNotExist)
 
-create :: CreateAuthor -> Connection -> IO ()
+create :: CreateAuthor -> Connection -> IO (Either Text ())
 create author conn = do
-  _ <-
-    execute
-      conn
-      "INSERT INTO authors (user_id, description) \
-      \VALUES (?,?)"
-      (cUserId author, cDescription author)
-  return ()
+  result <-
+    try . void $
+      execute
+        conn
+        "INSERT INTO authors (user_id, description) \
+        \VALUES (?,?)"
+        (cUserId author, cDescription author) ::
+      IO (Either SqlError ())
+  return $ case result of
+    Right _ -> Right ()
+    Left e -> case sqlErrorMsg e of
+      "duplicate key value violates unique constraint \"user_id_unique\"" -> Left alreadyAuthor
+      "insert or update on table \"authors\" violates foreign key constraint \"user_id\"" -> Left userNotExist
+      _ -> Left unknownError
 
 delete :: AuthorId -> Connection -> IO ()
 delete authorId conn = do

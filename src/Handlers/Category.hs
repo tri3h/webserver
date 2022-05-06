@@ -12,7 +12,7 @@ import Types.Category
   )
 
 data Handle m = Handle
-  { hCreate :: CreateCategory -> m (),
+  { hCreate :: CreateCategory -> m (Either Text ()),
     hGet :: CategoryId -> m GetCategory,
     hGetAll :: m [GetCategory],
     hDelete :: CategoryId -> m (),
@@ -26,7 +26,7 @@ create :: Monad m => Handle m -> CreateCategory -> m (Either Text ())
 create handle categ = do
   correct <- isParentCorrect
   if correct
-    then Right <$> hCreate handle categ
+    then hCreate handle categ
     else return $ Left invalidParent
   where
     isParentCorrect =

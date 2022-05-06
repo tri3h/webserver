@@ -143,9 +143,8 @@ isTokenValid pool = withResource pool . Db.isTokenValid
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
   Handler.Handle
-    { Handler.hIsLoginUnique = withResource pool . Db.isLoginUnique,
+    { Handler.hIsLoginValid = withResource pool . Db.isLoginValid,
       Handler.hIsTokenUnique = withResource pool . Db.isTokenUnique,
-      Handler.hIsLoginValid = withResource pool . Db.isLoginValid,
       Handler.hCreate = withResource pool . Db.create,
       Handler.hGet = \a b -> withResource pool $ Db.get a b,
       Handler.hDelete = withResource pool . Db.delete,

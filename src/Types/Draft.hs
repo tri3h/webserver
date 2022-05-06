@@ -36,8 +36,7 @@ data GetDraft = GetDraft
   deriving (Show, Eq)
 
 data CreateDraft = CreateDraft
-  { cPostId :: Maybe PostId,
-    cAuthorId :: AuthorId,
+  { cAuthorId :: AuthorId,
     cCategoryId :: CategoryId,
     cTagId :: [TagId],
     cName :: Name,

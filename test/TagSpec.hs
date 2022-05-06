@@ -10,10 +10,6 @@ import Types.Tag (Tag (Tag, name, tagId), tagNotExist, TagId (TagId), Name (Name
 
 main :: IO ()
 main = hspec $ do
-  describe "Testing create tag" $
-    it "Should successfully create" $ do
-      let result = H.create handle $ Name "name"
-      result `shouldBe` return (Right ())
   describe "Testing get tag" $ do
     it "Should successfully get" $ do
       let result = H.get handle testTagId
@@ -51,8 +47,9 @@ main = hspec $ do
 handle :: H.Handle Identity
 handle =
   H.Handle
-    { H.hCreate = \_ -> return (),
+    { H.hCreate = \_ -> return $ Right (),
       H.hGet = \_ -> return tag,
+      H.hGetAll = return [],
       H.hDelete = \_ -> return (),
       H.hEdit = \_ -> return (),
       H.hDoesExist = \_ -> return (Right ())

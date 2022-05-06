@@ -30,7 +30,7 @@ create logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right name -> do
-      result <- Handler.create (handle pool) name
+      result <- Handler.hCreate (handle pool) name
       Logger.debug logger $ "Tried to create tag and got: " ++ show result
       case result of
         Left l ->

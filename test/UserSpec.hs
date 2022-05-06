@@ -30,12 +30,11 @@ main = hspec $ do
   describe "Testing create fullUser" $ do
     it "Should successfully create" $ do
       let result = H.create handle createUser testAdmin
-      let token = H.generateToken handle
-      result `shouldBe` (Right <$> token)
+      result `shouldBe` (return $ Right testToken)
     it "Should fail if login isn't unique" $ do
       let handleCase =
             handle
-              { H.hIsLoginUnique = \_ -> return False
+              { H.hCreate = \_ -> return $ Left loginTaken
               }
       let result = H.create handleCase createUser testAdmin
       result `shouldBe` return (Left loginTaken)
@@ -82,9 +81,8 @@ main = hspec $ do
 handle :: H.Handle Identity
 handle =
   H.Handle
-    { H.hIsLoginUnique = \_ -> return True,
-      H.hIsTokenUnique = \_ -> return True,
-      H.hCreate = \_ -> return (),
+    { H.hIsTokenUnique = \_ -> return True,
+      H.hCreate = \_ -> return $ Right testToken,
       H.hGet = \_ _ -> return getUser,
       H.hDelete = \_ -> return (),
       H.hGetRandomNumber = return 1,

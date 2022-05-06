@@ -59,10 +59,7 @@ create logger pool query body token = do
         cMainPhoto <- getMainPhoto body
         cAuthorId <- author
         Right $
-          CreateDraft
-            { cPostId = Nothing,
-              ..
-            }
+          CreateDraft {..}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Left l ->

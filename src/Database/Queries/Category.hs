@@ -3,32 +3,42 @@
 
 module Database.Queries.Category where
 
+import Control.Exception (try)
+import Control.Monad (void)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only, fromOnly),
+    SqlError (sqlErrorMsg),
     execute,
     query,
     query_,
   )
+import Error (unknownError)
 import Types.Category
   ( CategoryId,
     CreateCategory (..),
     GetCategory (..),
     Name,
     ParentId,
+    categoryNameTaken,
     categoryNotExist,
   )
 
-create :: CreateCategory -> Connection -> IO ()
+create :: CreateCategory -> Connection -> IO (Either Text ())
 create cat conn = do
-  _ <-
-    execute
-      conn
-      "INSERT INTO categories (name, parent_id) \
-      \VALUES (?,?)"
-      (cName cat, cParentId cat)
-  return ()
+  result <-
+    try . void $
+      execute
+        conn
+        "INSERT INTO categories (name, parent_id) \
+        \VALUES (?,?)"
+        (cName cat, cParentId cat)
+  return $ case result of
+    Right _ -> Right ()
+    Left e -> case sqlErrorMsg e of
+      "duplicate key value violates unique constraint \"category_name_unique\"" -> Left categoryNameTaken
+      _ -> Left unknownError
 
 delete :: CategoryId -> Connection -> IO ()
 delete catId conn = do

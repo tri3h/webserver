@@ -288,7 +288,6 @@ createDraft :: CreateDraft
 createDraft =
   CreateDraft
     { 
-      cPostId = Nothing,
       cAuthorId = AuthorId 1,
       cCategoryId = CategoryId 1,
       cTagId = [TagId 1],

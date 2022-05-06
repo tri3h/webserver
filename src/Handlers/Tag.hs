@@ -4,16 +4,13 @@ import Data.Text (Text)
 import Types.Tag (Name, Tag (tagId), TagId)
 
 data Handle m = Handle
-  { hCreate :: Name -> m (),
+  { hCreate :: Name -> m (Either Text ()),
     hGet :: TagId -> m Tag,
     hGetAll :: m [Tag],
     hDelete :: TagId -> m (),
     hEdit :: Tag -> m (),
     hDoesExist :: TagId -> m (Either Text ())
   }
-
-create :: Monad m => Handle m -> Name -> m (Either Text ())
-create handle name = Right <$> hCreate handle name
 
 get :: Monad m => Handle m -> TagId -> m (Either Text Tag)
 get handle tId = do

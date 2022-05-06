@@ -18,18 +18,16 @@ import Types.User
     Token (Token),
     UserId,
     invalidData,
-    loginTaken,
   )
 import Utility (imageIdToLink)
 
 data Handle m = Handle
-  { hIsLoginUnique :: Login -> m Bool,
-    hIsTokenUnique :: Token -> m Bool,
-    hCreate :: FullUser -> m (),
+  { hCreate :: FullUser -> m (Either Text Token),
     hGet :: Token -> (ImageId -> Link) -> m GetUser,
     hDelete :: UserId -> m (),
     hGetRandomNumber :: m Integer,
     hIsLoginValid :: Login -> m Bool,
+    hIsTokenUnique :: Token -> m Bool,
     hFindPassword :: Login -> m Password,
     hUpdateToken :: Login -> Token -> m (),
     hDoesExist :: UserId -> m (Either Text ())
@@ -37,23 +35,18 @@ data Handle m = Handle
 
 create :: Monad m => Handle m -> CreateUser -> Admin -> m (Either Text Token)
 create handle partUser fAdmin = do
-  isUnique <- hIsLoginUnique handle $ cLogin partUser
-  if isUnique
-    then do
-      fToken <- generateToken handle
-      let hashPassw = hashPassword $ cPassword partUser
-      let user =
-            FullUser
-              { fName = cName partUser,
-                fSurname = cSurname partUser,
-                fAvatar = cAvatar partUser,
-                fLogin = cLogin partUser,
-                fPassword = hashPassw,
-                ..
-              }
-      hCreate handle user
-      return $ Right fToken
-    else return $ Left loginTaken
+  fToken <- generateToken handle
+  let hashPassw = hashPassword $ cPassword partUser
+  let user =
+        FullUser
+          { fName = cName partUser,
+            fSurname = cSurname partUser,
+            fAvatar = cAvatar partUser,
+            fLogin = cLogin partUser,
+            fPassword = hashPassw,
+            ..
+          }
+  hCreate handle user
 
 get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Text GetUser)
 get handle server token = Right <$> hGet handle token (imageIdToLink server)

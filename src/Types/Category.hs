@@ -47,3 +47,6 @@ invalidParent = "Invalid parent id"
 
 noDeleteHasChildren :: Text
 noDeleteHasChildren = "Impossible to delete: the category has children"
+
+categoryNameTaken :: Text
+categoryNameTaken = "Category name is already taken"

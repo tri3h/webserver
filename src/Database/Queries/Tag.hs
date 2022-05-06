@@ -3,21 +3,29 @@
 
 module Database.Queries.Tag where
 
+import Control.Exception (try)
+import Control.Monad (void)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only),
+    SqlError (sqlErrorMsg),
     execute,
     query,
     query_,
   )
+import Error (unknownError)
 import Types.PostComment (PostId)
-import Types.Tag (Name, Tag (..), TagId, tagNotExist)
+import Types.Tag (Name, Tag (..), TagId, tagNameTaken, tagNotExist)
 
-create :: Name -> Connection -> IO ()
+create :: Name -> Connection -> IO (Either Text ())
 create name conn = do
-  _ <- execute conn "INSERT INTO tags (name) VALUES (?)" (Only name)
-  return ()
+  result <- try . void $ execute conn "INSERT INTO tags (name) VALUES (?)" (Only name) :: IO (Either SqlError ())
+  return $ case result of
+    Right _ -> Right ()
+    Left e -> case sqlErrorMsg e of
+      "duplicate key value violates unique constraint \"tag_name_unique\"" -> Left tagNameTaken
+      _ -> Left unknownError
 
 delete :: TagId -> Connection -> IO ()
 delete tagId conn = do
