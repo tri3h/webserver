@@ -14,6 +14,7 @@ import Database.PostgreSQL.Simple
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
 import Database.PostgreSQL.Simple.ToField (Action, ToField (toField))
+import Error (Error, postNotExist)
 import qualified Types.Category as Category
 import qualified Types.Filter as F
 import Types.Image (ImageId, Link)
@@ -21,7 +22,6 @@ import Types.Post
   ( Date (Date),
     Name (Name),
     ShortPost (..),
-    postNotExist,
   )
 import Types.PostComment (PostId)
 import qualified Types.Tag as Tag
@@ -225,7 +225,7 @@ getMinorPhotos postId f conn = do
       (Only postId)
   return $ map (f . fromOnly) xs
 
-doesExist :: PostId -> Connection -> IO (Either Text ())
+doesExist :: PostId -> Connection -> IO (Either Error ())
 doesExist postId conn = do
   [Only n] <-
     query

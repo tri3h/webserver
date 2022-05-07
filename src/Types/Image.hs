@@ -28,8 +28,5 @@ instance ToJSON Link where
     object
       ["link" .= x]
 
-imageNotExist :: Text
-imageNotExist = "Image with such id doesn't exist"
-
 imageAddress :: Text
 imageAddress = "/images?image_id="

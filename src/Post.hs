@@ -5,8 +5,6 @@ module Post where
 import Data.Aeson (encode)
 import Data.Maybe (fromMaybe)
 import Data.Pool (Pool, withResource)
-import qualified Data.Text.Lazy as LazyText
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Author as AuthorDb
 import qualified Database.Queries.Category as CategoryDb
@@ -42,12 +40,11 @@ get logger pool address query = do
   Logger.debug logger $ "Tried to get posts and got: " ++ show posts
   case posts of
     Left l ->
-      return $
-        responseLBS
+      return
+        . responseLBS
           status400
           []
-          . encodeUtf8
-          $ LazyText.fromStrict l
+        $ encode l
     Right r ->
       return $
         responseLBS

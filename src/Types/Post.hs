@@ -64,9 +64,3 @@ instance ToJSON FullPost where
         "main_photo" .= fMainPhoto post,
         "minor_photo" .= fMinorPhoto post
       ]
-
-postNotExist :: Text
-postNotExist = "Post with such id doesn't exist"
-
-noPost :: Text
-noPost = "No posts with such parameters"

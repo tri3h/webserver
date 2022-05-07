@@ -4,8 +4,9 @@ module Handlers.User (Login, Token, UserId, Handle (..), create, get, delete, ge
 
 import Crypto.Hash (SHA256 (SHA256), hashWith)
 import qualified Data.ByteString.Char8 as Char8
-import Data.Text (Text, pack)
+import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
+import Error (Error, invalidData)
 import Types.Config (ServerAddress)
 import Types.Image (ImageId, Link)
 import Types.User
@@ -17,12 +18,11 @@ import Types.User
     Password (Password),
     Token (Token),
     UserId,
-    invalidData,
   )
 import Utility (imageIdToLink)
 
 data Handle m = Handle
-  { hCreate :: FullUser -> m (Either Text Token),
+  { hCreate :: FullUser -> m (Either Error Token),
     hGet :: Token -> (ImageId -> Link) -> m GetUser,
     hDelete :: UserId -> m (),
     hGetRandomNumber :: m Integer,
@@ -30,10 +30,10 @@ data Handle m = Handle
     hIsTokenUnique :: Token -> m Bool,
     hFindPassword :: Login -> m Password,
     hUpdateToken :: Login -> Token -> m (),
-    hDoesExist :: UserId -> m (Either Text ())
+    hDoesExist :: UserId -> m (Either Error ())
   }
 
-create :: Monad m => Handle m -> CreateUser -> Admin -> m (Either Text Token)
+create :: Monad m => Handle m -> CreateUser -> Admin -> m (Either Error Token)
 create handle partUser fAdmin = do
   fToken <- generateToken handle
   let hashPassw = hashPassword $ cPassword partUser
@@ -48,10 +48,10 @@ create handle partUser fAdmin = do
           }
   hCreate handle user
 
-get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Text GetUser)
+get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Error GetUser)
 get handle server token = Right <$> hGet handle token (imageIdToLink server)
 
-delete :: Monad m => Handle m -> UserId -> m (Either Text ())
+delete :: Monad m => Handle m -> UserId -> m (Either Error ())
 delete handle userId = do
   exist <- hDoesExist handle userId
   case exist of
@@ -61,7 +61,7 @@ delete handle userId = do
 hashPassword :: Password -> Password
 hashPassword (Password p) = Password . pack . show . hashWith SHA256 $ encodeUtf8 p
 
-getNewToken :: Monad m => Handle m -> Login -> Password -> m (Either Text Token)
+getNewToken :: Monad m => Handle m -> Login -> Password -> m (Either Error Token)
 getNewToken handle login password = do
   isValid <- hIsLoginValid handle login
   if isValid

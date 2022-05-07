@@ -69,12 +69,3 @@ instance ToJSON GetUser where
         "login" .= gLogin user,
         "date" .= gDate user
       ]
-
-userNotExist :: Text
-userNotExist = "User with such id doesn't exist"
-
-loginTaken :: Text
-loginTaken = "Login is already taken"
-
-invalidData :: Text
-invalidData = "Invalid data"

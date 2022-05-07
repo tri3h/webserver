@@ -5,7 +5,6 @@ module Database.Queries.Category where
 
 import Control.Exception (try)
 import Control.Monad (void)
-import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only, fromOnly),
@@ -14,18 +13,16 @@ import Database.PostgreSQL.Simple
     query,
     query_,
   )
-import Error (unknownError)
+import Error (Error, categoryNameTaken, categoryNotExist, unknownError)
 import Types.Category
   ( CategoryId,
     CreateCategory (..),
     GetCategory (..),
     Name,
     ParentId,
-    categoryNameTaken,
-    categoryNotExist,
   )
 
-create :: CreateCategory -> Connection -> IO (Either Text ())
+create :: CreateCategory -> Connection -> IO (Either Error ())
 create cat conn = do
   result <-
     try . void $
@@ -85,7 +82,7 @@ editParent categoryId parentId conn = do
       (parentId, categoryId)
   return ()
 
-doesExist :: CategoryId -> Connection -> IO (Either Text ())
+doesExist :: CategoryId -> Connection -> IO (Either Error ())
 doesExist catId conn = do
   [Only n] <-
     query

@@ -1,28 +1,26 @@
 module Handlers.Category where
 
-import Data.Text (Text)
+import Error (Error, invalidParent, noDeleteHasChildren)
 import Types.Category
   ( CategoryId,
     CreateCategory (cParentId),
     GetCategory,
     Name,
     ParentId,
-    invalidParent,
-    noDeleteHasChildren,
   )
 
 data Handle m = Handle
-  { hCreate :: CreateCategory -> m (Either Text ()),
+  { hCreate :: CreateCategory -> m (Either Error ()),
     hGet :: CategoryId -> m GetCategory,
     hGetAll :: m [GetCategory],
     hDelete :: CategoryId -> m (),
     hEditName :: CategoryId -> Name -> m (),
     hEditParent :: CategoryId -> ParentId -> m (),
-    hDoesExist :: CategoryId -> m (Either Text ()),
+    hDoesExist :: CategoryId -> m (Either Error ()),
     hGetChildren :: CategoryId -> m [CategoryId]
   }
 
-create :: Monad m => Handle m -> CreateCategory -> m (Either Text ())
+create :: Monad m => Handle m -> CreateCategory -> m (Either Error ())
 create handle categ = do
   correct <- isParentCorrect
   if correct
@@ -38,14 +36,14 @@ create handle categ = do
             Right () -> True
             _ -> False
 
-get :: Monad m => Handle m -> CategoryId -> m (Either Text GetCategory)
+get :: Monad m => Handle m -> CategoryId -> m (Either Error GetCategory)
 get handle categId = do
   exist <- hDoesExist handle categId
   case exist of
     Right _ -> Right <$> hGet handle categId
     Left l -> return $ Left l
 
-delete :: Monad m => Handle m -> CategoryId -> m (Either Text ())
+delete :: Monad m => Handle m -> CategoryId -> m (Either Error ())
 delete handle categId = do
   exist <- hDoesExist handle categId
   case exist of
@@ -56,7 +54,7 @@ delete handle categId = do
         else return $ Left noDeleteHasChildren
     Left l -> return $ Left l
 
-edit :: Monad m => Handle m -> CategoryId -> Maybe Name -> Maybe ParentId -> m (Either Text ())
+edit :: Monad m => Handle m -> CategoryId -> Maybe Name -> Maybe ParentId -> m (Either Error ())
 edit handle categId name parId = do
   doesExist <- hDoesExist handle categId
   case doesExist of

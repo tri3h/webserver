@@ -5,7 +5,6 @@ module Database.Queries.Author where
 
 import Control.Exception (try)
 import Control.Monad (void)
-import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only),
@@ -13,20 +12,18 @@ import Database.PostgreSQL.Simple
     execute,
     query,
   )
-import Error (unknownError)
+import Error (Error, alreadyAuthor, authorNotExist, unknownError, userNotExist)
 import Types.Author
   ( AuthorId,
     CreateAuthor (..),
     EditAuthor (..),
     GetAuthor (..),
-    alreadyAuthor,
-    authorNotExist,
   )
 import Types.Draft (DraftId)
 import Types.PostComment (PostId)
-import Types.User (Token, userNotExist)
+import Types.User (Token)
 
-create :: CreateAuthor -> Connection -> IO (Either Text ())
+create :: CreateAuthor -> Connection -> IO (Either Error ())
 create author conn = do
   result <-
     try . void $
@@ -81,7 +78,7 @@ edit author conn = do
       (eDescription author, eAuthorId author)
   return ()
 
-doesExist :: AuthorId -> Connection -> IO (Either Text ())
+doesExist :: AuthorId -> Connection -> IO (Either Error ())
 doesExist authorId conn = do
   [Only n] <-
     query

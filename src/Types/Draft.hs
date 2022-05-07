@@ -67,15 +67,3 @@ instance ToJSON GetDraft where
         "main_photo" .= gMainPhoto draft,
         "minor_photo" .= gMinorPhoto draft
       ]
-
-draftNotExist :: Text
-draftNotExist = "Draft with such id doesn't exist"
-
-noDeleteHasPost :: Text
-noDeleteHasPost = "Impossible to delete: has post"
-
-noDraftAuthor :: Text
-noDraftAuthor = "This author isn't author of the draft"
-
-userNotAuthor :: Text
-userNotAuthor = "The user isn't author"

@@ -14,8 +14,9 @@ import Database.PostgreSQL.Simple
     executeMany,
     query,
   )
+import Error (Error, draftNotExist)
 import Types.Category (CategoryId)
-import Types.Draft (CreateDraft (..), DraftId, GetDraft (..), Name, draftNotExist)
+import Types.Draft (CreateDraft (..), DraftId, GetDraft (..), Name)
 import Types.Image (Image (..), ImageId, Link)
 import Types.Tag (TagId)
 
@@ -199,7 +200,7 @@ hasPost draftId conn = do
   [Only n] <- query conn "SELECT COUNT(post_id) FROM drafts WHERE draft_id = ?" (Only draftId)
   return $ (n :: Integer) == 1
 
-doesExist :: DraftId -> Connection -> IO (Either Text ())
+doesExist :: DraftId -> Connection -> IO (Either Error ())
 doesExist draftId conn = do
   [Only n] <- query conn "SELECT COUNT(draft_id) FROM drafts WHERE draft_id = ?" (Only draftId)
   if (n :: Integer) == 1

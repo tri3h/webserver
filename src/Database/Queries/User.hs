@@ -5,7 +5,7 @@ module Database.Queries.User where
 
 import Control.Exception (try)
 import Control.Monad (void)
-import Data.Text (Text, pack)
+import Data.Text (pack)
 import Database.PostgreSQL.Simple
   ( Binary (Binary),
     Connection,
@@ -16,7 +16,7 @@ import Database.PostgreSQL.Simple
     query_,
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
-import Error (unknownError)
+import Error (Error, loginTaken, unknownError, userNotExist)
 import Types.Image (Image (Image), ImageId, Link)
 import Types.User
   ( Date (Date),
@@ -26,8 +26,6 @@ import Types.User
     Password,
     Token,
     UserId,
-    loginTaken,
-    userNotExist,
   )
 
 isTokenUnique :: Token -> Connection -> IO Bool
@@ -70,7 +68,7 @@ isAdmin token conn = do
       (Only token)
   return admin
 
-create :: FullUser -> Connection -> IO (Either Text Token)
+create :: FullUser -> Connection -> IO (Either Error Token)
 create user conn = do
   let (Image image imageType) = fAvatar user
   result <-
@@ -137,7 +135,7 @@ getMaybeByUserId uId f conn = do
             }
     _ -> return Nothing
 
-doesExist :: UserId -> Connection -> IO (Either Text ())
+doesExist :: UserId -> Connection -> IO (Either Error ())
 doesExist userId conn = do
   [Only n] <-
     query

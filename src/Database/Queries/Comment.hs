@@ -3,18 +3,17 @@
 
 module Database.Queries.Comment where
 
-import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only),
     execute,
     query,
   )
+import Error (Error, commentNotExist)
 import Types.Comment
   ( CommentId,
     CreateComment (..),
     GetComment (..),
-    commentNotExist,
   )
 import Types.PostComment (PostId)
 
@@ -49,7 +48,7 @@ delete commId conn = do
   _ <- execute conn "DELETE FROM comments WHERE comments.comment_id = ?" (Only commId)
   return ()
 
-doesExist :: CommentId -> Connection -> IO (Either Text ())
+doesExist :: CommentId -> Connection -> IO (Either Error ())
 doesExist commId conn = do
   [Only n] <-
     query

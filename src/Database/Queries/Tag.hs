@@ -5,7 +5,6 @@ module Database.Queries.Tag where
 
 import Control.Exception (try)
 import Control.Monad (void)
-import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only),
@@ -14,11 +13,11 @@ import Database.PostgreSQL.Simple
     query,
     query_,
   )
-import Error (unknownError)
+import Error (Error, tagNameTaken, tagNotExist, unknownError)
 import Types.PostComment (PostId)
-import Types.Tag (Name, Tag (..), TagId, tagNameTaken, tagNotExist)
+import Types.Tag (Name, Tag (..), TagId)
 
-create :: Name -> Connection -> IO (Either Text ())
+create :: Name -> Connection -> IO (Either Error ())
 create name conn = do
   result <- try . void $ execute conn "INSERT INTO tags (name) VALUES (?)" (Only name) :: IO (Either SqlError ())
   return $ case result of
@@ -68,7 +67,7 @@ edit tag conn = do
       (name tag, tagId tag)
   return ()
 
-doesExist :: TagId -> Connection -> IO (Either Text ())
+doesExist :: TagId -> Connection -> IO (Either Error ())
 doesExist tagId conn = do
   [Only n] <-
     query

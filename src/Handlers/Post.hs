@@ -4,7 +4,7 @@
 module Handlers.Post (get, Handle (..)) where
 
 import Data.List (zipWith7)
-import Data.Text (Text)
+import Error (Error, noPost)
 import qualified Types.Author as A
 import Types.Category (CategoryId, GetCategory)
 import Types.Comment (GetComment)
@@ -14,7 +14,6 @@ import Types.Image (ImageId, Link)
 import Types.Post
   ( FullPost (..),
     ShortPost (..),
-    noPost,
   )
 import Types.PostComment (PostId)
 import qualified Types.Tag as Tag
@@ -31,7 +30,7 @@ data Handle m = Handle
     hGetComment :: PostId -> m [GetComment]
   }
 
-get :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Text [FullPost])
+get :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Error [FullPost])
 get handle server filters order limit offset = do
   let f = imageIdToLink server
   shortPosts <- hGet handle filters order limit offset f

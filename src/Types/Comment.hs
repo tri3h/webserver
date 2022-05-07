@@ -37,6 +37,3 @@ instance ToJSON GetComment where
         "user_id" .= gUserId comment,
         "text" .= gText comment
       ]
-
-commentNotExist :: Text
-commentNotExist = "Comment with such id doesn't exist"

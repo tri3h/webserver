@@ -4,11 +4,9 @@ module Category where
 
 import Data.Aeson (encode)
 import Data.Pool (Pool, withResource)
-import Data.Text (Text)
-import qualified Data.Text.Lazy as LazyText
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Category as Db
+import Error (Error)
 import qualified Handlers.Category as Handler
 import qualified Handlers.Logger as Logger
 import Network.HTTP.Types.Header (hContentType)
@@ -43,14 +41,13 @@ create logger pool query = do
       Logger.debug logger $ "Tried to create category and got: " ++ show result
       case result of
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
+            $ encode l
         Right _ -> return $ responseLBS status201 [] ""
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+    Left l -> return . responseLBS status400 [] $ encode l
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
@@ -68,12 +65,11 @@ get logger pool query = do
               [(hContentType, "application/json")]
               $ encode r
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
+            $ encode l
     Nothing -> do
       result <- Handler.hGetAll (handle pool)
       Logger.debug logger $ "Tried to get a list of categories and got: " ++ show result
@@ -96,13 +92,12 @@ edit logger pool query = do
       case result of
         Right _ -> return $ responseLBS status201 [] ""
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+            $ encode l
+    Left l -> return . responseLBS status400 [] $ encode l
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
@@ -115,15 +110,14 @@ delete logger pool query = do
       case result of
         Right _ -> return $ responseLBS status204 [] ""
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+            $ encode l
+    Left l -> return . responseLBS status400 [] $ encode l
 
-getName :: QueryText -> Either Text Name
+getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
 
 getMaybeName :: QueryText -> Maybe Name
@@ -132,7 +126,7 @@ getMaybeName query = Name <$> getMaybeText query "name"
 getParentId :: QueryText -> Maybe ParentId
 getParentId query = CategoryId <$> getMaybeInteger query "parent_id"
 
-getCategoryId :: QueryText -> Either Text CategoryId
+getCategoryId :: QueryText -> Either Error CategoryId
 getCategoryId query = CategoryId <$> getInteger query "category_id"
 
 getMaybeCategoryId :: QueryText -> Maybe CategoryId
