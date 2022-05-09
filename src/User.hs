@@ -24,8 +24,8 @@ import qualified System.IO as IO
 import System.Random (randomIO)
 import Types.Config (ServerAddress)
 import Types.Image (Image (Image))
-import Types.User (Admin (Admin), CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token, UserId (UserId))
-import Utility (getImage, getInteger, getText)
+import Types.User (Admin (Admin), CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token (..), UserId (UserId))
+import Utility (getImage, getInteger, getMaybeText, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 create logger pool query body = do
@@ -69,7 +69,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right userId -> do
-      result <- Handler.delete (handle pool) userId
+      result <- Handler.hDelete (handle pool) userId
       Logger.debug logger $ "Tried to delete user and got: " ++ show result
       case result of
         Left l ->
@@ -116,6 +116,9 @@ makeDefaultAdmin pool = do
 getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
 
+getToken :: QueryText -> Maybe Token
+getToken query = Token <$> getMaybeText query "token"
+
 getUserId :: QueryText -> Either Error UserId
 getUserId query = UserId <$> getInteger query "user_id"
 
@@ -147,6 +150,5 @@ handle pool =
       Handler.hDelete = withResource pool . Db.delete,
       Handler.hGetRandomNumber = randomIO,
       Handler.hFindPassword = withResource pool . Db.findPassword,
-      Handler.hUpdateToken = \a b -> withResource pool $ Db.updateToken a b,
-      Handler.hDoesExist = withResource pool . Db.doesExist
+      Handler.hUpdateToken = \a b -> withResource pool $ Db.updateToken a b
     }

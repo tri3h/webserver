@@ -4,6 +4,11 @@ module UserSpec where
 
 import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text, append, pack)
+import Error
+  ( invalidData,
+    loginTaken,
+    userNotExist,
+  )
 import qualified Handlers.User as H
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Config (ServerAddress)
@@ -20,14 +25,11 @@ import Types.User
     Surname (Surname),
     Token (Token),
     UserId (UserId),
-    invalidData,
-    loginTaken,
-    userNotExist,
   )
 
 main :: IO ()
 main = hspec $ do
-  describe "Testing create fullUser" $ do
+  describe "Testing create user" $ do
     it "Should successfully create" $ do
       let result = H.create handle createUser testAdmin
       result `shouldBe` (return $ Right testToken)
@@ -38,21 +40,10 @@ main = hspec $ do
               }
       let result = H.create handleCase createUser testAdmin
       result `shouldBe` return (Left loginTaken)
-  describe "Testing get fullUser" $
+  describe "Testing get user" $
     it "Should successfully get" $ do
       let result = H.get handle serverAddress testToken
       result `shouldBe` return (Right getUser)
-  describe "Testing delete fullUser" $ do
-    it "Should successfully delete" $ do
-      let result = H.delete handle testUserId
-      result `shouldBe` return (Right ())
-    it "Should fail if fullUser doesn't exist" $ do
-      let handleCase =
-            handle
-              { H.hDoesExist = \_ -> return $ Left userNotExist
-              }
-      let result = H.delete handleCase testUserId
-      result `shouldBe` return (Left userNotExist)
   describe "Testing get new token" $ do
     it "Should successfully get" $ do
       let hashPass = H.hashPassword testPassword
@@ -84,24 +75,11 @@ handle =
     { H.hIsTokenUnique = \_ -> return True,
       H.hCreate = \_ -> return $ Right testToken,
       H.hGet = \_ _ -> return getUser,
-      H.hDelete = \_ -> return (),
+      H.hDelete = \_ -> return $ Right (),
       H.hGetRandomNumber = return 1,
       H.hIsLoginValid = \_ -> return True,
       H.hFindPassword = \_ -> return $ Password "password",
-      H.hUpdateToken = \_ _ -> return (),
-      H.hDoesExist = \_ -> return $ Right ()
-    }
-
-fullUser :: FullUser
-fullUser =
-  FullUser
-    { fName = Name "name",
-      fSurname = Surname "surname",
-      fAvatar = avatarImage,
-      fLogin = Login "login",
-      fPassword = Password "password",
-      fAdmin = Admin False,
-      fToken = Token "1234"
+      H.hUpdateToken = \_ _ -> return ()
     }
 
 getUser :: GetUser

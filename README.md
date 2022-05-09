@@ -133,7 +133,6 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Required parameters:
         * token
         * post_id
-        * user_id
         * text
     * Return nothing in case of success
 

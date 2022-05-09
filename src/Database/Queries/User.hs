@@ -92,14 +92,14 @@ create user conn = do
       IO (Either SqlError ())
   return $ case result of
     Right _ -> Right $ fToken user
-    Left e -> case sqlErrorMsg e of
+    Left l -> case sqlErrorMsg l of
       "duplicate key value violates unique constraint \"login_unique\"" -> Left loginTaken
       _ -> Left unknownError
 
-delete :: UserId -> Connection -> IO ()
+delete :: UserId -> Connection -> IO (Either Error ())
 delete userId conn = do
-  _ <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
-  return ()
+  result <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
+  return $ if result == 0 then Left userNotExist else Right ()
 
 get :: Token -> (ImageId -> Link) -> Connection -> IO GetUser
 get token f conn = do
@@ -134,18 +134,6 @@ getMaybeByUserId uId f conn = do
               ..
             }
     _ -> return Nothing
-
-doesExist :: UserId -> Connection -> IO (Either Error ())
-doesExist userId conn = do
-  [Only n] <-
-    query
-      conn
-      "SELECT COUNT(user_id) FROM users \
-      \WHERE users.user_id = ?"
-      (Only userId)
-  if (n :: Integer) == 1
-    then return $ Right ()
-    else return $ Left userNotExist
 
 findPassword :: Login -> Connection -> IO Password
 findPassword login conn = do

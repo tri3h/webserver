@@ -9,7 +9,6 @@ import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Tag as Db
 import Error (Error)
 import qualified Handlers.Logger as Logger
-import qualified Handlers.Tag as Handler
 import Network.HTTP.Types.Header (hContentType)
 import Network.HTTP.Types.Status
   ( status200,
@@ -28,7 +27,7 @@ create logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right name -> do
-      result <- Handler.hCreate (handle pool) name
+      result <- withResource pool $ Db.create name
       Logger.debug logger $ "Tried to create tag and got: " ++ show result
       case result of
         Left l ->
@@ -46,7 +45,7 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Just tagId -> do
-      result <- Handler.get (handle pool) tagId
+      result <- withResource pool $ Db.get tagId
       Logger.debug logger $ "Tried to get a tag and got: " ++ show result
       case result of
         Right r ->
@@ -62,7 +61,7 @@ get logger pool query = do
               []
             $ encode l
     Nothing -> do
-      result <- Handler.hGetAll (handle pool)
+      result <- withResource pool Db.getAll
       Logger.debug logger $ "Tried to get a list of tags and got: " ++ show result
       return $
         responseLBS
@@ -80,7 +79,7 @@ edit logger pool query = do
   case info of
     Right (tagId, name) -> do
       let tag = Tag {..}
-      result <- Handler.edit (handle pool) tag
+      result <- withResource pool $ Db.edit tag
       Logger.debug logger $ "Tried to edit tag and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
@@ -98,7 +97,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right tagId -> do
-      result <- Handler.delete (handle pool) tagId
+      result <- withResource pool $ Db.delete tagId
       Logger.debug logger $ "Tried to delete tag and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
@@ -118,14 +117,3 @@ getTagId query = TagId <$> getInteger query "tag_id"
 
 getMaybeTagId :: QueryText -> Maybe TagId
 getMaybeTagId query = TagId <$> getMaybeInteger query "tag_id"
-
-handle :: Pool Connection -> Handler.Handle IO
-handle pool =
-  Handler.Handle
-    { Handler.hCreate = withResource pool . Db.create,
-      Handler.hGet = withResource pool . Db.get,
-      Handler.hGetAll = withResource pool Db.getAll,
-      Handler.hDelete = withResource pool . Db.delete,
-      Handler.hEdit = withResource pool . Db.edit,
-      Handler.hDoesExist = withResource pool . Db.doesExist
-    }

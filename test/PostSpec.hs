@@ -4,6 +4,7 @@ module PostSpec where
 
 import Data.Functor.Identity (Identity)
 import Data.Text (append, pack)
+import Error (noPost)
 import qualified Handlers.Post as H
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Author (AuthorId (AuthorId))
@@ -11,7 +12,7 @@ import Types.Category (CategoryId (CategoryId))
 import Types.Config (ServerAddress)
 import qualified Types.Filter as F
 import Types.Image (Image (..), ImageId (ImageId), Link (Link), imageAddress)
-import Types.Post (Date (Date), FullPost (..), Name (Name), ShortPost (..), noPost)
+import Types.Post (Date (Date), FullPost (..), Name (Name), ShortPost (..))
 import Types.PostComment (PostId (PostId))
 
 main :: IO ()

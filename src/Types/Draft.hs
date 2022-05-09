@@ -17,6 +17,7 @@ import Types.Category (CategoryId)
 import Types.Image (Image, Link)
 import Types.PostComment (PostId)
 import Types.Tag (TagId)
+import Types.User (Token)
 
 newtype DraftId = DraftId {getDraftId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
@@ -36,7 +37,7 @@ data GetDraft = GetDraft
   deriving (Show, Eq)
 
 data CreateDraft = CreateDraft
-  { cAuthorId :: AuthorId,
+  { cToken :: Token,
     cCategoryId :: CategoryId,
     cTagId :: [TagId],
     cName :: Name,

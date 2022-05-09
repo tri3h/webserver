@@ -37,7 +37,7 @@ create logger pool query = do
               { cParentId = getParentId query,
                 cName = name
               }
-      result <- Handler.create (handle pool) category
+      result <- withResource pool $ Db.create category
       Logger.debug logger $ "Tried to create category and got: " ++ show result
       case result of
         Left l ->
@@ -55,7 +55,7 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Just categoryId -> do
-      result <- Handler.get (handle pool) categoryId
+      result <- withResource pool $ Db.get categoryId
       Logger.debug logger $ "Tried to get a category and got: " ++ show result
       case result of
         Right r ->
@@ -71,7 +71,7 @@ get logger pool query = do
               []
             $ encode l
     Nothing -> do
-      result <- Handler.hGetAll (handle pool)
+      result <- withResource pool Db.getAll
       Logger.debug logger $ "Tried to get a list of categories and got: " ++ show result
       return $
         responseLBS
@@ -135,12 +135,8 @@ getMaybeCategoryId query = CategoryId <$> getMaybeInteger query "category_id"
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
   Handler.Handle
-    { Handler.hCreate = withResource pool . Db.create,
-      Handler.hGet = withResource pool . Db.get,
-      Handler.hGetAll = withResource pool Db.getAll,
-      Handler.hDelete = withResource pool . Db.delete,
+    { Handler.hDelete = withResource pool . Db.delete,
       Handler.hEditName = \a b -> withResource pool $ Db.editName a b,
       Handler.hEditParent = \a b -> withResource pool $ Db.editParent a b,
-      Handler.hDoesExist = withResource pool . Db.doesExist,
       Handler.hGetChildren = withResource pool . Db.getChildren
     }

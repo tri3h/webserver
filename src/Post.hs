@@ -94,9 +94,7 @@ handle pool =
       Handler.hGetMinorPhotos = \a b -> withResource pool $ Db.getMinorPhotos a b,
       Handler.hGetAuthor = withResource pool . AuthorDb.getMaybe . fromMaybe (Author.AuthorId 0),
       Handler.hGetUser = \a b -> withResource pool $ UserDb.getMaybeByUserId (fromMaybe (User.UserId 0) a) b,
-      Handler.hGetCategory = \catId -> do
-        parents <- withResource pool $ CategoryDb.getParents (fromMaybe (Category.CategoryId 0) catId)
-        mapM (withResource pool . CategoryDb.get) parents,
+      Handler.hGetCategory = withResource pool . CategoryDb.getWithParents,
       Handler.hGetTag = withResource pool . TagDb.getByPostId,
       Handler.hGetComment = withResource pool . CommentDb.get
     }

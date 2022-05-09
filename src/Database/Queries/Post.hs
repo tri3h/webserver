@@ -14,7 +14,6 @@ import Database.PostgreSQL.Simple
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
 import Database.PostgreSQL.Simple.ToField (Action, ToField (toField))
-import Error (Error, postNotExist)
 import qualified Types.Category as Category
 import qualified Types.Filter as F
 import Types.Image (ImageId, Link)
@@ -224,15 +223,3 @@ getMinorPhotos postId f conn = do
       \WHERE post_id = ?"
       (Only postId)
   return $ map (f . fromOnly) xs
-
-doesExist :: PostId -> Connection -> IO (Either Error ())
-doesExist postId conn = do
-  [Only n] <-
-    query
-      conn
-      "SELECT COUNT(post_id) FROM posts \
-      \WHERE posts.post_id = ?"
-      (Only postId)
-  if (n :: Integer) == 1
-    then return $ Right ()
-    else return $ Left postNotExist

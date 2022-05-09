@@ -24,16 +24,15 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right imageId -> do
-      doesExist <- withResource pool $ Db.doesExist imageId
-      case doesExist of
-        Left l -> return . responseLBS status400 [] $ encode l
-        Right _ -> do
-          (Image image imageType) <- withResource pool $ Db.get imageId
+      result <- withResource pool $ Db.get imageId
+      case result of
+        Right (Image image imageType) ->
           return
             . responseBuilder
               status200
               [(hContentType, encodeUtf8 $ "image/" `append` imageType)]
             $ fromByteString image
+        Left l -> return . responseLBS status400 [] $ encode l
     Left l -> return . responseLBS status400 [] $ encode l
 
 getImageType :: QueryText -> Either Error ImageType
