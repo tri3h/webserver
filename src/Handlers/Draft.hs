@@ -68,8 +68,8 @@ edit handle draftId token params = do
         Nothing -> return $ Right ()
         Just categId -> hEditCategoryId handle draftId categId
       resTag <- case eTagId params of
-        Nothing -> return $ Right ()
-        Just tId -> hEditTagId handle draftId tId
+        [] -> return $ Right ()
+        x -> hEditTagId handle draftId x
       resPhoto <- editPhoto handle draftId params
       return (resName >> resDescr >> resCateg >> resTag >> resPhoto)
 

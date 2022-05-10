@@ -77,7 +77,7 @@ main = hspec $ do
     it "Should edit tag id" $ do
       let editParamsCase =
             editParams
-              { eTagId = Just [TagId 1]
+              { eTagId = [TagId 1]
               }
       let result = H.edit handle testDraftId testToken editParamsCase
       result `shouldBe` return (Right ())
@@ -306,7 +306,7 @@ getDraft =
       gTagId = [TagId 1],
       gName = Name "name",
       gText = "description",
-      gMainPhoto = link,
+      gMainPhoto = Just link,
       gMinorPhoto = []
     }
 
@@ -318,14 +318,14 @@ createDraft =
       cTagId = [TagId 1],
       cName = Name "name",
       cText = "description",
-      cMainPhoto = image
+      cMainPhoto = Just image
     }
 
 editParams :: EditParams
 editParams =
   EditParams
     { eCategoryId = Nothing,
-      eTagId = Nothing,
+      eTagId = [],
       eName = Nothing,
       eText = Nothing,
       eMainPhoto = Nothing
@@ -334,8 +334,8 @@ editParams =
 editCategoryId :: Maybe CategoryId
 editCategoryId = Just $ CategoryId 2
 
-editTagId :: Maybe [TagId]
-editTagId = Just [TagId 2]
+editTagId :: [TagId]
+editTagId = [TagId 2]
 
 editName :: Maybe Name
 editName = Just $ Name "name"

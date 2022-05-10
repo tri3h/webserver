@@ -82,8 +82,11 @@ getMaybeText query name = eitherToMaybe $ getText query name
 getMaybeInteger :: QueryText -> Text -> Maybe Integer
 getMaybeInteger query name = eitherToMaybe $ getInteger query name
 
-getMaybeIntegers :: QueryText -> Text -> Maybe [Integer]
-getMaybeIntegers query name = eitherToMaybe $ getIntegers query name
+getMaybeIntegers :: QueryText -> Text -> [Integer]
+getMaybeIntegers query name =
+  case getIntegers query name of
+    Left _ -> []
+    Right r -> r
 
 getMaybeImage :: BS.ByteString -> BS.ByteString -> Maybe Image
 getMaybeImage body name = eitherToMaybe $ getImage body name

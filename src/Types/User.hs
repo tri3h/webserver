@@ -33,7 +33,7 @@ data GetUser = GetUser
   { gUserId :: UserId,
     gName :: Name,
     gSurname :: Surname,
-    gAvatar :: Link,
+    gAvatar :: Maybe Link,
     gLogin :: Login,
     gDate :: Date
   }
@@ -44,14 +44,14 @@ data CreateUser = CreateUser
     cSurname :: Surname,
     cLogin :: Login,
     cPassword :: Password,
-    cAvatar :: Image
+    cAvatar :: Maybe Image
   }
   deriving (Show, Eq)
 
 data FullUser = FullUser
   { fName :: Name,
     fSurname :: Surname,
-    fAvatar :: Image,
+    fAvatar :: Maybe Image,
     fLogin :: Login,
     fPassword :: Password,
     fAdmin :: Admin,

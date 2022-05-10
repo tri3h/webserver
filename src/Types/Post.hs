@@ -30,7 +30,7 @@ data ShortPost = ShortPost
     sName :: Name,
     sDate :: Date,
     sText :: Text,
-    sMainPhoto :: Link
+    sMainPhoto :: Maybe Link
   }
   deriving (Show, Eq)
 
@@ -44,7 +44,7 @@ data FullPost = FullPost
     fName :: Name,
     fDate :: Date,
     fText :: Text,
-    fMainPhoto :: Link,
+    fMainPhoto :: Maybe Link,
     fMinorPhoto :: [Link]
   }
   deriving (Show, Eq)

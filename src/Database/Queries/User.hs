@@ -70,26 +70,40 @@ isAdmin token conn = do
 
 create :: FullUser -> Connection -> IO (Either Error Token)
 create user conn = do
-  let (Image image imageType) = fAvatar user
-  result <-
-    try . void $
-      execute
-        conn
-        "WITH i AS (INSERT INTO images (image, image_type) \
-        \VALUES (?, ?) RETURNING image_id) \
-        \INSERT INTO users (name, surname, image_id, \
-        \login, password, registration_date, admin, token) \
-        \VALUES (?, ?, (SELECT image_id FROM i), ?, ?, CURRENT_DATE, ?, ?)"
-        ( Binary image,
-          imageType,
-          fName user,
-          fSurname user,
-          fLogin user,
-          fPassword user,
-          fAdmin user,
-          fToken user
-        ) ::
-      IO (Either SqlError ())
+  result <- case fAvatar user of
+    Just (Image image imageType) ->
+      try . void $
+        execute
+          conn
+          "WITH i AS (INSERT INTO images (image, image_type) \
+          \VALUES (?, ?) RETURNING image_id) \
+          \INSERT INTO users (name, surname, image_id, \
+          \login, password, registration_date, admin, token) \
+          \VALUES (?, ?, (SELECT image_id FROM i), ?, ?, CURRENT_DATE, ?, ?)"
+          ( Binary image,
+            imageType,
+            fName user,
+            fSurname user,
+            fLogin user,
+            fPassword user,
+            fAdmin user,
+            fToken user
+          ) ::
+        IO (Either SqlError ())
+    Nothing ->
+      try . void $
+        execute
+          conn
+          "INSERT INTO users (name, surname, login, password, \
+          \registration_date, admin, token) VALUES (?, ?, ?, ?, CURRENT_DATE, ?, ?)"
+          ( fName user,
+            fSurname user,
+            fLogin user,
+            fPassword user,
+            fAdmin user,
+            fToken user
+          ) ::
+        IO (Either SqlError ())
   return $ case result of
     Right _ -> Right $ fToken user
     Left l -> case sqlErrorMsg l of
@@ -111,10 +125,21 @@ get token f conn = do
       (Only token)
   return
     GetUser
-      { gAvatar = f imageId,
+      { gAvatar = f <$> imageId,
         gDate = Date . pack $ show (regDate :: Time.Date),
         ..
       }
+
+addAvatar :: Token -> Image -> Connection -> IO ()
+addAvatar token (Image image imageType) conn =
+  void $
+    execute
+      conn
+      "WITH i AS (INSERT INTO images (image, image_type) \
+      \VALUES (?, ?) RETURNING image_id) \
+      \UPDATE users SET image_id = (SELECT image_id FROM i) \
+      \WHERE token = ?"
+      (Binary image, imageType, token)
 
 getMaybeByUserId :: UserId -> (ImageId -> Link) -> Connection -> IO (Maybe GetUser)
 getMaybeByUserId uId f conn = do
@@ -129,7 +154,7 @@ getMaybeByUserId uId f conn = do
       return $
         Just
           GetUser
-            { gAvatar = f imageId,
+            { gAvatar = f <$> imageId,
               gDate = Date . pack $ show (regDate :: Time.Date),
               ..
             }

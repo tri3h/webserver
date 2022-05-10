@@ -30,18 +30,8 @@ import Types.Tag (TagId)
 
 create :: CreateDraft -> Connection -> IO (Either Error ())
 create draft conn = do
-  let (Image image imageType) = cMainPhoto draft
   begin conn
-  resultDraft <-
-    try $
-      query
-        conn
-        "WITH i AS (INSERT INTO images (image, image_type) VALUES (?,?) RETURNING image_id) \
-        \INSERT INTO drafts (category_id, name, text, image_id, author_id) \
-        \VALUES (?,?,?,(SELECT image_id FROM i),(SELECT author_id FROM authors a INNER JOIN users u \
-        \ON a.user_id = u.user_id WHERE u.token = ?)) RETURNING draft_id"
-        (Binary image, imageType, cCategoryId draft, cName draft, cText draft, cToken draft) ::
-      IO (Either SqlError [Only Integer])
+  resultDraft <- addDraft
   case resultDraft of
     Right r -> addTags r
     Left l -> do
@@ -51,6 +41,27 @@ create draft conn = do
         "null value in column \"author_id\" violates not-null constraint" -> Left userNotAuthor
         _ -> Left unknownError
   where
+    addDraft =
+      case cMainPhoto draft of
+        Just (Image image imageType) ->
+          try $
+            query
+              conn
+              "WITH i AS (INSERT INTO images (image, image_type) VALUES (?,?) RETURNING image_id) \
+              \INSERT INTO drafts (category_id, name, text, image_id, author_id) \
+              \VALUES (?,?,?,(SELECT image_id FROM i),(SELECT author_id FROM authors a INNER JOIN users u \
+              \ON a.user_id = u.user_id WHERE u.token = ?)) RETURNING draft_id"
+              (Binary image, imageType, cCategoryId draft, cName draft, cText draft, cToken draft) ::
+            IO (Either SqlError [Only Integer])
+        Nothing ->
+          try $
+            query
+              conn
+              "INSERT INTO drafts (category_id, name, text, author_id) \
+              \VALUES (?,?,?,(SELECT author_id FROM authors a INNER JOIN users u \
+              \ON a.user_id = u.user_id WHERE u.token = ?)) RETURNING draft_id"
+              (cCategoryId draft, cName draft, cText draft, cToken draft) ::
+            IO (Either SqlError [Only Integer])
     addTags r = do
       let [Only draftId] = r
       let tags = map (draftId,) $ cTagId draft
@@ -88,7 +99,7 @@ get gDraftId f conn = do
   return $
     GetDraft
       { gTagId = map fromOnly tagIds,
-        gMainPhoto = f mainPhotoId,
+        gMainPhoto = f <$> mainPhotoId,
         gMinorPhoto =
           map
             (f . fromOnly)
