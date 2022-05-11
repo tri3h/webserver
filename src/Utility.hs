@@ -41,7 +41,7 @@ getIntegers :: QueryText -> Text -> Either Error [Integer]
 getIntegers query name = case join $ lookup name query of
   Nothing -> Left $ noSpecified name
   Just xs ->
-    let values = map (\x -> readMaybe $ unpack x :: Maybe Integer) (splitOn "," xs)
+    let values = map (\x -> readMaybe $ unpack x :: Maybe Integer) (filter (not . null) $ splitOn "," xs)
      in if Nothing `elem` values
           then Left $ noSpecified name
           else Right $ map (\(Just x) -> x) values
