@@ -33,5 +33,5 @@ openConnection config =
         connectDatabase = dName config
       }
 
-makePool :: DatabaseConfig -> Logger.Handle IO -> IO (Pool Connection)
-makePool config logger = createPool (tryOpenConnection config logger) close 1 10 10
+makePool :: DatabaseConfig -> IO (Pool Connection)
+makePool config = createPool (openConnection config) close 1 10 10
