@@ -3,25 +3,17 @@
 
 module Comment where
 
-import Data.Aeson (encode)
 import Data.Pool (Pool, withResource)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Comment as Db
 import Error (Error)
 import qualified Handlers.Logger as Logger
-import Network.HTTP.Types.Header (hContentType)
-import Network.HTTP.Types.Status
-  ( status200,
-    status201,
-    status204,
-    status400,
-  )
 import Network.HTTP.Types.URI (QueryText)
-import Network.Wai (Response, responseLBS)
+import Network.Wai (Response)
 import Types.Comment (CommentId (CommentId), CreateComment (..))
 import Types.PostComment (PostId (PostId))
 import Types.User (Token, UserId (UserId))
-import Utility (getInteger, getText)
+import Utility (getInteger, getText, response200JSON, response201, response204, response400)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> Token -> IO Response
 create logger pool query cToken = do
@@ -34,15 +26,10 @@ create logger pool query cToken = do
     Right comment -> do
       result <- withResource pool $ Db.create comment
       Logger.debug logger $ "Tried to create comment and got: " ++ show result
-      case result of
-        Right _ -> return $ responseLBS status201 [] ""
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Right _ -> response201
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
@@ -52,20 +39,10 @@ get logger pool query = do
     Right postId -> do
       result <- withResource pool $ Db.getEither postId
       Logger.debug logger $ "Tried to get comment and got: " ++ show result
-      case result of
-        Right r ->
-          return $
-            responseLBS
-              status200
-              [(hContentType, "application/json")]
-              $ encode r
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Right r -> response200JSON r
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
@@ -75,15 +52,10 @@ delete logger pool query = do
     Right commentId -> do
       result <- withResource pool $ Db.delete commentId
       Logger.debug logger $ "Tried to delete comment and got: " ++ show result
-      case result of
-        Right _ -> return $ responseLBS status204 [] ""
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Right _ -> response204
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 getPostId :: QueryText -> Either Error PostId
 getPostId query = PostId <$> getInteger query "post_id"

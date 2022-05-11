@@ -2,7 +2,6 @@
 
 module Image where
 
-import Data.Aeson (encode)
 import Data.Binary.Builder (fromByteString)
 import Data.Pool (Pool, withResource)
 import Data.Text (append)
@@ -12,11 +11,11 @@ import qualified Database.Queries.Image as Db
 import Error (Error)
 import qualified Handlers.Logger as Logger
 import Network.HTTP.Types (hContentType)
-import Network.HTTP.Types.Status (status200, status400)
+import Network.HTTP.Types.Status (status200)
 import Network.HTTP.Types.URI (QueryText)
-import Network.Wai (Response, responseBuilder, responseLBS)
+import Network.Wai (Response, responseBuilder)
 import Types.Image (Image (Image), ImageType)
-import Utility (getInteger, getText)
+import Utility (getInteger, getText, response400)
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
@@ -25,15 +24,14 @@ get logger pool query = do
   case info of
     Right imageId -> do
       result <- withResource pool $ Db.get imageId
-      case result of
+      return $ case result of
         Right (Image image imageType) ->
-          return
-            . responseBuilder
-              status200
-              [(hContentType, encodeUtf8 $ "image/" `append` imageType)]
+          responseBuilder
+            status200
+            [(hContentType, encodeUtf8 $ "image/" `append` imageType)]
             $ fromByteString image
-        Left l -> return . responseLBS status400 [] $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 getImageType :: QueryText -> Either Error ImageType
 getImageType query = getText query "image_type"

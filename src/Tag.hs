@@ -3,23 +3,15 @@
 
 module Tag where
 
-import Data.Aeson (encode)
 import Data.Pool (Pool, withResource)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Tag as Db
 import Error (Error)
 import qualified Handlers.Logger as Logger
-import Network.HTTP.Types.Header (hContentType)
-import Network.HTTP.Types.Status
-  ( status200,
-    status201,
-    status204,
-    status400,
-  )
 import Network.HTTP.Types.URI (QueryText)
-import Network.Wai (Response, responseLBS)
+import Network.Wai (Response)
 import Types.Tag (Name (Name), Tag (..), TagId (TagId))
-import Utility (getInteger, getMaybeInteger, getText)
+import Utility (getInteger, getMaybeInteger, getText, response200JSON, response201, response204, response400)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
@@ -29,15 +21,10 @@ create logger pool query = do
     Right name -> do
       result <- withResource pool $ Db.create name
       Logger.debug logger $ "Tried to create tag and got: " ++ show result
-      case result of
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-        Right _ -> return $ responseLBS status201 [] ""
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Left l -> response400 l
+        Right _ -> response201
+    Left l -> return $ response400 l
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
@@ -47,27 +34,13 @@ get logger pool query = do
     Just tagId -> do
       result <- withResource pool $ Db.get tagId
       Logger.debug logger $ "Tried to get a tag and got: " ++ show result
-      case result of
-        Right r ->
-          return $
-            responseLBS
-              status200
-              [(hContentType, "application/json")]
-              $ encode r
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
+      return $ case result of
+        Right r -> response200JSON r
+        Left l -> response400 l
     Nothing -> do
       result <- withResource pool Db.getAll
       Logger.debug logger $ "Tried to get a list of tags and got: " ++ show result
-      return $
-        responseLBS
-          status200
-          [(hContentType, "application/json")]
-          $ encode result
+      return $ response200JSON result
 
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
@@ -81,15 +54,10 @@ edit logger pool query = do
       let tag = Tag {..}
       result <- withResource pool $ Db.edit tag
       Logger.debug logger $ "Tried to edit tag and got: " ++ show result
-      case result of
-        Right _ -> return $ responseLBS status201 [] ""
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Right _ -> response201
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
@@ -99,15 +67,10 @@ delete logger pool query = do
     Right tagId -> do
       result <- withResource pool $ Db.delete tagId
       Logger.debug logger $ "Tried to delete tag and got: " ++ show result
-      case result of
-        Right _ -> return $ responseLBS status204 [] ""
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Right _ -> response204
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"

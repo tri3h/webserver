@@ -151,13 +151,14 @@ isTokenValid pool = withResource pool . Db.isTokenValid
 
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
-  Handler.Handle
-    { Handler.hIsLoginValid = withResource pool . Db.isLoginValid,
-      Handler.hIsTokenUnique = withResource pool . Db.isTokenUnique,
-      Handler.hCreate = withResource pool . Db.create,
-      Handler.hGet = \a b -> withResource pool $ Db.get a b,
-      Handler.hDelete = withResource pool . Db.delete,
-      Handler.hGetRandomNumber = randomIO,
-      Handler.hFindPassword = withResource pool . Db.findPassword,
-      Handler.hUpdateToken = \a b -> withResource pool $ Db.updateToken a b
-    }
+  let f = withResource pool
+   in Handler.Handle
+        { Handler.hIsLoginValid = f . Db.isLoginValid,
+          Handler.hIsTokenUnique = f . Db.isTokenUnique,
+          Handler.hCreate = f . Db.create,
+          Handler.hGet = \a b -> f $ Db.get a b,
+          Handler.hDelete = f . Db.delete,
+          Handler.hGetRandomNumber = randomIO,
+          Handler.hFindPassword = f . Db.findPassword,
+          Handler.hUpdateToken = \a b -> f $ Db.updateToken a b
+        }
