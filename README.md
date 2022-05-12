@@ -6,7 +6,7 @@ The first file is **Server.config** that contains information about a port, a ho
 The second file is **Database.config** that contains information about a database.
 Also it may be necessary to use a command *stack setup*.
 
-After these two files are filled, the project may be started by typing *stack run* into command line while being in the project folder.
+After these two files are filled, the project may be started by typing *stack run* into command line while being in the project folder. If there are no admins in the database, the program will ask about creating default admin.
 
 Scripts from folder *scripts* may be run with bash like: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. Some of scripts take an image, they take it in the form of two parameters: a path to the file and a type of image, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg" -y "jpg"*. 
 
@@ -74,35 +74,22 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Required parameters:
         * image_id
     * Return an image in case of success
-</details>
-
-<details>
-<summary>Available for users (and admins)</summary>
-
-- GET /users
-    * Get a user
-    * Required parameters:
-        * token
-    * Return a user in case of success
 
 - GET /tags 
     * Get a tag
     * Required parameters:
-        * token
         * tag_id
     * Return a tag in case of success
 
 - GET /categories
     * Get a category
     * Required parameters:
-        * token
         * category_id
     * Return a category in case of success
 
 - GET /posts
     * Get posts
-    * Required parameters:
-        * token
+    * Required parameters: none
     * Optional parameters:
         * author_name
         * category_id
@@ -121,6 +108,16 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * limit
     * "sort_by" can be: "by_date" / "by_author" / "by_category" / "by_photos_number"
     * Return all posts (max at a time = 10) if there are no optional parameters. Return posts (max at a time = 10 or less if there is a limit parameter) only with corresponding parameters if there are optional paramaters. Return no post if there are no posts with such optional parameters
+</details>
+
+<details>
+<summary>Available for users (and admins)</summary>
+
+- GET /users
+    * Get a user
+    * Required parameters:
+        * token
+    * Return a user in case of success
 
 - GET /comments
     * Get all comments to a post

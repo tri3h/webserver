@@ -10,6 +10,7 @@ import Database.PostgreSQL.Simple
     Only (Only),
     execute,
     query,
+    query_,
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
 import Types.Image (Image (Image), ImageId, Link)
@@ -182,3 +183,12 @@ updateToken login token conn = do
       "UPDATE users SET token = ? WHERE login = ?"
       (token, login)
   return ()
+
+hasAdmin :: Connection -> IO Bool
+hasAdmin conn = do
+  [Only n] <-
+    query_
+      conn
+      "SELECT COUNT(user_id) FROM users \
+      \WHERE admin = true"
+  return $ (n :: Integer) > 0
