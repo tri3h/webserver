@@ -3,6 +3,7 @@
 
 module Database.Queries.Comment where
 
+import Control.Monad (void)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -19,14 +20,13 @@ import Types.Comment
 import Types.PostComment (PostId)
 
 create :: CreateComment -> Connection -> IO ()
-create comment conn = do
-  _ <-
+create comment conn =
+  void $
     execute
       conn
       "INSERT INTO comments (post_id, user_id, text) \
       \VALUES (?,?,?)"
       (cPostId comment, cUserId comment, cText comment)
-  return ()
 
 get :: PostId -> Connection -> IO [GetComment]
 get postId conn = do
@@ -45,9 +45,12 @@ get postId conn = do
   return comments
 
 delete :: CommentId -> Connection -> IO ()
-delete commId conn = do
-  _ <- execute conn "DELETE FROM comments WHERE comments.comment_id = ?" (Only commId)
-  return ()
+delete commId conn =
+  void $
+    execute
+      conn
+      "DELETE FROM comments WHERE comments.comment_id = ?"
+      (Only commId)
 
 doesExist :: CommentId -> Connection -> IO (Either Text ())
 doesExist commId conn = do

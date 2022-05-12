@@ -3,6 +3,7 @@
 
 module Database.Queries.Author where
 
+import Control.Monad (void)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
@@ -22,19 +23,17 @@ import Types.PostComment (PostId)
 import Types.User (Token)
 
 create :: CreateAuthor -> Connection -> IO ()
-create author conn = do
-  _ <-
+create author conn =
+  void $
     execute
       conn
       "INSERT INTO authors (user_id, description) \
       \VALUES (?,?)"
       (cUserId author, cDescription author)
-  return ()
 
 delete :: AuthorId -> Connection -> IO ()
-delete authorId conn = do
-  _ <- execute conn "DELETE FROM authors WHERE authors.author_id = ?" (Only authorId)
-  return ()
+delete authorId conn =
+  void $ execute conn "DELETE FROM authors WHERE authors.author_id = ?" (Only authorId)
 
 get :: AuthorId -> Connection -> IO GetAuthor
 get authId conn = do
@@ -60,14 +59,13 @@ getMaybe authId conn = do
     _ -> return Nothing
 
 edit :: EditAuthor -> Connection -> IO ()
-edit author conn = do
-  _ <-
+edit author conn =
+  void $
     execute
       conn
       "UPDATE authors SET description = ? \
       \WHERE authors.author_id = ?"
       (eDescription author, eAuthorId author)
-  return ()
 
 doesExist :: AuthorId -> Connection -> IO (Either Text ())
 doesExist authorId conn = do
