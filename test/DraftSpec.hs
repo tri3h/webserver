@@ -18,7 +18,7 @@ import Types.Draft
     noDraftAuthor,
     userNotAuthor, DraftId (DraftId), Name (Name)
   )
-import Types.Image (Image (..), imageAddress, malformedImage)
+import Types.Image (Image (..), imageAddress, ImageId (ImageId), Link (Link))
 import Types.Tag (tagNotExist, TagId (TagId))
 import Types.User (Token(Token))
 
@@ -49,72 +49,28 @@ main = hspec $ do
               }
       let result = H.create handleCase createDraft
       result `shouldBe` return (Left tagNotExist)
-    it "Should fail if main photo format is incorrect" $ do
-      let draftCase =
-            createDraft
-              { cMainPhoto = link
-              }
-      let result = H.create handle draftCase
-      result `shouldBe` return (Left malformedImage)
   describe "Testing get draft" $ do
     it "Should successfully get" $ do
-      let draftCase =
-            getDraft
-              { gMainPhoto = link
-              }
-      let handleCase =
-            handle
-              { H.hGet = \_ -> return draftCase
-              }
-      let result = H.get handleCase serverAddress testDraftId testToken
-      result `shouldBe` return (Right draftCase)
-    it "Should fail if main photo format is incorrect" $ do
       let result = H.get handle serverAddress testDraftId testToken
-      result `shouldBe` return (Left malformedImage)
-    it "Should fail if minor photo format is incorrect" $ do
-      let draftCase =
-            getDraft
-              { gMinorPhoto = [image]
-              }
-      let handleCase =
-            handle
-              { H.hGet = \_ -> return draftCase
-              }
-      let result = H.get handleCase serverAddress testDraftId testToken
-      result `shouldBe` return (Left malformedImage)
+      result `shouldBe` return (Right getDraft)
     it "Should fail if draft doesn't exist" $ do
-      let draftCase =
-            getDraft
-              { gMainPhoto = link
-              }
       let handleCase =
             handle
-              { H.hDoesExist = \_ -> return (Left draftNotExist),
-                H.hGet = \_ -> return draftCase
+              { H.hDoesExist = \_ -> return (Left draftNotExist)
               }
       let result = H.get handleCase serverAddress testDraftId testToken
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author of draft" $ do
-      let draftCase =
-            getDraft
-              { gMainPhoto = link
-              }
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2,
-                H.hGet = \_ -> return draftCase
+              { H.hGetAuthorIdByToken = \_ -> return authorId
               }
       let result = H.get handleCase serverAddress testDraftId testToken
       result `shouldBe` return (Left noDraftAuthor)
     it "Shoudl fail if user is not author at all" $ do
-      let draftCase =
-            getDraft
-              { gMainPhoto = link
-              }
       let handleCase =
             handle
-              { H.hIsAuthor = \_ -> return False,
-                H.hGet = \_ -> return draftCase
+              { H.hIsAuthor = \_ -> return False
               }
       let result = H.get handleCase serverAddress testDraftId testToken
       result `shouldBe` return (Left userNotAuthor)
@@ -132,7 +88,7 @@ main = hspec $ do
     it "Should edit category id" $ do
       let editParamsCase =
             editParams
-              { eCategoryId = Just $ CategoryId 1
+              { eCategoryId = Just categoryId
               }
       let result = H.edit handle testDraftId testToken editParamsCase
       result `shouldBe` return (Right ())
@@ -171,13 +127,6 @@ main = hspec $ do
               }
       let result = H.edit handleCase testDraftId testToken editParams
       result `shouldBe` return (Left noDraftAuthor)
-    it "Should fail if main photo format is incorrect" $ do
-      let editParamsCase =
-            editParams
-              { eMainPhoto = Just link
-              }
-      let result = H.edit handle testDraftId testToken editParamsCase
-      result `shouldBe` return (Left malformedImage)
     it "Should fail if category doesn't exist" $ do
       let handleCase =
             handle
@@ -185,7 +134,7 @@ main = hspec $ do
               }
       let editParamsCase =
             editParams
-              { eCategoryId = Just $ CategoryId 2
+              { eCategoryId = Just categoryId
               }
       let result = H.edit handleCase testDraftId testToken editParamsCase
       result `shouldBe` return (Left categoryNotExist)
@@ -219,7 +168,7 @@ main = hspec $ do
     it "Should fail if user is not author of draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2,
+              { H.hGetAuthorIdByToken = \_ -> return authorId,
                 H.hHasPost = \_ -> return False
               }
       let result = H.delete handleCase testDraftId testToken
@@ -255,7 +204,7 @@ main = hspec $ do
     it "Should fail if user is not author of draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2
+              { H.hGetAuthorIdByToken = \_ -> return authorId
               }
       let result = H.publish handleCase testDraftId testToken
       result `shouldBe` return (Left noDraftAuthor)
@@ -263,9 +212,6 @@ main = hspec $ do
     it "Should add minor photo" $ do
       let result = H.addMinorPhoto handle testDraftId testToken image
       result `shouldBe` return (Right ())
-    it "Should fail if minor photo format is incorrect" $ do
-      let result = H.addMinorPhoto handle testDraftId testToken link
-      result `shouldBe` return (Left malformedImage)
     it "Should fail if draft doesn'exist" $ do
       let handleCase =
             handle
@@ -276,27 +222,27 @@ main = hspec $ do
     it "Should fail if user is not author of the draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2
+              { H.hGetAuthorIdByToken = \_ -> return authorId
               }
       let result = H.addMinorPhoto handleCase testDraftId testToken image
       result `shouldBe` return (Left noDraftAuthor)
   describe "Testing delete minor photos" $ do
     it "Should delete minor photo" $ do
-      let result = H.deleteMinorPhoto handle testDraftId testToken 1
+      let result = H.deleteMinorPhoto handle testDraftId testToken imageId
       result `shouldBe` return (Right ())
     it "Should fail if draft doesn'exist" $ do
       let handleCase =
             handle
               { H.hDoesExist = \_ -> return (Left draftNotExist)
               }
-      let result = H.deleteMinorPhoto handleCase testDraftId testToken 1
+      let result = H.deleteMinorPhoto handleCase testDraftId testToken imageId
       result `shouldBe` return (Left draftNotExist)
     it "Should fail if user is not author of the draft" $ do
       let handleCase =
             handle
-              { H.hGetAuthorIdByToken = \_ -> return $ AuthorId 2
+              { H.hGetAuthorIdByToken = \_ -> return authorId
               }
-      let result = H.deleteMinorPhoto handleCase testDraftId testToken 1
+      let result = H.deleteMinorPhoto handleCase testDraftId testToken imageId
       result `shouldBe` return (Left noDraftAuthor)
 
 handle :: H.Handle Identity
@@ -313,10 +259,9 @@ handle =
       H.hDeleteMinorPhoto = \_ _ -> return (),
       H.hIsAuthor = \_ -> return True,
       H.hHasPost = \_ -> return True,
-      H.hGetCurrentDate = return "01-01-2020",
-      H.hGet = \_ -> return getDraft,
+      H.hGet = \_ _ -> return getDraft,
       H.hGetAuthor = \_ -> return $ AuthorId 1,
-      H.hPublish = \_ _ -> return (),
+      H.hPublish = \_ -> return (),
       H.hUpdate = \_ -> return (),
       H.hGetAuthorIdByToken = \_ -> return $ AuthorId 1,
       H.hDoesExist = \_ -> return (Right ()),
@@ -335,7 +280,7 @@ getDraft =
       gTagId = [TagId 1],
       gName = Name "name",
       gText = "description",
-      gMainPhoto = image,
+      gMainPhoto = link,
       gMinorPhoto = []
     }
 
@@ -371,11 +316,17 @@ testToken = Token "123"
 image :: Image
 image = Image "image" "imageType"
 
-link :: Image
+link :: Link
 link = Link $ imageAddress `append` pack (show imageId)
 
-imageId :: Image
-imageId = Id 1
+imageId :: ImageId
+imageId = ImageId 1
+
+authorId :: AuthorId
+authorId = AuthorId 2
+
+categoryId :: CategoryId
+categoryId = CategoryId 1
 
 serverAddress :: ServerAddress
 serverAddress = ""

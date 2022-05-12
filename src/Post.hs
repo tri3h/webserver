@@ -95,11 +95,11 @@ handle pool =
   Handler.Handle
     { Handler.hFilterHandle = filterHandle pool,
       Handler.hOrderHandle = orderHandle pool,
-      Handler.hGet = withResource pool . Db.get,
+      Handler.hGet = \a b -> withResource pool $ Db.get a b,
       Handler.hGetAll = withResource pool Db.getAll,
-      Handler.hGetMinorPhotos = withResource pool . Db.getMinorPhotos,
+      Handler.hGetMinorPhotos = \a b -> withResource pool $ Db.getMinorPhotos a b,
       Handler.hGetAuthor = withResource pool . AuthorDb.getMaybe . fromMaybe (Author.AuthorId 0),
-      Handler.hGetUser = withResource pool . UserDb.getMaybeByUserId . fromMaybe (User.UserId 0),
+      Handler.hGetUser = \a b -> withResource pool $ UserDb.getMaybeByUserId (fromMaybe (User.UserId 0) a) b,
       Handler.hGetCategory = \catId -> do
         parents <- withResource pool $ CategoryDb.getParents (fromMaybe (Category.CategoryId 0) catId)
         mapM (withResource pool . CategoryDb.get) parents,

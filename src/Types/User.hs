@@ -11,7 +11,7 @@ import Data.Aeson
 import Data.Text (Text)
 import Database.PostgreSQL.Simple.FromField (FromField)
 import Database.PostgreSQL.Simple.ToField (ToField)
-import Types.Image (Image)
+import Types.Image (Image, Link)
 
 newtype Login = Login {getLogin :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
@@ -33,7 +33,7 @@ data GetUser = GetUser
   { gUserId :: UserId,
     gName :: Name,
     gSurname :: Surname,
-    gAvatar :: Image,
+    gAvatar :: Link,
     gLogin :: Login,
     gDate :: Date
   }
@@ -54,7 +54,6 @@ data FullUser = FullUser
     fAvatar :: Image,
     fLogin :: Login,
     fPassword :: Password,
-    fDate :: Date,
     fAdmin :: Admin,
     fToken :: Token
   }

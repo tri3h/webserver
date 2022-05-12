@@ -7,7 +7,7 @@ import Data.Text (Text, append, pack)
 import qualified Handlers.User as H
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Config (ServerAddress)
-import Types.Image (Image (Id, Image, Link), imageAddress, malformedImage)
+import Types.Image (Image (..), ImageId (ImageId), Link (Link), imageAddress)
 import Types.User
   ( Admin (Admin),
     CreateUser (..),
@@ -29,7 +29,7 @@ main :: IO ()
 main = hspec $ do
   describe "Testing create fullUser" $ do
     it "Should successfully create" $ do
-      let result = H.create handle createUser
+      let result = H.create handle createUser testAdmin
       let token = H.generateToken handle
       result `shouldBe` (Right <$> token)
     it "Should fail if login isn't unique" $ do
@@ -37,30 +37,12 @@ main = hspec $ do
             handle
               { H.hIsLoginUnique = \_ -> return False
               }
-      let result = H.create handleCase createUser
+      let result = H.create handleCase createUser testAdmin
       result `shouldBe` return (Left loginTaken)
-    it "Should fail if avatar format is incorrect" $ do
-      let createUserCase =
-            createUser
-              { cAvatar = avatarLink
-              }
-      let result = H.create handle createUserCase
-      result `shouldBe` return (Left malformedImage)
-  describe "Testing get fullUser" $ do
+  describe "Testing get fullUser" $
     it "Should successfully get" $ do
       let result = H.get handle serverAddress testToken
       result `shouldBe` return (Right getUser)
-    it "Should fail if avatar format is incorrect (Image)" $ do
-      let userToGetCase =
-            getUser
-              { gAvatar = avatarImage
-              }
-      let handleCase =
-            handle
-              { H.hGet = \_ -> return userToGetCase
-              }
-      let result = H.get handleCase serverAddress testToken
-      result `shouldBe` return (Left malformedImage)
   describe "Testing delete fullUser" $ do
     it "Should successfully delete" $ do
       let result = H.delete handle testUserId
@@ -103,10 +85,9 @@ handle =
     { H.hIsLoginUnique = \_ -> return True,
       H.hIsTokenUnique = \_ -> return True,
       H.hCreate = \_ -> return (),
-      H.hGet = \_ -> return getUser,
+      H.hGet = \_ _ -> return getUser,
       H.hDelete = \_ -> return (),
       H.hGetRandomNumber = return 1,
-      H.hGetCurrentTime = return "01-01-2020",
       H.hIsLoginValid = \_ -> return True,
       H.hFindPassword = \_ -> return $ Password "password",
       H.hUpdateToken = \_ _ -> return (),
@@ -121,7 +102,6 @@ fullUser =
       fAvatar = avatarImage,
       fLogin = Login "login",
       fPassword = Password "password",
-      fDate = Date "10-10-2020",
       fAdmin = Admin False,
       fToken = Token "1234"
     }
@@ -159,14 +139,17 @@ testPassword = Password "Password"
 testUserId :: UserId
 testUserId = UserId 1
 
-avatarLink :: Image
+testAdmin :: Admin
+testAdmin = Admin False
+
+avatarLink :: Link
 avatarLink = Link $ imageAddress `append` pack (show avatarId)
 
 avatarImage :: Image
 avatarImage = Image "image" "imageType"
 
-avatarId :: Image
-avatarId = Id 1
+avatarId :: ImageId
+avatarId = ImageId 1
 
 serverAddress :: ServerAddress
 serverAddress = ""

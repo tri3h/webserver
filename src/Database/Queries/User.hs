@@ -5,13 +5,15 @@ module Database.Queries.User where
 
 import Data.Text (Text, pack)
 import Database.PostgreSQL.Simple
-  ( Connection,
+  ( Binary (Binary),
+    Connection,
     Only (Only),
     execute,
     query,
+    query_,
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
-import Types.Image (Image (Id, Image))
+import Types.Image (Image (Image), ImageId, Link)
 import Types.User
   ( Date (Date),
     FullUser (..),
@@ -80,21 +82,19 @@ create user conn = do
     query
       conn
       "INSERT INTO images (image, image_type) \
-      \VALUES (decode(?,'base64'), ?) \
-      \   RETURNING image_id"
-      (image, imageType)
+      \VALUES (?, ?) RETURNING image_id"
+      (Binary image, imageType)
   _ <-
     execute
       conn
       "INSERT INTO users (name, surname, image_id, \
       \login, password, registration_date, admin, token) \
-      \VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      \VALUES (?, ?, ?, ?, ?, CURRENT_DATE, ?, ?)"
       ( fName user,
         fSurname user,
         imageId :: Integer,
         fLogin user,
         fPassword user,
-        fDate user,
         fAdmin user,
         fToken user
       )
@@ -105,8 +105,8 @@ delete userId conn = do
   _ <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
   return ()
 
-get :: Token -> Connection -> IO GetUser
-get token conn = do
+get :: Token -> (ImageId -> Link) -> Connection -> IO GetUser
+get token f conn = do
   [(gUserId, gName, gSurname, imageId, gLogin, regDate)] <-
     query
       conn
@@ -115,13 +115,13 @@ get token conn = do
       (Only token)
   return
     GetUser
-      { gAvatar = Id imageId,
+      { gAvatar = f imageId,
         gDate = Date . pack $ show (regDate :: Time.Date),
         ..
       }
 
-getByUserId :: UserId -> Connection -> IO GetUser
-getByUserId uId conn = do
+getByUserId :: UserId -> (ImageId -> Link) -> Connection -> IO GetUser
+getByUserId uId f conn = do
   [(gUserId, gName, gSurname, imageId, gLogin, regDate)] <-
     query
       conn
@@ -130,13 +130,13 @@ getByUserId uId conn = do
       (Only uId)
   return
     GetUser
-      { gAvatar = Id imageId,
+      { gAvatar = f imageId,
         gDate = Date . pack $ show (regDate :: Time.Date),
         ..
       }
 
-getMaybeByUserId :: UserId -> Connection -> IO (Maybe GetUser)
-getMaybeByUserId uId conn = do
+getMaybeByUserId :: UserId -> (ImageId -> Link) -> Connection -> IO (Maybe GetUser)
+getMaybeByUserId uId f conn = do
   x <-
     query
       conn
@@ -148,7 +148,7 @@ getMaybeByUserId uId conn = do
       return $
         Just
           GetUser
-            { gAvatar = Id imageId,
+            { gAvatar = f imageId,
               gDate = Date . pack $ show (regDate :: Time.Date),
               ..
             }
@@ -183,3 +183,12 @@ updateToken login token conn = do
       "UPDATE users SET token = ? WHERE login = ?"
       (token, login)
   return ()
+
+hasAdmin :: Connection -> IO Bool
+hasAdmin conn = do
+  [Only n] <-
+    query_
+      conn
+      "SELECT COUNT(user_id) FROM users \
+      \WHERE admin = true"
+  return $ (n :: Integer) > 0

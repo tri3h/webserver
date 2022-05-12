@@ -12,7 +12,7 @@ import Types.Category (CategoryId, GetCategory)
 import Types.Comment (GetComment)
 import Types.Config (ServerAddress)
 import qualified Types.Filter as F
-import Types.Image (Image)
+import Types.Image (ImageId, Link)
 import Types.Post
   ( Date,
     FullPost (..),
@@ -23,16 +23,16 @@ import Types.Post
 import Types.PostComment (PostId)
 import qualified Types.Tag as Tag
 import qualified Types.User as User
-import Utility (imagesToLinks)
+import Utility (imageIdToLink)
 
 data Handle m = Handle
   { hFilterHandle :: FilterHandle m,
     hOrderHandle :: OrderHandle m,
-    hGet :: [PostId] -> m [ShortPost],
+    hGet :: [PostId] -> (ImageId -> Link) -> m [ShortPost],
     hGetAll :: m [PostId],
-    hGetMinorPhotos :: PostId -> m [Image],
+    hGetMinorPhotos :: PostId -> (ImageId -> Link) -> m [Link],
     hGetAuthor :: Maybe A.AuthorId -> m (Maybe A.GetAuthor),
-    hGetUser :: Maybe User.UserId -> m (Maybe User.GetUser),
+    hGetUser :: Maybe User.UserId -> (ImageId -> Link) -> m (Maybe User.GetUser),
     hGetCategory :: Maybe CategoryId -> m [GetCategory],
     hGetTag :: PostId -> m [Tag.Tag],
     hGetComment :: PostId -> m [GetComment],
@@ -88,7 +88,7 @@ get handle server params order limit offset = do
   if null limitedOffseted
     then return $ Left noPost
     else do
-      posts <- hGet handle limitedOffseted
+      posts <- hGet handle limitedOffseted (imageIdToLink server)
       makeFullPost handle server posts limitedOffseted
 
 orderFullPost :: [PostId] -> [FullPost] -> [FullPost]
@@ -99,41 +99,33 @@ orderFullPost orderedId posts =
 
 makeFullPost :: Monad m => Handle m -> ServerAddress -> [ShortPost] -> [PostId] -> m (Either Text [FullPost])
 makeFullPost handle server posts orderedId = do
+  let f = imageIdToLink server
   authors <- mapM (hGetAuthor handle . sAuthorId) posts
-  users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle $ A.gUserId a) authors
+  users <- mapM (\case Nothing -> return Nothing; Just a -> hGetUser handle (A.gUserId a) f) authors
   categories <- mapM (hGetCategory handle . sCategoryId) posts
   tags <- mapM (hGetTag handle . sPostId) posts
   comments <- mapM (hGetComment handle . sPostId) posts
-  minorPhotos <- mapM (hGetMinorPhotos handle . sPostId) posts
-  let mainPhotoLink = imagesToLinks server $ map sMainPhoto posts
-  let minorPhotoLink = mapM (imagesToLinks server) minorPhotos
-  case mainPhotoLink of
-    Right mainLinks ->
-      let postsWithLinks = zipWith (\post link -> post {sMainPhoto = link}) posts mainLinks
-       in case minorPhotoLink of
-            Right minorLinks -> do
-              let fullPosts =
-                    zipWith7
-                      ( \post fAuthor fUser fCategory fTag fComment fMinorPhoto ->
-                          FullPost
-                            { fPostId = sPostId post,
-                              fName = sName post,
-                              fDate = sDate post,
-                              fText = sText post,
-                              fMainPhoto = sMainPhoto post,
-                              ..
-                            }
-                      )
-                      postsWithLinks
-                      authors
-                      users
-                      categories
-                      tags
-                      comments
-                      minorLinks
-              return . Right $ orderFullPost orderedId fullPosts
-            Left l -> return $ Left l
-    Left l -> return $ Left l
+  minorPhotos <- mapM (\x -> hGetMinorPhotos handle (sPostId x) f) posts
+  let fullPosts =
+        zipWith7
+          ( \post fAuthor fUser fCategory fTag fComment fMinorPhoto ->
+              FullPost
+                { fPostId = sPostId post,
+                  fName = sName post,
+                  fDate = sDate post,
+                  fText = sText post,
+                  fMainPhoto = sMainPhoto post,
+                  ..
+                }
+          )
+          posts
+          authors
+          users
+          categories
+          tags
+          comments
+          minorPhotos
+  return . Right $ orderFullPost orderedId fullPosts
 
 getOrdered :: Monad m => Handle m -> [PostId] -> F.Order -> m [PostId]
 getOrdered handle posts order =

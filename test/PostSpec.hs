@@ -10,7 +10,7 @@ import Types.Author (AuthorId (AuthorId))
 import Types.Category (CategoryId (CategoryId))
 import Types.Config (ServerAddress)
 import qualified Types.Filter as F
-import Types.Image (Image (..), imageAddress, malformedImage)
+import Types.Image (Image (..), imageAddress, Link (Link), ImageId (ImageId))
 import Types.Post (Date (Date), FullPost (..), Name (Name), ShortPost (..), noPost)
 import Types.PostComment (PostId (PostId))
 import Types.Tag (TagId (TagId))
@@ -274,35 +274,17 @@ main = hspec $
               }
       let result = H.get handle serverAddress filterCase order limit offset
       result `shouldBe` return (Left noPost)
-    it "Should fail if main photo format is incorrect" $ do
-      let shortPostCase =
-            shortPost1
-              { sMainPhoto = image
-              }
-      let handleCase =
-            handle
-              { H.hGet = \_ -> return [shortPostCase]
-              }
-      let result = H.get handleCase serverAddress filters order limit offset
-      result `shouldBe` return (Left malformedImage)
-    it "Should fail if minor photo format is incorrect" $ do
-      let handleCase =
-            handle
-              { H.hGetMinorPhotos = \_ -> return [image]
-              }
-      let result = H.get handleCase serverAddress filters order limit offset
-      result `shouldBe` return (Left malformedImage)
 
 handle :: H.Handle Identity
 handle =
   H.Handle
     { H.hFilterHandle = filterHandle,
       H.hOrderHandle = orderHandle,
-      H.hGet = \posts -> return $ filter (\a -> sPostId a `elem` posts) [shortPost1, shortPost2],
+      H.hGet = \posts _ -> return $ filter (\a -> sPostId a `elem` posts) [shortPost1, shortPost2],
       H.hGetAll = return [postId1, postId2],
-      H.hGetMinorPhotos = \_ -> return [],
+      H.hGetMinorPhotos = \_ _ -> return [],
       H.hGetAuthor = \_ -> return Nothing,
-      H.hGetUser = \_ -> return Nothing,
+      H.hGetUser = \_ _ -> return Nothing,
       H.hGetCategory = \_ -> return [],
       H.hGetTag = \_ -> return [],
       H.hGetComment = \_ -> return [],
@@ -417,11 +399,11 @@ postId2 = PostId 2
 image :: Image
 image = Image "image" "imageType"
 
-link :: Image
+link :: Link
 link = Link $ imageAddress `append` pack (show imageId)
 
-imageId :: Image
-imageId = Id 1
+imageId :: ImageId
+imageId = ImageId 1
 
 limit :: F.Limit
 limit = F.Limit 5

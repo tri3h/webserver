@@ -13,7 +13,7 @@ import Database.PostgreSQL.Simple
 import qualified Database.PostgreSQL.Simple.Time as Time
 import qualified Types.Category as Category
 import Types.Filter (Limit, Offset)
-import Types.Image (Image (Id))
+import Types.Image (ImageId, Link)
 import Types.Post
   ( Date (Date),
     Name (Name),
@@ -24,8 +24,8 @@ import Types.PostComment (PostId)
 import qualified Types.Tag as Tag
 import qualified Types.User as User
 
-get :: [PostId] -> Connection -> IO [ShortPost]
-get pId conn = do
+get :: [PostId] -> (ImageId -> Link) -> Connection -> IO [ShortPost]
+get pId f conn = do
   result <-
     query
       conn
@@ -45,7 +45,7 @@ get pId conn = do
                ) ->
                 ShortPost
                   { sDate = Date . pack $ show (date :: Time.Date),
-                    sMainPhoto = Id mainPhoto,
+                    sMainPhoto = f mainPhoto,
                     ..
                   }
           )
@@ -62,8 +62,8 @@ applyLimitOffset posts limit offset conn = do
   result <- query conn "SELECT post_id FROM posts WHERE post_id IN ? LIMIT ? OFFSET ?" (In posts, limit, offset)
   return $ map (\(Only x) -> x) result
 
-getMinorPhotos :: PostId -> Connection -> IO [Image]
-getMinorPhotos postId conn = do
+getMinorPhotos :: PostId -> (ImageId -> Link) -> Connection -> IO [Link]
+getMinorPhotos postId f conn = do
   xs <-
     query
       conn
@@ -72,7 +72,7 @@ getMinorPhotos postId conn = do
       (Only postId)
   let xs' =
         map
-          ( \(Only x) -> Id x
+          ( \(Only x) -> f x
           )
           xs
   return xs'

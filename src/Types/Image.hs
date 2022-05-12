@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types.Image where
@@ -7,32 +8,25 @@ import Data.Aeson
     ToJSON (toJSON),
     object,
   )
+import Data.ByteString (ByteString)
 import Data.Text (Text)
+import Database.PostgreSQL.Simple.FromField (FromField)
 import Database.PostgreSQL.Simple.ToField (ToField (..))
-
-type ImageId = Integer
 
 type ImageType = Text
 
-type ImageBody = Text
+type ImageBody = ByteString
 
-data Image = Id ImageId | Link Text | Image ImageBody ImageType
-  deriving (Show, Eq, Read)
+newtype Link = Link Text deriving (Show, Eq, Read)
 
-instance ToJSON Image where
-  toJSON (Id x) =
+newtype ImageId = ImageId Integer deriving (Show, Eq, Read, ToField, FromField)
+
+data Image = Image ImageBody ImageType deriving (Show, Eq, Read)
+
+instance ToJSON Link where
+  toJSON (Link x) =
     object
-      ["image_id" .= x]
-  toJSON (Link x) = object ["image_link" .= x]
-  toJSON (Image x _) = object ["image" .= x]
-
-instance ToField Image where
-  toField (Image image _) = toField image
-  toField (Link x) = toField x
-  toField (Id x) = toField x
-
-malformedImage :: Text
-malformedImage = "Malformed image"
+      ["link" .= x]
 
 imageNotExist :: Text
 imageNotExist = "Image with such id doesn't exist"

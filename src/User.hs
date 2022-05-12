@@ -4,18 +4,15 @@
 module User where
 
 import Data.Aeson (encode)
-import Data.ByteString (ByteString)
+import Data.ByteString (ByteString, hGetContents)
 import Data.Pool (Pool, withResource)
 import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text.Lazy as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import Data.Time.Clock (getCurrentTime)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.User as Db
 import qualified Handlers.Logger as Logger
 import qualified Handlers.User as Handler
-import Image (getImageType)
 import Network.HTTP.Types.Header (hContentType)
 import Network.HTTP.Types.Status
   ( status200,
@@ -25,11 +22,12 @@ import Network.HTTP.Types.Status
   )
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
+import qualified System.IO as IO
 import System.Random (randomIO)
 import Types.Config (ServerAddress)
-import Types.Image (Image (Image), ImageBody)
-import Types.User (CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token, UserId (UserId))
-import Utility (getImageBody, getInteger, getText)
+import Types.Image (Image (Image))
+import Types.User (Admin (Admin), CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token, UserId (UserId))
+import Utility (getImage, getInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 create logger pool query body = do
@@ -38,18 +36,16 @@ create logger pool query body = do
         cSurname <- getSurname query
         cLogin <- getLogin query
         cPassword <- getPassword query
-        imageType <- getImageType query
-        image <- getAvatarBody body
+        cAvatar <- getAvatar body
         Right $
           CreateUser
-            { cAvatar = Image image imageType,
-              ..
+            { ..
             }
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
     Right user -> do
-      result <- Handler.create (handle pool) user
+      result <- Handler.create (handle pool) user $ Admin False
       Logger.debug logger $ "Tried to create user and got: " ++ show result
       case result of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -105,6 +101,21 @@ getNewToken logger pool query = do
           return $ responseLBS status201 [(hContentType, "application/json")] $ encode token
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
 
+makeDefaultAdmin :: Pool Connection -> IO (Either Text Token)
+makeDefaultAdmin pool = do
+  h <- IO.openBinaryFile "scripts/utility/image.png" IO.ReadMode
+  image <- hGetContents h
+  IO.hClose h
+  let user =
+        CreateUser
+          { cName = Name "admin",
+            cSurname = Surname "none",
+            cLogin = Login "admin",
+            cPassword = Password "adminpassword",
+            cAvatar = Image image "png"
+          }
+  Handler.create (handle pool) user $ Admin True
+
 getName :: QueryText -> Either Text Name
 getName query = Name <$> getText query "name"
 
@@ -120,8 +131,8 @@ getLogin query = Login <$> getText query "login"
 getPassword :: QueryText -> Either Text Password
 getPassword query = Password <$> getText query "password"
 
-getAvatarBody :: ByteString -> Either Text ImageBody
-getAvatarBody body = getImageBody (decodeUtf8 body) "avatar"
+getAvatar :: ByteString -> Either Text Image
+getAvatar body = getImage body "avatar"
 
 isAdmin :: Pool Connection -> Handler.Token -> IO Bool
 isAdmin pool = withResource pool . Db.isAdmin
@@ -136,10 +147,9 @@ handle pool =
       Handler.hIsTokenUnique = withResource pool . Db.isTokenUnique,
       Handler.hIsLoginValid = withResource pool . Db.isLoginValid,
       Handler.hCreate = withResource pool . Db.create,
-      Handler.hGet = withResource pool . Db.get,
+      Handler.hGet = \a b -> withResource pool $ Db.get a b,
       Handler.hDelete = withResource pool . Db.delete,
       Handler.hGetRandomNumber = randomIO,
-      Handler.hGetCurrentTime = show <$> getCurrentTime,
       Handler.hFindPassword = withResource pool . Db.findPassword,
       Handler.hUpdateToken = \a b -> withResource pool $ Db.updateToken a b,
       Handler.hDoesExist = withResource pool . Db.doesExist

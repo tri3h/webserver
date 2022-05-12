@@ -14,7 +14,7 @@ import Database.PostgreSQL.Simple.ToField (ToField)
 import Types.Author (AuthorId, GetAuthor)
 import Types.Category (CategoryId, GetCategory)
 import Types.Comment (GetComment)
-import Types.Image (Image)
+import Types.Image (Link)
 import Types.PostComment (PostId)
 import Types.Tag (Tag)
 import Types.User (GetUser)
@@ -30,7 +30,7 @@ data ShortPost = ShortPost
     sName :: Name,
     sDate :: Date,
     sText :: Text,
-    sMainPhoto :: Image
+    sMainPhoto :: Link
   }
   deriving (Show, Eq)
 
@@ -44,8 +44,8 @@ data FullPost = FullPost
     fName :: Name,
     fDate :: Date,
     fText :: Text,
-    fMainPhoto :: Image,
-    fMinorPhoto :: [Image]
+    fMainPhoto :: Link,
+    fMinorPhoto :: [Link]
   }
   deriving (Show, Eq)
 
