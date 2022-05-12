@@ -93,10 +93,7 @@ getFilter query =
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
   Handler.Handle
-    { Handler.hFilterHandle = filterHandle pool,
-      Handler.hOrderHandle = orderHandle pool,
-      Handler.hGet = \a b -> withResource pool $ Db.get a b,
-      Handler.hGetAll = withResource pool Db.getAll,
+    { Handler.hGet = \a b c d e -> withResource pool $ Db.get a b c d e,
       Handler.hGetMinorPhotos = \a b -> withResource pool $ Db.getMinorPhotos a b,
       Handler.hGetAuthor = withResource pool . AuthorDb.getMaybe . fromMaybe (Author.AuthorId 0),
       Handler.hGetUser = \a b -> withResource pool $ UserDb.getMaybeByUserId (fromMaybe (User.UserId 0) a) b,
@@ -104,32 +101,5 @@ handle pool =
         parents <- withResource pool $ CategoryDb.getParents (fromMaybe (Category.CategoryId 0) catId)
         mapM (withResource pool . CategoryDb.get) parents,
       Handler.hGetTag = withResource pool . TagDb.getByPostId,
-      Handler.hGetComment = withResource pool . CommentDb.get,
-      Handler.hApplyLimitOffset = \a b c -> withResource pool $ Db.applyLimitOffset a b c
-    }
-
-filterHandle :: Pool Connection -> Handler.FilterHandle IO
-filterHandle pool =
-  Handler.FilterHandle
-    { Handler.hByDateBefore = withResource pool . Db.filterByDateBefore,
-      Handler.hByDateAfter = withResource pool . Db.filterByDateAfter,
-      Handler.hByDateAt = withResource pool . Db.filterByDateAt,
-      Handler.hByAuthorName = withResource pool . Db.filterByAuthorName,
-      Handler.hByCategoryId = withResource pool . Db.filterByCategoryId,
-      Handler.hByTagId = withResource pool . Db.filterByTagId,
-      Handler.hByTag = withResource pool . Db.filterByTag,
-      Handler.hByOneOfTags = withResource pool . Db.filterByOneOfTags,
-      Handler.hByAllOfTags = withResource pool . Db.filterByAllOfTags,
-      Handler.hByPostName = withResource pool . Db.filterByPostName,
-      Handler.hByText = withResource pool . Db.filterByText,
-      Handler.hBySubstring = withResource pool . Db.filterBySubstring
-    }
-
-orderHandle :: Pool Connection -> Handler.OrderHandle IO
-orderHandle pool =
-  Handler.OrderHandle
-    { Handler.hByDate = withResource pool . Db.orderByDate,
-      Handler.hByAuthor = withResource pool . Db.orderByAuthor,
-      Handler.hByCategory = withResource pool . Db.orderByCategory,
-      Handler.hByPhotosNumber = withResource pool . Db.orderByPhotosNumber
+      Handler.hGetComment = withResource pool . CommentDb.get
     }
