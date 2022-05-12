@@ -7,7 +7,7 @@ import Data.Text (Text, append, pack)
 import qualified Handlers.User as H
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Config (ServerAddress)
-import Types.Image (Image (..), imageAddress, Link (Link), ImageId (ImageId))
+import Types.Image (Image (..), ImageId (ImageId), Link (Link), imageAddress)
 import Types.User
   ( Admin (Admin),
     CreateUser (..),
@@ -29,7 +29,7 @@ main :: IO ()
 main = hspec $ do
   describe "Testing create fullUser" $ do
     it "Should successfully create" $ do
-      let result = H.create handle createUser
+      let result = H.create handle createUser testAdmin
       let token = H.generateToken handle
       result `shouldBe` (Right <$> token)
     it "Should fail if login isn't unique" $ do
@@ -37,7 +37,7 @@ main = hspec $ do
             handle
               { H.hIsLoginUnique = \_ -> return False
               }
-      let result = H.create handleCase createUser
+      let result = H.create handleCase createUser testAdmin
       result `shouldBe` return (Left loginTaken)
   describe "Testing get fullUser" $
     it "Should successfully get" $ do
@@ -138,6 +138,9 @@ testPassword = Password "Password"
 
 testUserId :: UserId
 testUserId = UserId 1
+
+testAdmin :: Admin
+testAdmin = Admin False
 
 avatarLink :: Link
 avatarLink = Link $ imageAddress `append` pack (show avatarId)

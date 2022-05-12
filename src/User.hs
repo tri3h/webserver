@@ -4,7 +4,7 @@
 module User where
 
 import Data.Aeson (encode)
-import Data.ByteString (ByteString)
+import Data.ByteString (ByteString, hGetContents)
 import Data.Pool (Pool, withResource)
 import Data.Text (Text)
 import qualified Data.Text.Lazy as LazyText
@@ -22,10 +22,11 @@ import Network.HTTP.Types.Status
   )
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
+import qualified System.IO as IO
 import System.Random (randomIO)
 import Types.Config (ServerAddress)
-import Types.Image (Image)
-import Types.User (CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token, UserId (UserId))
+import Types.Image (Image (Image))
+import Types.User (Admin (Admin), CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token, UserId (UserId))
 import Utility (getImage, getInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
@@ -44,7 +45,7 @@ create logger pool query body = do
   case info of
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
     Right user -> do
-      result <- Handler.create (handle pool) user
+      result <- Handler.create (handle pool) user $ Admin False
       Logger.debug logger $ "Tried to create user and got: " ++ show result
       case result of
         Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
@@ -99,6 +100,21 @@ getNewToken logger pool query = do
         Right token ->
           return $ responseLBS status201 [(hContentType, "application/json")] $ encode token
     Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+
+makeDefaultAdmin :: Pool Connection -> IO (Either Text Token)
+makeDefaultAdmin pool = do
+  h <- IO.openBinaryFile "scripts/utility/image.png" IO.ReadMode
+  image <- hGetContents h
+  IO.hClose h
+  let user =
+        CreateUser
+          { cName = Name "admin",
+            cSurname = Surname "none",
+            cLogin = Login "admin",
+            cPassword = Password "adminpassword",
+            cAvatar = Image image "png"
+          }
+  Handler.create (handle pool) user $ Admin True
 
 getName :: QueryText -> Either Text Name
 getName query = Name <$> getText query "name"

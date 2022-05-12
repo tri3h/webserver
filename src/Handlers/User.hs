@@ -9,7 +9,7 @@ import Data.Text.Encoding (encodeUtf8)
 import Types.Config (ServerAddress)
 import Types.Image (ImageId, Link)
 import Types.User
-  ( Admin (Admin),
+  ( Admin,
     CreateUser (..),
     FullUser (..),
     GetUser,
@@ -35,8 +35,8 @@ data Handle m = Handle
     hDoesExist :: UserId -> m (Either Text ())
   }
 
-create :: Monad m => Handle m -> CreateUser -> m (Either Text Token)
-create handle partUser = do
+create :: Monad m => Handle m -> CreateUser -> Admin -> m (Either Text Token)
+create handle partUser fAdmin = do
   isUnique <- hIsLoginUnique handle $ cLogin partUser
   if isUnique
     then do
@@ -49,7 +49,6 @@ create handle partUser = do
                 fAvatar = cAvatar partUser,
                 fLogin = cLogin partUser,
                 fPassword = hashPassw,
-                fAdmin = Admin False,
                 ..
               }
       hCreate handle user
