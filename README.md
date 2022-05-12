@@ -8,11 +8,11 @@ Also it may be necessary to use a command *stack setup*.
 
 After these two files are filled, the project may be started by typing *stack run* into command line while being in the project folder. If there are no admins in the database, the program will ask about creating default admin.
 
-Scripts are in the folder *scripts*. There are two folders: bash folder and postman folder. 
+Postman request collection can be used with the button: 
 
-Scripts from postman folder can be used in Postman by importing them. They have 2 variables that you need to set: host and port, the same values as in the file Server.config. 
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/20187244-a860b4c5-3e4d-4d31-974e-24a776768678?action=collection%2Ffork&collection-url=entityId%3D20187244-a860b4c5-3e4d-4d31-974e-24a776768678%26entityType%3Dcollection%26workspaceId%3D23a81905-7494-4f7d-915f-7199856dd026)
 
-Scripts from folder *bash* may be run with bash like: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. Some of scripts take an image, they take it in the form of two parameters: a path to the file and a type of image, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg" -y "jpg"*. 
+There are also bash scripts in the folder *scripts*. Scripts may be run with bash like: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. Some of scripts take an image, they take it in the form of two parameters: a path to the file and a type of image, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg" -y "jpg"*. 
 
 ## Basic structure 
 The project has 3 main parts:
@@ -115,6 +115,12 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * "sort_by" can be: "by_date" / "by_author" / "by_category" / "by_photos_number"
     * "tag_in" and "tag_all" can have several values, they should be separated by ","
     * Return all posts (max at a time = 10) if there are no optional parameters. Return posts (max at a time = 10 or less if there is a limit parameter) only with corresponding parameters if there are optional paramaters. Return no post if there are no posts with such optional parameters
+
+- GET /comments
+    * Get all comments to a post
+    * Required parameters:
+        * post_id
+    * Return a list of comments to a post in case of success
 </details>
 
 <details>
@@ -130,13 +136,6 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Add an avatar to a user (or change it in case there is already an avatar)
     * Required parameters: an image "avatar"
     * Return nothing in case of success
-
-- GET /comments
-    * Get all comments to a post
-    * Required parameters:
-        * token
-        * post_id
-    * Return a list of comments to a post in case of success
 
 - POST /comments
     * Create a comment to a post

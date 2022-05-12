@@ -65,6 +65,9 @@ makeNoTokenResponse logger config pool req body = do
     ["categories"] -> case requestMethod req of
       "GET" -> Category.get logger pool query
       _ -> chooseResponse query
+    ["comments"] -> case requestMethod req of
+      "GET" -> Comment.get logger pool query
+      _ -> chooseResponse query
     _ -> chooseResponse query
   where
     chooseResponse query = case User.getToken query of
@@ -90,7 +93,6 @@ makeTokenResponse logger config pool req body token = do
       "POST" -> User.addAvatar pool token body
       _ -> return response404
     ["comments"] -> case requestMethod req of
-      "GET" -> Comment.get logger pool query
       "POST" -> Comment.create logger pool query token
       _ -> chooseResponse isAdmin
     ["drafts"] -> case requestMethod req of
