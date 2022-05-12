@@ -1,5 +1,8 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+name="category"
+
 #Required parameters: t, n. Others are optional.
 while getopts t:n:p: flag;
 do

@@ -1,5 +1,10 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+post_id="1"
+user_id="1"
+text="text"
+
 #All parameters are required
 while getopts t:p:u:x: flag
 do

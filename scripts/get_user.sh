@@ -1,5 +1,7 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+
 #All parameters are required
 while getopts t: flag
 do

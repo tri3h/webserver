@@ -1,5 +1,8 @@
 #! /bin/sh
 
+login="login"
+password="password"
+
 #All parameters are required
 while getopts l:p: flag
 do
@@ -11,4 +14,4 @@ done
 
 source utility/load_config.sh
 
-curl "$host:$port/tokens?login=$login&password=$password" -X GET
+curl "$host:$port/tokens?login=$login&password=$password" -X GET  | sed 's/"//g' > utility/token.txt
