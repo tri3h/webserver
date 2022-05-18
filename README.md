@@ -59,7 +59,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * surname
         * login
         * password
-    * Also there should be an image "avatar"
+    * Also there *may* be an image "avatar"
     * Return a token in case of success
 
 - /tokens 
@@ -121,6 +121,11 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * token
     * Return a user in case of success
 
+- POST users/avatar
+    * Add an avatar to a user (or change it in case there is already an avatar)
+    * Required parameters: an image "avatar"
+    * Return nothing in case of success
+
 - GET /comments
     * Get all comments to a post
     * Required parameters:
@@ -133,7 +138,6 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Required parameters:
         * token
         * post_id
-        * user_id
         * text
     * Return nothing in case of success
 
@@ -150,9 +154,10 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * token
         * category_id
         * description
-        * tag_id
         * name
-    * Also there should be an image "main_photo"
+    * Optional parameters:
+        * tag_id
+    * Also there *may* be an image "main_photo"
     * Return nothing in case of success
 
 - PUT /drafts

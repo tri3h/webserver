@@ -17,35 +17,36 @@ import Control.Monad (join)
 import qualified Data.ByteString as BS
 import Data.Text (Text, append, null, pack, splitOn, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Error (Error, noImage, noSpecified)
 import Network.HTTP.Types.URI (QueryText)
 import Text.Read (readMaybe)
 import Types.Config (ServerAddress)
 import Types.Image (Image (Image), ImageBody, ImageId (ImageId), ImageType, Link (Link), imageAddress)
 import Prelude hiding (null)
 
-getText :: QueryText -> Text -> Either Text Text
+getText :: QueryText -> Text -> Either Error Text
 getText query name = case join $ lookup name query of
-  Nothing -> noSpecified name
+  Nothing -> Left $ noSpecified name
   Just x ->
     if null x
-      then noSpecified name
+      then Left $ noSpecified name
       else Right x
 
-getInteger :: QueryText -> Text -> Either Text Integer
+getInteger :: QueryText -> Text -> Either Error Integer
 getInteger query name = case join $ lookup name query of
-  Nothing -> noSpecified name
-  Just x -> maybe (noSpecified name) Right (readMaybe $ unpack x :: Maybe Integer)
+  Nothing -> Left $ noSpecified name
+  Just x -> maybe (Left $ noSpecified name) Right (readMaybe $ unpack x :: Maybe Integer)
 
-getIntegers :: QueryText -> Text -> Either Text [Integer]
+getIntegers :: QueryText -> Text -> Either Error [Integer]
 getIntegers query name = case join $ lookup name query of
-  Nothing -> noSpecified name
+  Nothing -> Left $ noSpecified name
   Just xs ->
     let values = map (\x -> readMaybe $ unpack x :: Maybe Integer) (splitOn "," xs)
      in if Nothing `elem` values
-          then noSpecified name
+          then Left $ noSpecified name
           else Right $ map (\(Just x) -> x) values
 
-getImage :: BS.ByteString -> BS.ByteString -> Either Text Image
+getImage :: BS.ByteString -> BS.ByteString -> Either Error Image
 getImage body name =
   let hasImage = "Content-Type: image/" `BS.isInfixOf` body
       isCorrectName = ("name=\"" `BS.append` name) `BS.isInfixOf` body
@@ -81,8 +82,11 @@ getMaybeText query name = eitherToMaybe $ getText query name
 getMaybeInteger :: QueryText -> Text -> Maybe Integer
 getMaybeInteger query name = eitherToMaybe $ getInteger query name
 
-getMaybeIntegers :: QueryText -> Text -> Maybe [Integer]
-getMaybeIntegers query name = eitherToMaybe $ getIntegers query name
+getMaybeIntegers :: QueryText -> Text -> [Integer]
+getMaybeIntegers query name =
+  case getIntegers query name of
+    Left _ -> []
+    Right r -> r
 
 getMaybeImage :: BS.ByteString -> BS.ByteString -> Maybe Image
 getMaybeImage body name = eitherToMaybe $ getImage body name
@@ -93,9 +97,3 @@ imageIdToLink server (ImageId x) = Link $ server `append` imageAddress `append` 
 eitherToMaybe :: Either a1 a2 -> Maybe a2
 eitherToMaybe (Right r) = Just r
 eitherToMaybe (Left _) = Nothing
-
-noSpecified :: Text -> Either Text b
-noSpecified name = Left $ "No " `append` name `append` " specified"
-
-noImage :: Text
-noImage = "No image with such name"

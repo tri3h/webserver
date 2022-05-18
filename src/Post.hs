@@ -5,8 +5,6 @@ module Post where
 import Data.Aeson (encode)
 import Data.Maybe (fromMaybe)
 import Data.Pool (Pool, withResource)
-import qualified Data.Text.Lazy as LazyText
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Author as AuthorDb
 import qualified Database.Queries.Category as CategoryDb
@@ -42,12 +40,11 @@ get logger pool address query = do
   Logger.debug logger $ "Tried to get posts and got: " ++ show posts
   case posts of
     Left l ->
-      return $
-        responseLBS
+      return
+        . responseLBS
           status400
           []
-          . encodeUtf8
-          $ LazyText.fromStrict l
+        $ encode l
     Right r ->
       return $
         responseLBS
@@ -83,8 +80,8 @@ getFilter query =
       F.categoryId = Category.CategoryId <$> getMaybeInteger query "category_id",
       F.tagId = Tag.TagId <$> getMaybeInteger query "tag_id",
       F.tag = Tag.Name <$> getMaybeText query "tag",
-      F.tagIn = map Tag.TagId <$> getMaybeIntegers query "tag_in",
-      F.tagAll = map Tag.TagId <$> getMaybeIntegers query "tag_all",
+      F.tagIn = map Tag.TagId $ getMaybeIntegers query "tag_in",
+      F.tagAll = map Tag.TagId $ getMaybeIntegers query "tag_all",
       F.postName = Name <$> getMaybeText query "post_name",
       F.text = getMaybeText query "text",
       F.substring = getMaybeText query "substring"
@@ -96,10 +93,8 @@ handle pool =
     { Handler.hGet = \a b c d e -> withResource pool $ Db.get a b c d e,
       Handler.hGetMinorPhotos = \a b -> withResource pool $ Db.getMinorPhotos a b,
       Handler.hGetAuthor = withResource pool . AuthorDb.getMaybe . fromMaybe (Author.AuthorId 0),
-      Handler.hGetUser = \a b -> withResource pool $ UserDb.getMaybeByUserId (fromMaybe (User.UserId 0) a) b,
-      Handler.hGetCategory = \catId -> do
-        parents <- withResource pool $ CategoryDb.getParents (fromMaybe (Category.CategoryId 0) catId)
-        mapM (withResource pool . CategoryDb.get) parents,
+      Handler.hGetUser = withResource pool . UserDb.getPostUser . fromMaybe (User.UserId 0),
+      Handler.hGetCategory = withResource pool . CategoryDb.getWithParents,
       Handler.hGetTag = withResource pool . TagDb.getByPostId,
       Handler.hGetComment = withResource pool . CommentDb.get
     }

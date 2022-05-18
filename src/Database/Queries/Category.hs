@@ -4,8 +4,6 @@
 module Database.Queries.Category where
 
 import Control.Exception (try)
-import Control.Monad (void)
-import Data.Text (Text)
 import Database.PostgreSQL.Simple
   ( Connection,
     Only (Only, fromOnly),
@@ -14,21 +12,19 @@ import Database.PostgreSQL.Simple
     query,
     query_,
   )
-import Error (unknownError)
+import Error (Error, categoryNameTaken, categoryNotExist, invalidParent, unknownError)
 import Types.Category
   ( CategoryId,
     CreateCategory (..),
     GetCategory (..),
     Name,
     ParentId,
-    categoryNameTaken,
-    categoryNotExist,
   )
 
-create :: CreateCategory -> Connection -> IO (Either Text ())
+create :: CreateCategory -> Connection -> IO (Either Error ())
 create cat conn = do
   result <-
-    try . void $
+    try $
       execute
         conn
         "INSERT INTO categories (name, parent_id) \
@@ -36,79 +32,81 @@ create cat conn = do
         (cName cat, cParentId cat)
   return $ case result of
     Right _ -> Right ()
-    Left e -> case sqlErrorMsg e of
+    Left l -> case sqlErrorMsg l of
       "duplicate key value violates unique constraint \"category_name_unique\"" -> Left categoryNameTaken
+      "insert or update on table \"categories\" violates foreign key constraint \"parent_id\"" -> Left invalidParent
       _ -> Left unknownError
 
-delete :: CategoryId -> Connection -> IO ()
+delete :: CategoryId -> Connection -> IO (Either Error ())
 delete catId conn = do
-  _ <-
+  result <-
     execute
       conn
       "DELETE FROM categories \
       \WHERE categories.category_id = ?"
       (Only catId)
-  return ()
+  return $ if result == 0 then Left categoryNotExist else Right ()
 
-get :: CategoryId -> Connection -> IO GetCategory
+get :: CategoryId -> Connection -> IO (Either Error GetCategory)
 get catId conn = do
-  [(gCategoryId, gName, gParentId)] <-
+  result <-
     query
       conn
       "SELECT category_id, name, parent_id FROM categories \
-      \WHERE categories.category_id = ?"
+      \WHERE category_id = ?"
       (Only catId)
-  return GetCategory {..}
+  return $
+    if null result
+      then Left categoryNotExist
+      else Right $ (\[(gCategoryId, gName, gParentId)] -> GetCategory {..}) result
 
 getAll :: Connection -> IO [GetCategory]
 getAll conn = do
   result <- query_ conn "SELECT category_id, name, parent_id FROM categories"
   return $ map (\(gCategoryId, gName, gParentId) -> GetCategory {..}) result
 
-editName :: CategoryId -> Name -> Connection -> IO ()
+editName :: CategoryId -> Name -> Connection -> IO (Either Error ())
 editName categoryId name conn = do
-  _ <-
-    execute
-      conn
-      "UPDATE categories SET name = ? \
-      \WHERE categories.category_id = ?"
-      (name, categoryId)
-  return ()
+  result <-
+    try $
+      execute
+        conn
+        "UPDATE categories SET name = ? \
+        \WHERE category_id = ?"
+        (name, categoryId)
+  return $ case result of
+    Right n -> if n == 0 then Left categoryNotExist else Right ()
+    Left l -> case sqlErrorMsg l of
+      "duplicate key value violates unique constraint \"category_name_unique\"" -> Left categoryNameTaken
+      _ -> Left unknownError
 
-editParent :: CategoryId -> ParentId -> Connection -> IO ()
+editParent :: CategoryId -> ParentId -> Connection -> IO (Either Error ())
 editParent categoryId parentId conn = do
-  _ <-
-    execute
-      conn
-      "UPDATE categories SET parent_id = ? \
-      \WHERE categories.category_id = ?"
-      (parentId, categoryId)
-  return ()
+  result <-
+    try $
+      execute
+        conn
+        "UPDATE categories SET parent_id = ? \
+        \WHERE category_id = ?"
+        (parentId, categoryId)
+  return $ case result of
+    Right n -> if n == 0 then Left categoryNotExist else Right ()
+    Left l -> case sqlErrorMsg l of
+      "insert or update on table \"categories\" violates foreign key constraint \"parent_id\"" -> Left invalidParent
+      _ -> Left unknownError
 
-doesExist :: CategoryId -> Connection -> IO (Either Text ())
-doesExist catId conn = do
-  [Only n] <-
-    query
-      conn
-      "SELECT COUNT(category_id) FROM categories \
-      \WHERE categories.category_id = ?"
-      (Only catId)
-  if (n :: Integer) == 1
-    then return $ Right ()
-    else return $ Left categoryNotExist
-
-getParents :: CategoryId -> Connection -> IO [CategoryId]
-getParents catId conn = do
+getWithParents :: Maybe CategoryId -> Connection -> IO [GetCategory]
+getWithParents catId conn = do
   xs <-
     query
       conn
-      "WITH RECURSIVE parents AS (SELECT category_id, \
+      "WITH RECURSIVE parents AS (SELECT category_id, name, \
       \parent_id FROM categories WHERE category_id = ? \
-      \UNION SELECT c.category_id, c.parent_id FROM categories c, \
-      \parents p WHERE c.category_id = p.parent_id) SELECT category_id \
+      \UNION SELECT c.category_id, c.name, c.parent_id FROM categories c, \
+      \parents p WHERE c.category_id = p.parent_id) SELECT category_id, name, parent_id \
       \FROM parents"
       (Only catId)
-  return $ map fromOnly xs
+  return $ map (\(gCategoryId, gName, gParentId) -> GetCategory {..}) xs
 
 getChildren :: CategoryId -> Connection -> IO [CategoryId]
 getChildren parId conn = do

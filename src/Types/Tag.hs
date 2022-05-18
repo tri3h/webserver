@@ -28,9 +28,3 @@ instance ToJSON Tag where
       [ "tag_id" .= tagId tag,
         "name" .= name tag
       ]
-
-tagNotExist :: Text
-tagNotExist = "Tag with such id doesn't exist"
-
-tagNameTaken :: Text
-tagNameTaken = "Tag name is already taken"

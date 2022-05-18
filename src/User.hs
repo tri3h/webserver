@@ -3,14 +3,13 @@
 
 module User where
 
+import Control.Monad (void)
 import Data.Aeson (encode)
-import Data.ByteString (ByteString, hGetContents)
+import Data.ByteString (ByteString)
 import Data.Pool (Pool, withResource)
-import Data.Text (Text)
-import qualified Data.Text.Lazy as LazyText
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.User as Db
+import Error (Error)
 import qualified Handlers.Logger as Logger
 import qualified Handlers.User as Handler
 import Network.HTTP.Types.Header (hContentType)
@@ -22,48 +21,47 @@ import Network.HTTP.Types.Status
   )
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
-import qualified System.IO as IO
 import System.Random (randomIO)
 import Types.Config (ServerAddress)
-import Types.Image (Image (Image))
-import Types.User (Admin (Admin), CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token, UserId (UserId))
-import Utility (getImage, getInteger, getText)
+import Types.Image (Image)
+import Types.User (Admin (Admin), CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token (..), UserId (UserId))
+import Utility (getImage, getInteger, getMaybeImage, getMaybeText, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 create logger pool query body = do
+  let cAvatar = getMaybeAvatar body
   let info = do
         cName <- getName query
         cSurname <- getSurname query
         cLogin <- getLogin query
         cPassword <- getPassword query
-        cAvatar <- getAvatar body
         Right $
           CreateUser
             { ..
             }
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+    Left l -> return . responseLBS status400 [] $ encode l
     Right user -> do
       result <- Handler.create (handle pool) user $ Admin False
       Logger.debug logger $ "Tried to create user and got: " ++ show result
       case result of
-        Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+        Left l -> return . responseLBS status400 [] $ encode l
         Right token ->
-          return $ responseLBS status201 [(hContentType, "application/json")] $ encode token
+          return . responseLBS status201 [(hContentType, "application/json")] $ encode token
 
 get :: Logger.Handle IO -> Pool Connection -> ServerAddress -> Token -> IO Response
 get logger pool server token = do
   result <- Handler.get (handle pool) server token
   Logger.debug logger $ "Tried to get user and got: " ++ show result
   case result of
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+    Left l -> return . responseLBS status400 [] $ encode l
     Right user ->
-      return $
-        responseLBS
+      return
+        . responseLBS
           status200
           [(hContentType, "application/json")]
-          $ encode user
+        $ encode user
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
@@ -71,18 +69,17 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right userId -> do
-      result <- Handler.delete (handle pool) userId
+      result <- Handler.hDelete (handle pool) userId
       Logger.debug logger $ "Tried to delete user and got: " ++ show result
       case result of
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
+            $ encode l
         Right _ -> return $ responseLBS status204 [] ""
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+    Left l -> return . responseLBS status400 [] $ encode l
 
 getNewToken :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 getNewToken logger pool query = do
@@ -96,42 +93,54 @@ getNewToken logger pool query = do
       result <- Handler.getNewToken (handle pool) login password
       Logger.debug logger $ "Tried to get new token and got: " ++ show result
       case result of
-        Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+        Left l -> return . responseLBS status400 [] $ encode l
         Right token ->
-          return $ responseLBS status201 [(hContentType, "application/json")] $ encode token
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+          return . responseLBS status201 [(hContentType, "application/json")] $ encode token
+    Left l -> return . responseLBS status400 [] $ encode l
 
-makeDefaultAdmin :: Pool Connection -> IO (Either Text Token)
-makeDefaultAdmin pool = do
-  h <- IO.openBinaryFile "scripts/utility/image.png" IO.ReadMode
-  image <- hGetContents h
-  IO.hClose h
+addAvatar :: Pool Connection -> Token -> ByteString -> IO Response
+addAvatar pool token body = do
+  let avatar = getAvatar body
+  case avatar of
+    Right r -> do
+      void . withResource pool $ Db.addAvatar token r
+      return $ responseLBS status201 [] ""
+    Left l -> return . responseLBS status400 [] $ encode l
+
+makeDefaultAdmin :: Pool Connection -> IO (Either Error Token)
+makeDefaultAdmin pool =
   let user =
         CreateUser
           { cName = Name "admin",
             cSurname = Surname "none",
             cLogin = Login "admin",
             cPassword = Password "adminpassword",
-            cAvatar = Image image "png"
+            cAvatar = Nothing
           }
-  Handler.create (handle pool) user $ Admin True
+   in Handler.create (handle pool) user $ Admin True
 
-getName :: QueryText -> Either Text Name
+getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
 
-getUserId :: QueryText -> Either Text UserId
+getToken :: QueryText -> Maybe Token
+getToken query = Token <$> getMaybeText query "token"
+
+getUserId :: QueryText -> Either Error UserId
 getUserId query = UserId <$> getInteger query "user_id"
 
-getSurname :: QueryText -> Either Text Surname
+getSurname :: QueryText -> Either Error Surname
 getSurname query = Surname <$> getText query "surname"
 
-getLogin :: QueryText -> Either Text Login
+getLogin :: QueryText -> Either Error Login
 getLogin query = Login <$> getText query "login"
 
-getPassword :: QueryText -> Either Text Password
+getPassword :: QueryText -> Either Error Password
 getPassword query = Password <$> getText query "password"
 
-getAvatar :: ByteString -> Either Text Image
+getMaybeAvatar :: ByteString -> Maybe Image
+getMaybeAvatar body = getMaybeImage body "avatar"
+
+getAvatar :: ByteString -> Either Error Image
 getAvatar body = getImage body "avatar"
 
 isAdmin :: Pool Connection -> Handler.Token -> IO Bool
@@ -150,6 +159,5 @@ handle pool =
       Handler.hDelete = withResource pool . Db.delete,
       Handler.hGetRandomNumber = randomIO,
       Handler.hFindPassword = withResource pool . Db.findPassword,
-      Handler.hUpdateToken = \a b -> withResource pool $ Db.updateToken a b,
-      Handler.hDoesExist = withResource pool . Db.doesExist
+      Handler.hUpdateToken = \a b -> withResource pool $ Db.updateToken a b
     }
