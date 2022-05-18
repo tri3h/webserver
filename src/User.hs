@@ -107,17 +107,8 @@ addAvatar pool token body = do
       return $ responseLBS status201 [] ""
     Left l -> return . responseLBS status400 [] $ encode l
 
-makeDefaultAdmin :: Pool Connection -> IO (Either Error Token)
-makeDefaultAdmin pool =
-  let user =
-        CreateUser
-          { cName = Name "admin",
-            cSurname = Surname "none",
-            cLogin = Login "admin",
-            cPassword = Password "adminpassword",
-            cAvatar = Nothing
-          }
-   in Handler.create (handle pool) user $ Admin True
+makeAdmin :: Pool Connection -> CreateUser -> IO (Either Error Token)
+makeAdmin pool admin = Handler.create (handle pool) admin $ Admin True
 
 getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
