@@ -4,6 +4,7 @@ module CategorySpec where
 
 import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text)
+import Error (categoryNotExist, invalidParent, noDeleteHasChildren)
 import qualified Handlers.Category as H
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Category
@@ -11,81 +12,66 @@ import Types.Category
     CreateCategory (..),
     GetCategory (..),
     Name (Name),
-    categoryNotExist,
-    invalidParent,
-    noDeleteHasChildren,
   )
 
 main :: IO ()
 main = hspec $ do
-  describe "Testing create getCategory" $ do
-    it "Should successfully create" $ do
-      let result = H.create handle createCategory
-      result `shouldBe` return (Right ())
-    it "Should fail if parent doesn't exist" $ do
-      let handleCase =
-            handle
-              { H.hDoesExist = \_ -> return (Left categoryNotExist)
-              }
-      let createCategoryCase =
-            createCategory
-              { cParentId = Just testParentId
-              }
-      let result = H.create handleCase createCategoryCase
-      result `shouldBe` return (Left invalidParent)
-  describe "Testing get getCategory" $ do
-    it "Should successfully get" $ do
-      let result = H.get handle testCategoryId
-      result `shouldBe` return (Right getCategory)
-    it "Should fail if getCategory doesn't exist" $ do
-      let handleCase =
-            handle
-              { H.hDoesExist = \_ -> return (Left categoryNotExist)
-              }
-      let result = H.get handleCase testCategoryId
-      result `shouldBe` return (Left categoryNotExist)
-  describe "Testing delete getCategory" $ do
+  describe "Testing delete category" $ do
     it "Should successfullly delete" $ do
       let result = H.delete handle testCategoryId
       result `shouldBe` return (Right ())
-    it "Should fail if getCategory doesn't exist" $ do
+    it "Should fail if category doesn't exist" $ do
       let handleCase =
             handle
-              { H.hDoesExist = \_ -> return (Left categoryNotExist)
+              { H.hDelete = \_ -> return (Left categoryNotExist)
               }
       let result = H.delete handleCase testCategoryId
       result `shouldBe` return (Left categoryNotExist)
-    it "Should fail if getCategory has children" $ do
+    it "Should fail if category has children" $ do
       let handleCase =
             handle
               { H.hGetChildren = \_ -> return [CategoryId 2]
               }
       let result = H.delete handleCase testCategoryId
       result `shouldBe` return (Left noDeleteHasChildren)
-  describe "Testing edit getCategory" $ do
-    it "Should successfully edit name" $ do
-      let result = H.edit handle testCategoryId (Just $ Name "name") Nothing
+  describe "Testing edit category" $ do
+    it "Should successfully only edit name" $ do
+      let result = H.edit handle testCategoryId (Just testName) Nothing
       result `shouldBe` return (Right ())
-    it "Should successfully edit parent id" $ do
+    it "Should successfully edit only parent id" $ do
       let result = H.edit handle testCategoryId Nothing (Just testParentId)
       result `shouldBe` return (Right ())
-    it "Should fail if getCategory doesn't exist" $ do
+    it "Should successfully edit name and parent id" $ do
+      let result = H.edit handle testCategoryId (Just testName) (Just testParentId)
+      result `shouldBe` return (Right ())
+    it "Should fail edit name if category doesn't exist" $ do
       let handleCase =
             handle
-              { H.hDoesExist = \_ -> return (Left categoryNotExist)
+              { H.hEditName = \_ _ -> return (Left categoryNotExist)
+              }
+      let result = H.edit handleCase testCategoryId (Just testName) Nothing
+      result `shouldBe` return (Left categoryNotExist)
+    it "Should fail edit parent id if category doesn't exist" $ do
+      let handleCase =
+            handle
+              { H.hEditParent = \_ _ -> return (Left categoryNotExist)
               }
       let result = H.edit handleCase testCategoryId Nothing (Just testParentId)
       result `shouldBe` return (Left categoryNotExist)
+    it "Should fail edit parent id if new parent is child of category" $ do
+      let handleCase =
+            handle
+              { H.hGetChildren = \x -> return [x]
+              }
+      let result = H.edit handleCase testCategoryId Nothing (Just testCategoryId)
+      result `shouldBe` return (Left invalidParent)
 
 handle :: H.Handle Identity
 handle =
   H.Handle
-    { H.hCreate = \_ -> return (),
-      H.hGet = \_ -> return getCategory,
-      H.hDelete = \_ -> return (),
-      H.hEditName = \_ _ -> return (),
-      H.hEditParent = \_ _ -> return (),
-      H.hDoesExist = \_ -> return $ Right (),
+    { H.hDelete = \_ -> return $ Right (),
+      H.hEditName = \_ _ -> return $ Right (),
+      H.hEditParent = \_ _ -> return $ Right (),
       H.hGetChildren = \_ -> return []
     }
 
@@ -109,3 +95,6 @@ testCategoryId = CategoryId 1
 
 testParentId :: CategoryId
 testParentId = CategoryId 2
+
+testName :: Name
+testName = Name "Name"

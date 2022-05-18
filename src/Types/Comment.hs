@@ -12,13 +12,13 @@ import Data.Text (Text)
 import Database.PostgreSQL.Simple.FromField (FromField)
 import Database.PostgreSQL.Simple.ToField (ToField)
 import Types.PostComment (PostId)
-import Types.User (UserId)
+import Types.User (Token, UserId)
 
 newtype CommentId = CommentId {getCommentId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
 data CreateComment = CreateComment
   { cPostId :: PostId,
-    cUserId :: UserId,
+    cToken :: Token,
     cText :: Text
   }
   deriving (Show, Eq)
@@ -37,6 +37,3 @@ instance ToJSON GetComment where
         "user_id" .= gUserId comment,
         "text" .= gText comment
       ]
-
-commentNotExist :: Text
-commentNotExist = "Comment with such id doesn't exist"

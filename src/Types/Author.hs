@@ -43,6 +43,3 @@ instance ToJSON GetAuthor where
         "user_id" .= gUserId author,
         "description" .= gDescription author
       ]
-
-authorNotExist :: Text
-authorNotExist = "Author with such id doesn't exist"

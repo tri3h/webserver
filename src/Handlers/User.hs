@@ -1,11 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Handlers.User (Login, Token, UserId, Handle (..), create, get, delete, getNewToken, generateToken, hashPassword) where
+module Handlers.User (Login, Token, UserId, Handle (..), create, get, getNewToken, generateToken, hashPassword) where
 
 import Crypto.Hash (SHA256 (SHA256), hashWith)
 import qualified Data.ByteString.Char8 as Char8
-import Data.Text (Text, pack)
+import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
+import Error (Error, invalidData)
 import Types.Config (ServerAddress)
 import Types.Image (ImageId, Link)
 import Types.User
@@ -17,58 +18,42 @@ import Types.User
     Password (Password),
     Token (Token),
     UserId,
-    invalidData,
-    loginTaken,
   )
 import Utility (imageIdToLink)
 
 data Handle m = Handle
-  { hIsLoginUnique :: Login -> m Bool,
-    hIsTokenUnique :: Token -> m Bool,
-    hCreate :: FullUser -> m (),
+  { hCreate :: FullUser -> m (Either Error Token),
     hGet :: Token -> (ImageId -> Link) -> m GetUser,
-    hDelete :: UserId -> m (),
+    hDelete :: UserId -> m (Either Error ()),
     hGetRandomNumber :: m Integer,
     hIsLoginValid :: Login -> m Bool,
+    hIsTokenUnique :: Token -> m Bool,
     hFindPassword :: Login -> m Password,
-    hUpdateToken :: Login -> Token -> m (),
-    hDoesExist :: UserId -> m (Either Text ())
+    hUpdateToken :: Login -> Token -> m ()
   }
 
-create :: Monad m => Handle m -> CreateUser -> Admin -> m (Either Text Token)
+create :: Monad m => Handle m -> CreateUser -> Admin -> m (Either Error Token)
 create handle partUser fAdmin = do
-  isUnique <- hIsLoginUnique handle $ cLogin partUser
-  if isUnique
-    then do
-      fToken <- generateToken handle
-      let hashPassw = hashPassword $ cPassword partUser
-      let user =
-            FullUser
-              { fName = cName partUser,
-                fSurname = cSurname partUser,
-                fAvatar = cAvatar partUser,
-                fLogin = cLogin partUser,
-                fPassword = hashPassw,
-                ..
-              }
-      hCreate handle user
-      return $ Right fToken
-    else return $ Left loginTaken
+  fToken <- generateToken handle
+  let hashPassw = hashPassword $ cPassword partUser
+  let user =
+        FullUser
+          { fName = cName partUser,
+            fSurname = cSurname partUser,
+            fAvatar = cAvatar partUser,
+            fLogin = cLogin partUser,
+            fPassword = hashPassw,
+            ..
+          }
+  hCreate handle user
 
-get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Text GetUser)
+get :: Monad m => Handle m -> ServerAddress -> Token -> m (Either Error GetUser)
 get handle server token = Right <$> hGet handle token (imageIdToLink server)
-
-delete :: Monad m => Handle m -> UserId -> m (Either Text ())
-delete handle userId = do
-  exist <- hDoesExist handle userId
-  case exist of
-    Right () -> Right <$> hDelete handle userId
-    Left l -> return $ Left l
 
 hashPassword :: Password -> Password
 hashPassword (Password p) = Password . pack . show . hashWith SHA256 $ encodeUtf8 p
 
-getNewToken :: Monad m => Handle m -> Login -> Password -> m (Either Text Token)
+getNewToken :: Monad m => Handle m -> Login -> Password -> m (Either Error Token)
 getNewToken handle login password = do
   isValid <- hIsLoginValid handle login
   if isValid

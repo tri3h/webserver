@@ -17,6 +17,7 @@ import Types.Category (CategoryId)
 import Types.Image (Image, Link)
 import Types.PostComment (PostId)
 import Types.Tag (TagId)
+import Types.User (Token)
 
 newtype DraftId = DraftId {getDraftId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
@@ -30,25 +31,24 @@ data GetDraft = GetDraft
     gTagId :: [TagId],
     gName :: Name,
     gText :: Text,
-    gMainPhoto :: Link,
+    gMainPhoto :: Maybe Link,
     gMinorPhoto :: [Link]
   }
   deriving (Show, Eq)
 
 data CreateDraft = CreateDraft
-  { cPostId :: Maybe PostId,
-    cAuthorId :: AuthorId,
+  { cToken :: Token,
     cCategoryId :: CategoryId,
     cTagId :: [TagId],
     cName :: Name,
     cText :: Text,
-    cMainPhoto :: Image
+    cMainPhoto :: Maybe Image
   }
   deriving (Show, Eq)
 
 data EditParams = EditParams
   { eCategoryId :: Maybe CategoryId,
-    eTagId :: Maybe [TagId],
+    eTagId :: [TagId],
     eName :: Maybe Name,
     eText :: Maybe Text,
     eMainPhoto :: Maybe Image
@@ -68,15 +68,3 @@ instance ToJSON GetDraft where
         "main_photo" .= gMainPhoto draft,
         "minor_photo" .= gMinorPhoto draft
       ]
-
-draftNotExist :: Text
-draftNotExist = "Draft with such id doesn't exist"
-
-noDeleteHasPost :: Text
-noDeleteHasPost = "Impossible to delete: has post"
-
-noDraftAuthor :: Text
-noDraftAuthor = "This author isn't author of the draft"
-
-userNotAuthor :: Text
-userNotAuthor = "The user isn't author"

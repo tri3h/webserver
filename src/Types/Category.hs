@@ -38,12 +38,3 @@ instance ToJSON GetCategory where
         "name" .= gName categ,
         "parent_id" .= gParentId categ
       ]
-
-categoryNotExist :: Text
-categoryNotExist = "Category with such id doesn't exist"
-
-invalidParent :: Text
-invalidParent = "Invalid parent id"
-
-noDeleteHasChildren :: Text
-noDeleteHasChildren = "Impossible to delete: the category has children"
