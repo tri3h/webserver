@@ -18,12 +18,12 @@ import Network.Wai (Response)
 import qualified Types.Author as Author
 import qualified Types.Category as Category
 import Types.Config (ServerAddress)
-import Types.Filter (postsOnPage)
 import qualified Types.Filter as F
-import Types.Post (Date (Date), Name (Name))
+import Types.Limit (Offset (..))
+import Types.Post (Date (Date), Name (Name), postsOnPage)
 import qualified Types.Tag as Tag
 import qualified Types.User as User
-import Utility (getMaybeInteger, getMaybeIntegers, getMaybeText, response200JSON, response400)
+import Utility (getLimit, getMaybeInteger, getMaybeIntegers, getMaybeText, getOffset, response200JSON, response400)
 
 get :: Logger.Handle IO -> Pool Connection -> ServerAddress -> QueryText -> IO Response
 get logger pool address query = do
@@ -31,23 +31,13 @@ get logger pool address query = do
   Logger.debug logger $ "Tried to parse query and got filters: " ++ show filters
   let order = getOrder query
   Logger.debug logger $ "Tried to parse query and got order: " ++ show order
-  let limit = getLimit query
-  let offset = getOffset query
+  let limit = getLimit query postsOnPage
+  let offset = getOffset query (Offset 0)
   posts <- Handler.get (handle pool) address filters order limit offset
   Logger.debug logger $ "Tried to get posts and got: " ++ show posts
   return $ case posts of
     Left l -> response400 l
     Right r -> response200JSON r
-
-getOffset :: QueryText -> F.Offset
-getOffset query = F.Offset $ fromMaybe 0 (getMaybeInteger query "offset")
-
-getLimit :: QueryText -> F.Limit
-getLimit query = case getMaybeInteger query "limit" of
-  Nothing -> postsOnPage
-  Just x ->
-    let limit = F.Limit x
-     in if limit <= postsOnPage then limit else postsOnPage
 
 getOrder :: QueryText -> F.Order
 getOrder query = case getMaybeText query "sort_by" of

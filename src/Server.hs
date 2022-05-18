@@ -99,6 +99,9 @@ makeTokenResponse logger config pool req body token = do
       "PUT" -> Draft.edit logger pool query body
       "DELETE" -> Draft.delete logger pool query
       _ -> return response404
+    ["drafts", "id"] -> case requestMethod req of
+      "GET" -> Draft.getAllByAuthor logger pool token query
+      _ -> return response404
     ["drafts", "minor_photo"] -> case requestMethod req of
       "POST" -> Draft.addMinorPhoto logger pool query body
       "DELETE" -> Draft.deleteMinorPhoto logger pool query

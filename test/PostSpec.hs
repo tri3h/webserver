@@ -12,6 +12,7 @@ import Types.Category (CategoryId (CategoryId))
 import Types.Config (ServerAddress)
 import qualified Types.Filter as F
 import Types.Image (Image (..), ImageId (ImageId), Link (Link), imageAddress)
+import Types.Limit (Limit (..), Offset (..))
 import Types.Post (Date (Date), FullPost (..), Name (Name), ShortPost (..))
 import Types.PostComment (PostId (PostId))
 
@@ -129,11 +130,11 @@ link = Link $ imageAddress `append` pack (show imageId)
 imageId :: ImageId
 imageId = ImageId 1
 
-limit :: F.Limit
-limit = F.Limit 5
+limit :: Limit
+limit = Limit 5
 
-offset :: F.Offset
-offset = F.Offset 0
+offset :: Offset
+offset = Offset 0
 
 order :: F.Order
 order = F.None

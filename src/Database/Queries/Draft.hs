@@ -24,11 +24,13 @@ import Database.PostgreSQL.Simple.Transaction
   )
 import Error (Error, categoryNotExist, draftNotExist, tagNotExist, unknownError, userNotAuthor)
 import Types.Category (CategoryId)
-import Types.Draft (CreateDraft (..), DraftId, GetDraft (..), Name)
+import Types.Draft (CreateDraft (..), DraftId (DraftId), GetDraft (..), Name)
 import Types.Image (Image (..), ImageId, Link)
+import Types.Limit (Limit, Offset)
 import Types.Tag (TagId)
+import Types.User (Token)
 
-create :: CreateDraft -> Connection -> IO (Either Error ())
+create :: CreateDraft -> Connection -> IO (Either Error DraftId)
 create draft conn = do
   begin conn
   resultDraft <- addDraft
@@ -75,7 +77,7 @@ create draft conn = do
       case resultTag of
         Right _ -> do
           commit conn
-          return $ Right ()
+          return . Right $ DraftId draftId
         Left l -> do
           rollback conn
           return $ case sqlErrorMsg l of
@@ -106,6 +108,17 @@ get gDraftId f conn = do
             minorPhotoId,
         ..
       }
+
+getAllByAuthor :: Token -> Limit -> Offset -> Connection -> IO [DraftId]
+getAllByAuthor token limit offset conn = do
+  result <-
+    query
+      conn
+      "SELECT draft_id FROM drafts d INNER JOIN authors a \
+      \ON d.author_id = a.author_id INNER JOIN users u ON u.user_id = a.user_id \
+      \WHERE token = ? LIMIT ? OFFSET ?"
+      (token, limit, offset)
+  return $ map fromOnly result
 
 editCategoryId :: DraftId -> CategoryId -> Connection -> IO (Either Error ())
 editCategoryId draftId catId conn = do

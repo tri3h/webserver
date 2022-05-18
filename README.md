@@ -149,6 +149,15 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * draft_id
     * Return a draft in case of success
 
+- GET /drafts/id
+    * Get all draft id by this author
+    * Required parameters:
+        * token 
+    * Optional parameters:
+        * limit
+        * offset
+    * Return a list of draft id by the author in case of success
+
 - POST /drafts
     * Create a draft
     * Required parameters:
@@ -160,7 +169,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * tag_id
     * Also there *may* be an image "main_photo"
     * "tag_id" can have serveral values, they should be separated by ","
-    * Return nothing in case of success
+    * Return a draft id in case of success
 
 - PUT /drafts
     * Edit a draft

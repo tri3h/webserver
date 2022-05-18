@@ -58,6 +58,7 @@ library
       Types.Draft
       Types.Filter
       Types.Image
+      Types.Limit
       Types.Post
       Types.PostComment
       Types.Tag

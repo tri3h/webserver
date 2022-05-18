@@ -5,6 +5,7 @@ module Utility where
 import Control.Monad (join)
 import Data.Aeson (ToJSON, encode)
 import qualified Data.ByteString as BS
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, append, null, pack, splitOn, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Error (Error, noImage, noSpecified)
@@ -14,6 +15,7 @@ import Network.Wai (Response, responseLBS)
 import Text.Read (readMaybe)
 import Types.Config (ServerAddress)
 import Types.Image (Image (Image), ImageBody, ImageId (ImageId), ImageType, Link (Link), imageAddress)
+import Types.Limit (Limit (..), Offset (..))
 import Prelude hiding (null)
 
 getText :: QueryText -> Text -> Either Error Text
@@ -89,6 +91,14 @@ imageIdToLink server (ImageId x) = Link $ server `append` imageAddress `append` 
 eitherToMaybe :: Either a1 a2 -> Maybe a2
 eitherToMaybe (Right r) = Just r
 eitherToMaybe (Left _) = Nothing
+
+getOffset :: QueryText -> Offset -> Offset
+getOffset query (Offset def) = Offset $ fromMaybe def (getMaybeInteger query "offset")
+
+getLimit :: QueryText -> Limit -> Limit
+getLimit query (Limit def) = Limit $ case getMaybeInteger query "limit" of
+  Nothing -> def
+  Just x -> if x <= def then x else def
 
 response400 :: Error -> Response
 response400 e = responseLBS status400 [] $ encode e

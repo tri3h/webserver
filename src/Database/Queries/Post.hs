@@ -17,6 +17,7 @@ import Database.PostgreSQL.Simple.ToField (Action, ToField (toField))
 import qualified Types.Category as Category
 import qualified Types.Filter as F
 import Types.Image (ImageId, Link)
+import Types.Limit (Limit, Offset)
 import Types.Post
   ( Date (Date),
     Name (Name),
@@ -28,7 +29,7 @@ import qualified Types.User as User
 
 type QueryPart = (String, [Action])
 
-get :: F.Filter -> F.Order -> F.Limit -> F.Offset -> (ImageId -> Link) -> Connection -> IO [ShortPost]
+get :: F.Filter -> F.Order -> Limit -> Offset -> (ImageId -> Link) -> Connection -> IO [ShortPost]
 get filters order limit offset f conn = do
   let (str, params) = makeQuery filters order limit offset
   result <- query conn (fromString str) params
@@ -51,7 +52,7 @@ get filters order limit offset f conn = do
           result
   return posts
 
-makeQuery :: F.Filter -> F.Order -> F.Limit -> F.Offset -> QueryPart
+makeQuery :: F.Filter -> F.Order -> Limit -> Offset -> QueryPart
 makeQuery filters order limit offset =
   let filters' = applyFilters filters
       limitOffset' = limitOffset limit offset
@@ -144,7 +145,7 @@ whereWord = " WHERE "
 andWord :: String
 andWord = " AND "
 
-limitOffset :: F.Limit -> F.Offset -> QueryPart
+limitOffset :: Limit -> Offset -> QueryPart
 limitOffset lim off = (" LIMIT ? OFFSET ? ", [toField lim, toField off])
 
 whereDateBefore :: Date -> QueryPart

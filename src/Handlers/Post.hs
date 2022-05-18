@@ -11,6 +11,7 @@ import Types.Comment (GetComment)
 import Types.Config (ServerAddress)
 import qualified Types.Filter as F
 import Types.Image (ImageId, Link)
+import Types.Limit (Limit, Offset)
 import Types.Post
   ( FullPost (..),
     ShortPost (..),
@@ -21,7 +22,7 @@ import qualified Types.User as User
 import Utility (imageIdToLink)
 
 data Handle m = Handle
-  { hGet :: F.Filter -> F.Order -> F.Limit -> F.Offset -> (ImageId -> Link) -> m [ShortPost],
+  { hGet :: F.Filter -> F.Order -> Limit -> Offset -> (ImageId -> Link) -> m [ShortPost],
     hGetMinorPhotos :: PostId -> (ImageId -> Link) -> m [Link],
     hGetAuthor :: Maybe A.AuthorId -> m (Maybe A.GetAuthor),
     hGetUser :: Maybe User.UserId -> m (Maybe User.PostUser),
@@ -30,7 +31,7 @@ data Handle m = Handle
     hGetComment :: PostId -> m [GetComment]
   }
 
-get :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> F.Limit -> F.Offset -> m (Either Error [FullPost])
+get :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> Limit -> Offset -> m (Either Error [FullPost])
 get handle server filters order limit offset = do
   let f = imageIdToLink server
   shortPosts <- hGet handle filters order limit offset f
