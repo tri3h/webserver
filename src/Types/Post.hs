@@ -17,7 +17,7 @@ import Types.Comment (GetComment)
 import Types.Image (Link)
 import Types.PostComment (PostId)
 import Types.Tag (Tag)
-import Types.User (GetUser)
+import Types.User (PostUser)
 
 newtype Name = Name {getName :: Text} deriving (Show, Eq, ToField, FromField, ToJSON)
 
@@ -37,7 +37,7 @@ data ShortPost = ShortPost
 data FullPost = FullPost
   { fPostId :: PostId,
     fAuthor :: Maybe GetAuthor,
-    fUser :: Maybe GetUser,
+    fUser :: Maybe PostUser,
     fCategory :: [GetCategory],
     fTag :: [Tag],
     fComment :: [GetComment],

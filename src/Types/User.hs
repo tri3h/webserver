@@ -39,6 +39,13 @@ data GetUser = GetUser
   }
   deriving (Show, Eq)
 
+data PostUser = PostUser
+  { pUserId :: UserId,
+    pName :: Name,
+    pSurname :: Surname
+  }
+  deriving (Show, Eq)
+
 data CreateUser = CreateUser
   { cName :: Name,
     cSurname :: Surname,
@@ -68,4 +75,12 @@ instance ToJSON GetUser where
         "avatar" .= gAvatar user,
         "login" .= gLogin user,
         "date" .= gDate user
+      ]
+
+instance ToJSON PostUser where
+  toJSON user =
+    object
+      [ "user_id" .= pUserId user,
+        "name" .= pName user,
+        "surname" .= pSurname user
       ]

@@ -24,6 +24,7 @@ import Types.User
     GetUser (..),
     Login,
     Password,
+    PostUser (..),
     Token,
     UserId,
   )
@@ -141,22 +142,19 @@ addAvatar token (Image image imageType) conn =
       \WHERE token = ?"
       (Binary image, imageType, token)
 
-getMaybeByUserId :: UserId -> (ImageId -> Link) -> Connection -> IO (Maybe GetUser)
-getMaybeByUserId uId f conn = do
+getPostUser :: UserId -> Connection -> IO (Maybe PostUser)
+getPostUser uId conn = do
   x <-
     query
       conn
-      "SELECT user_id, name, surname, image_id, login, registration_date \
-      \FROM users WHERE users.user_id = ?"
+      "SELECT user_id, name, surname FROM users WHERE users.user_id = ?"
       (Only uId)
   case x of
-    [(gUserId, gName, gSurname, imageId, gLogin, regDate)] ->
+    [(pUserId, pName, pSurname)] ->
       return $
         Just
-          GetUser
-            { gAvatar = f <$> imageId,
-              gDate = Date . pack $ show (regDate :: Time.Date),
-              ..
+          PostUser
+            { ..
             }
     _ -> return Nothing
 
