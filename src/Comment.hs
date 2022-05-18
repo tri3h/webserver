@@ -10,10 +10,11 @@ import Error (Error)
 import qualified Handlers.Logger as Logger
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response)
-import Types.Comment (CommentId (CommentId), CreateComment (..))
+import Types.Comment (CommentId (CommentId), CreateComment (..), commentsOnPage)
+import Types.Limit (Offset (..))
 import Types.PostComment (PostId (PostId))
 import Types.User (Token, UserId (UserId))
-import Utility (getInteger, getText, response200JSON, response201, response204, response400)
+import Utility (getInteger, getLimit, getOffset, getText, response200JSON, response201, response204, response400)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> Token -> IO Response
 create logger pool query cToken = do
@@ -37,7 +38,9 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right postId -> do
-      result <- withResource pool $ Db.getEither postId
+      let limit = getLimit query commentsOnPage
+      let offset = getOffset query $ Offset 0
+      result <- withResource pool $ Db.getEither postId limit offset
       Logger.debug logger $ "Tried to get comment and got: " ++ show result
       return $ case result of
         Right r -> response200JSON r

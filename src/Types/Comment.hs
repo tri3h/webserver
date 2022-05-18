@@ -11,6 +11,7 @@ import Data.Aeson
 import Data.Text (Text)
 import Database.PostgreSQL.Simple.FromField (FromField)
 import Database.PostgreSQL.Simple.ToField (ToField)
+import Types.Limit (Limit (Limit))
 import Types.PostComment (PostId)
 import Types.User (Token, UserId)
 
@@ -37,3 +38,6 @@ instance ToJSON GetComment where
         "user_id" .= gUserId comment,
         "text" .= gText comment
       ]
+
+commentsOnPage :: Limit
+commentsOnPage = Limit 10

@@ -12,9 +12,9 @@ import Database.PostgreSQL.Simple
     SqlError (sqlErrorMsg),
     execute,
     query,
-    query_,
   )
 import Error (Error, tagNameTaken, tagNotExist, unknownError)
+import Types.Limit (Limit, Offset)
 import Types.PostComment (PostId)
 import Types.Tag (Name, Tag (..), TagId)
 
@@ -44,9 +44,9 @@ get tId conn = do
       then Left tagNotExist
       else Right $ (\[(tagId, name)] -> Tag {..}) result
 
-getAll :: Connection -> IO [Tag]
-getAll conn = do
-  result <- query_ conn "SELECT tag_id, name FROM tags"
+getAll :: Limit -> Offset -> Connection -> IO [Tag]
+getAll limit offset conn = do
+  result <- query conn "SELECT tag_id, name FROM tags LIMIT ? OFFSET ?" (limit, offset)
   return $ map (\(tagId, name) -> Tag {..}) result
 
 getByPostId :: PostId -> Connection -> IO [Tag]

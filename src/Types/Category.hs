@@ -11,6 +11,7 @@ import Data.Aeson
 import Data.Text (Text)
 import Database.PostgreSQL.Simple.FromField (FromField)
 import Database.PostgreSQL.Simple.ToField (ToField)
+import Types.Limit (Limit (Limit))
 
 newtype CategoryId = CategoryId {getCategoryId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
@@ -38,3 +39,6 @@ instance ToJSON GetCategory where
         "name" .= gName categ,
         "parent_id" .= gParentId categ
       ]
+
+categoriesOnPage :: Limit
+categoriesOnPage = Limit 10

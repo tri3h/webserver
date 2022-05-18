@@ -11,6 +11,7 @@ import Data.Aeson
 import Data.Text (Text)
 import Database.PostgreSQL.Simple.FromField (FromField)
 import Database.PostgreSQL.Simple.ToField (ToField)
+import Types.Limit (Limit (Limit))
 
 newtype TagId = TagId {getTagId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
@@ -28,3 +29,6 @@ instance ToJSON Tag where
       [ "tag_id" .= tagId tag,
         "name" .= name tag
       ]
+
+tagsOnPage :: Limit
+tagsOnPage = Limit 10

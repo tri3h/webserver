@@ -10,7 +10,6 @@ import Database.PostgreSQL.Simple
     SqlError (sqlErrorMsg),
     execute,
     query,
-    query_,
   )
 import Error (Error, categoryNameTaken, categoryNotExist, invalidParent, unknownError)
 import Types.Category
@@ -20,6 +19,7 @@ import Types.Category
     Name,
     ParentId,
   )
+import Types.Limit (Limit, Offset)
 
 create :: CreateCategory -> Connection -> IO (Either Error ())
 create cat conn = do
@@ -60,9 +60,9 @@ get catId conn = do
       then Left categoryNotExist
       else Right $ (\[(gCategoryId, gName, gParentId)] -> GetCategory {..}) result
 
-getAll :: Connection -> IO [GetCategory]
-getAll conn = do
-  result <- query_ conn "SELECT category_id, name, parent_id FROM categories"
+getAll :: Limit -> Offset -> Connection -> IO [GetCategory]
+getAll limit offset conn = do
+  result <- query conn "SELECT category_id, name, parent_id FROM categories LIMIT ? OFFSET ?" (limit, offset)
   return $ map (\(gCategoryId, gName, gParentId) -> GetCategory {..}) result
 
 editName :: CategoryId -> Name -> Connection -> IO (Either Error ())

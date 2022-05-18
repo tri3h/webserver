@@ -10,8 +10,9 @@ import Error (Error)
 import qualified Handlers.Logger as Logger
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response)
-import Types.Tag (Name (Name), Tag (..), TagId (TagId))
-import Utility (getInteger, getMaybeInteger, getText, response200JSON, response201, response204, response400)
+import Types.Limit (Offset (Offset))
+import Types.Tag (Name (Name), Tag (..), TagId (TagId), tagsOnPage)
+import Utility (getInteger, getLimit, getMaybeInteger, getOffset, getText, response200JSON, response201, response204, response400)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
@@ -38,7 +39,9 @@ get logger pool query = do
         Right r -> response200JSON r
         Left l -> response400 l
     Nothing -> do
-      result <- withResource pool Db.getAll
+      let limit = getLimit query tagsOnPage
+      let offset = getOffset query $ Offset 0
+      result <- withResource pool $ Db.getAll limit offset
       Logger.debug logger $ "Tried to get a list of tags and got: " ++ show result
       return $ response200JSON result
 

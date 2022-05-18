@@ -279,8 +279,7 @@ main = hspec $ do
 handle :: H.Handle Identity
 handle =
   H.Handle
-    { H.hCreate = \_ -> return . Right $ DraftId 1,
-      H.hEditCategoryId = \_ _ -> return $ Right (),
+    { H.hEditCategoryId = \_ _ -> return $ Right (),
       H.hEditTagId = \_ _ -> return $ Right (),
       H.hEditName = \_ _ -> return $ Right (),
       H.hEditDescription = \_ _ -> return $ Right (),
@@ -290,7 +289,6 @@ handle =
       H.hDeleteMinorPhoto = \_ _ -> return $ Right (),
       H.hHasPost = \_ -> return True,
       H.hGet = \_ _ -> return getDraft,
-      H.hGetAllByAuthor = \_ _ _ -> return [],
       H.hGetAuthorIdByDraftId = \_ -> return . Right $ AuthorId 1,
       H.hPublish = \_ -> return $ Right (),
       H.hUpdate = \_ -> return $ Right (),

@@ -80,6 +80,9 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Required parameters: none
     * Optional parameters:
         * tag_id
+        * limit
+        * offset
+    * Limit and offset matter only when getting a list of tags
     * Return a list of tags if there are no parameters or a tag if there are in case of success
 
 - GET /categories
@@ -87,7 +90,19 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Required parameters: none
     * Optional parameters:
         * category_id
+        * limit
+        * offset
+    * Limit and offset matter only when getting a list of categories
     * Return a list of categories if there are no parameters or a category if there are in case of success
+
+- GET /comments
+    * Get all comments to a post
+    * Required parameters:
+        * post_id
+    * Optional parameters:
+        * limit
+        * offset
+    * Return a list of comments to a post in case of success
 
 - GET /posts
     * Get posts
@@ -126,13 +141,6 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Add an avatar to a user (or change it in case there is already an avatar)
     * Required parameters: an image "avatar"
     * Return nothing in case of success
-
-- GET /comments
-    * Get all comments to a post
-    * Required parameters:
-        * token
-        * post_id
-    * Return a list of comments to a post in case of success
 
 - POST /comments
     * Create a comment to a post

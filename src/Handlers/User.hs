@@ -24,7 +24,6 @@ import Utility (imageIdToLink)
 data Handle m = Handle
   { hCreate :: FullUser -> m (Either Error Token),
     hGet :: Token -> (ImageId -> Link) -> m GetUser,
-    hDelete :: UserId -> m (Either Error ()),
     hGetRandomNumber :: m Integer,
     hIsLoginValid :: Login -> m Bool,
     hIsTokenUnique :: Token -> m Bool,
