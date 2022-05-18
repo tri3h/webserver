@@ -8,11 +8,7 @@ Also it may be necessary to use a command *stack setup*.
 
 After these two files are filled, the project may be started by typing *stack run* into command line while being in the project folder. If there are no admins in the database, the program will ask about creating default admin.
 
-Scripts are in the folder *scripts*. There are two folders: bash folder and postman folder. 
-
-Scripts from postman folder can be used in Postman by importing them. They have 2 variables that you need to set: host and port, the same values as in the file Server.config. 
-
-Scripts from folder *bash* may be run with bash like: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. Some of scripts take an image, they take it in the form of two parameters: a path to the file and a type of image, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg" -y "jpg"*. 
+Scripts from folder *scripts* may be run with bash like: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. Some of scripts take an image, they take it in the form of two parameters: a path to the file and a type of image, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg" -y "jpg"*. 
 
 ## Basic structure 
 The project has 3 main parts:
