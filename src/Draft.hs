@@ -3,7 +3,6 @@
 
 module Draft where
 
-import Data.Aeson (encode)
 import Data.ByteString (ByteString)
 import Data.Pool (Pool, withResource)
 import Database.PostgreSQL.Simple (Connection)
@@ -12,15 +11,8 @@ import qualified Database.Queries.Draft as Db.Draft
 import Error (Error)
 import qualified Handlers.Draft as Handler
 import qualified Handlers.Logger as Logger
-import Network.HTTP.Types.Header (hContentType)
-import Network.HTTP.Types.Status
-  ( status200,
-    status201,
-    status204,
-    status400,
-  )
 import Network.HTTP.Types.URI (QueryText)
-import Network.Wai (Response, responseLBS)
+import Network.Wai (Response)
 import Types.Category (CategoryId (CategoryId))
 import Types.Config (ServerAddress)
 import Types.Draft
@@ -40,6 +32,10 @@ import Utility
     getMaybeIntegers,
     getMaybeText,
     getText,
+    response200JSON,
+    response201,
+    response204,
+    response400,
   )
 import Prelude hiding (words)
 
@@ -55,71 +51,46 @@ create logger pool query body cToken = do
           CreateDraft {..}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Left l ->
-      return
-        . responseLBS
-          status400
-          []
-        $ encode l
+    Left l -> return $ response400 l
     Right draft -> do
       result <- Handler.hCreate (handle pool) draft
       Logger.debug logger $ "Tried to create draft and got: " ++ show result
-      case result of
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-        Right _ -> return $ responseLBS status201 [] ""
+      return $ case result of
+        Left l -> response400 l
+        Right _ -> response201
 
 get :: Logger.Handle IO -> Pool Connection -> ServerAddress -> QueryText -> IO Response
 get logger pool server query = do
   let info = getDraftIdToken query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Left l -> return . responseLBS status400 [] $ encode l
+    Left l -> return $ response400 l
     Right (draftId, token) -> do
       result <- Handler.get (handle pool) server draftId token
       Logger.debug logger $ "Tried to get draft and got: " ++ show result
-      case result of
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-        Right draft ->
-          return
-            . responseLBS
-              status200
-              [(hContentType, "application/json")]
-            $ encode draft
+      return $ case result of
+        Left l -> response400 l
+        Right draft -> response200JSON draft
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
   let info = getDraftIdToken query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Left l -> return . responseLBS status400 [] $ encode l
+    Left l -> return $ response400 l
     Right (draftId, token) -> do
       result <- Handler.delete (handle pool) draftId token
       Logger.debug logger $ "Tried to delete draft and got: " ++ show result
-      case result of
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-        Right _ -> return $ responseLBS status204 [] ""
+      return $ case result of
+        Left l -> response400 l
+        Right _ -> response204
 
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 edit logger pool query body = do
   let info = getDraftIdToken query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Left l -> return . responseLBS status400 [] $ encode l
+    Left l -> return $ response400 l
     Right (draftId, token) -> do
       let editParams =
             EditParams
@@ -131,37 +102,22 @@ edit logger pool query body = do
               }
       result <- Handler.edit (handle pool) draftId token editParams
       Logger.debug logger $ "Tried to edit draft and got: " ++ show result
-      case result of
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-        Right _ -> return $ responseLBS status201 [] ""
+      return $ case result of
+        Left l -> response400 l
+        Right _ -> response201
 
 publish :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 publish logger pool query = do
   let info = getDraftIdToken query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Left l -> return . responseLBS status400 [] $ encode l
+    Left l -> return $ response400 l
     Right (draftId, token) -> do
       result <- Handler.publish (handle pool) draftId token
       Logger.debug logger $ "Tried to publish draft and got: " ++ show result
-      case result of
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-        Right _ ->
-          return $
-            responseLBS
-              status201
-              []
-              ""
+      return $ case result of
+        Left l -> response400 l
+        Right _ -> response201
 
 addMinorPhoto :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 addMinorPhoto logger pool query body = do
@@ -172,13 +128,13 @@ addMinorPhoto logger pool query body = do
         Right (draftId, token, image)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Left l -> return . responseLBS status400 [] $ encode l
+    Left l -> return $ response400 l
     Right (draftId, token, image) -> do
       result <- Handler.addMinorPhoto (handle pool) draftId token image
       Logger.debug logger $ "Tried to add minor photo to draft and got: " ++ show result
-      case result of
-        Left l -> return . responseLBS status400 [] $ encode l
-        Right _ -> return $ responseLBS status201 [] ""
+      return $ case result of
+        Left l -> response400 l
+        Right _ -> response201
 
 deleteMinorPhoto :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 deleteMinorPhoto logger pool query = do
@@ -189,13 +145,13 @@ deleteMinorPhoto logger pool query = do
         Right (draftId, token, imageId)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Left l -> return . responseLBS status400 [] $ encode l
+    Left l -> return $ response400 l
     Right (draftId, token, imageId) -> do
       result <- Handler.deleteMinorPhoto (handle pool) draftId token imageId
       Logger.debug logger $ "Tried to delete minor photo to draft and got: " ++ show result
-      case result of
-        Left l -> return . responseLBS status400 [] $ encode l
-        Right _ -> return $ responseLBS status204 [] ""
+      return $ case result of
+        Left l -> response400 l
+        Right _ -> response204
 
 getDraftIdToken :: QueryText -> Either Error (DraftId, Token)
 getDraftIdToken query = do
@@ -235,20 +191,21 @@ getMaybeMainPhoto body = getMaybeImage body "main_photo"
 
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
-  Handler.Handle
-    { Handler.hCreate = withResource pool . Db.Draft.create,
-      Handler.hEditCategoryId = \a b -> withResource pool $ Db.Draft.editCategoryId a b,
-      Handler.hEditTagId = \a b -> withResource pool $ Db.Draft.editTagId a b,
-      Handler.hEditName = \a b -> withResource pool $ Db.Draft.editName a b,
-      Handler.hEditDescription = \a b -> withResource pool $ Db.Draft.editText a b,
-      Handler.hEditMainPhoto = \a b -> withResource pool $ Db.Draft.editMainPhoto a b,
-      Handler.hHasPost = withResource pool . Db.Draft.hasPost,
-      Handler.hDelete = withResource pool . Db.Draft.delete,
-      Handler.hGet = \a f -> withResource pool $ Db.Draft.get a f,
-      Handler.hGetAuthorIdByDraftId = withResource pool . Db.Author.getByDraftId,
-      Handler.hPublish = withResource pool . Db.Draft.publish,
-      Handler.hUpdate = withResource pool . Db.Draft.update,
-      Handler.hGetAuthorIdByToken = withResource pool . Db.Author.getByToken,
-      Handler.hAddMinorPhoto = \a b -> withResource pool $ Db.Draft.addMinorPhoto a b,
-      Handler.hDeleteMinorPhoto = \a b -> withResource pool $ Db.Draft.deleteMinorPhoto a b
-    }
+  let f = withResource pool
+   in Handler.Handle
+        { Handler.hCreate = f . Db.Draft.create,
+          Handler.hEditCategoryId = \a b -> f $ Db.Draft.editCategoryId a b,
+          Handler.hEditTagId = \a b -> f $ Db.Draft.editTagId a b,
+          Handler.hEditName = \a b -> f $ Db.Draft.editName a b,
+          Handler.hEditDescription = \a b -> f $ Db.Draft.editText a b,
+          Handler.hEditMainPhoto = \a b -> f $ Db.Draft.editMainPhoto a b,
+          Handler.hHasPost = f . Db.Draft.hasPost,
+          Handler.hDelete = f . Db.Draft.delete,
+          Handler.hGet = \a b -> f $ Db.Draft.get a b,
+          Handler.hGetAuthorIdByDraftId = f . Db.Author.getByDraftId,
+          Handler.hPublish = f . Db.Draft.publish,
+          Handler.hUpdate = f . Db.Draft.update,
+          Handler.hGetAuthorIdByToken = f . Db.Author.getByToken,
+          Handler.hAddMinorPhoto = \a b -> f $ Db.Draft.addMinorPhoto a b,
+          Handler.hDeleteMinorPhoto = \a b -> f $ Db.Draft.deleteMinorPhoto a b
+        }
