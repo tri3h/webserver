@@ -35,7 +35,6 @@ import Types.User (Token (Token))
 import Utility
   ( getImage,
     getInteger,
-    getIntegers,
     getMaybeImage,
     getMaybeInteger,
     getMaybeIntegers,
@@ -46,12 +45,12 @@ import Prelude hiding (words)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> Token -> IO Response
 create logger pool query body cToken = do
+  let cTagId = getMaybeTagId query
+  let cMainPhoto = getMaybeMainPhoto body
   let info = do
         cCategoryId <- getCategoryId query
-        cTagId <- getTagIds query
         cName <- getName query
         cText <- getText query "description"
-        cMainPhoto <- getMainPhoto body
         Right $
           CreateDraft {..}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
@@ -207,14 +206,8 @@ getDraftIdToken query = do
 getCategoryId :: QueryText -> Either Error CategoryId
 getCategoryId query = CategoryId <$> getInteger query "category_id"
 
-getTagIds :: QueryText -> Either Error [TagId]
-getTagIds query = map TagId <$> getIntegers query "tag_id"
-
 getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
-
-getMainPhoto :: ByteString -> Either Error Image
-getMainPhoto body = getImage body "main_photo"
 
 getMinorPhoto :: ByteString -> Either Error Image
 getMinorPhoto body = getImage body "minor_photo"
@@ -231,8 +224,8 @@ getToken query = Token <$> getText query "token"
 getMaybeCategoryId :: QueryText -> Maybe CategoryId
 getMaybeCategoryId query = CategoryId <$> getMaybeInteger query "category_id"
 
-getMaybeTagId :: QueryText -> Maybe [TagId]
-getMaybeTagId query = map TagId <$> getMaybeIntegers query "tag_id"
+getMaybeTagId :: QueryText -> [TagId]
+getMaybeTagId query = map TagId $ getMaybeIntegers query "tag_id"
 
 getMaybeName :: QueryText -> Maybe Name
 getMaybeName query = Name <$> getMaybeText query "name"

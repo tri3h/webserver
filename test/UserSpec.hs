@@ -32,7 +32,7 @@ main = hspec $ do
   describe "Testing create user" $ do
     it "Should successfully create" $ do
       let result = H.create handle createUser testAdmin
-      result `shouldBe` (return $ Right testToken)
+      result `shouldBe` return (Right testToken)
     it "Should fail if login isn't unique" $ do
       let handleCase =
             handle
@@ -88,7 +88,7 @@ getUser =
     { gUserId = UserId 1,
       gName = Name "name",
       gSurname = Surname "surname",
-      gAvatar = avatarLink,
+      gAvatar = Just avatarLink,
       gLogin = Login "login",
       gDate = Date "10-10-2020"
     }
@@ -100,7 +100,7 @@ createUser =
       cSurname = Surname "surname",
       cLogin = Login "login",
       cPassword = Password "password",
-      cAvatar = avatarImage
+      cAvatar = Just avatarImage
     }
 
 testToken :: Token

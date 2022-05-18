@@ -1,6 +1,6 @@
 #! /bin/sh
 
-#All parameters are required
+#Required parameters: t, c, n, d. Others are optional
 while getopts t:c:i:n:d:m:y: flag
 do
  case "$flag" in

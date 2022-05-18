@@ -88,6 +88,9 @@ makeTokenResponse logger config pool req body token = do
     ["users"] -> case requestMethod req of
       "GET" -> User.get logger pool address token
       _ -> chooseResponse isAdmin
+    ["users", "avatar"] -> case requestMethod req of
+      "POST" -> User.addAvatar pool token body
+      _ -> return $ responseLBS status404 [] ""
     ["comments"] -> case requestMethod req of
       "GET" -> Comment.get logger pool query
       "POST" -> Comment.create logger pool query token

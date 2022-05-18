@@ -33,9 +33,16 @@ data GetUser = GetUser
   { gUserId :: UserId,
     gName :: Name,
     gSurname :: Surname,
-    gAvatar :: Link,
+    gAvatar :: Maybe Link,
     gLogin :: Login,
     gDate :: Date
+  }
+  deriving (Show, Eq)
+
+data PostUser = PostUser
+  { pUserId :: UserId,
+    pName :: Name,
+    pSurname :: Surname
   }
   deriving (Show, Eq)
 
@@ -44,14 +51,14 @@ data CreateUser = CreateUser
     cSurname :: Surname,
     cLogin :: Login,
     cPassword :: Password,
-    cAvatar :: Image
+    cAvatar :: Maybe Image
   }
   deriving (Show, Eq)
 
 data FullUser = FullUser
   { fName :: Name,
     fSurname :: Surname,
-    fAvatar :: Image,
+    fAvatar :: Maybe Image,
     fLogin :: Login,
     fPassword :: Password,
     fAdmin :: Admin,
@@ -68,4 +75,12 @@ instance ToJSON GetUser where
         "avatar" .= gAvatar user,
         "login" .= gLogin user,
         "date" .= gDate user
+      ]
+
+instance ToJSON PostUser where
+  toJSON user =
+    object
+      [ "user_id" .= pUserId user,
+        "name" .= pName user,
+        "surname" .= pSurname user
       ]

@@ -31,7 +31,7 @@ data GetDraft = GetDraft
     gTagId :: [TagId],
     gName :: Name,
     gText :: Text,
-    gMainPhoto :: Link,
+    gMainPhoto :: Maybe Link,
     gMinorPhoto :: [Link]
   }
   deriving (Show, Eq)
@@ -42,13 +42,13 @@ data CreateDraft = CreateDraft
     cTagId :: [TagId],
     cName :: Name,
     cText :: Text,
-    cMainPhoto :: Image
+    cMainPhoto :: Maybe Image
   }
   deriving (Show, Eq)
 
 data EditParams = EditParams
   { eCategoryId :: Maybe CategoryId,
-    eTagId :: Maybe [TagId],
+    eTagId :: [TagId],
     eName :: Maybe Name,
     eText :: Maybe Text,
     eMainPhoto :: Maybe Image

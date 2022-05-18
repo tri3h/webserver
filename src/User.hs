@@ -3,8 +3,9 @@
 
 module User where
 
+import Control.Monad (void)
 import Data.Aeson (encode)
-import Data.ByteString (ByteString, hGetContents)
+import Data.ByteString (ByteString)
 import Data.Pool (Pool, withResource)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.User as Db
@@ -20,21 +21,20 @@ import Network.HTTP.Types.Status
   )
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
-import qualified System.IO as IO
 import System.Random (randomIO)
 import Types.Config (ServerAddress)
-import Types.Image (Image (Image))
+import Types.Image (Image)
 import Types.User (Admin (Admin), CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname), Token (..), UserId (UserId))
-import Utility (getImage, getInteger, getMaybeText, getText)
+import Utility (getImage, getInteger, getMaybeImage, getMaybeText, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 create logger pool query body = do
+  let cAvatar = getMaybeAvatar body
   let info = do
         cName <- getName query
         cSurname <- getSurname query
         cLogin <- getLogin query
         cPassword <- getPassword query
-        cAvatar <- getAvatar body
         Right $
           CreateUser
             { ..
@@ -98,20 +98,26 @@ getNewToken logger pool query = do
           return . responseLBS status201 [(hContentType, "application/json")] $ encode token
     Left l -> return . responseLBS status400 [] $ encode l
 
+addAvatar :: Pool Connection -> Token -> ByteString -> IO Response
+addAvatar pool token body = do
+  let avatar = getAvatar body
+  case avatar of
+    Right r -> do
+      void . withResource pool $ Db.addAvatar token r
+      return $ responseLBS status201 [] ""
+    Left l -> return . responseLBS status400 [] $ encode l
+
 makeDefaultAdmin :: Pool Connection -> IO (Either Error Token)
-makeDefaultAdmin pool = do
-  h <- IO.openBinaryFile "scripts/utility/image.png" IO.ReadMode
-  image <- hGetContents h
-  IO.hClose h
+makeDefaultAdmin pool =
   let user =
         CreateUser
           { cName = Name "admin",
             cSurname = Surname "none",
             cLogin = Login "admin",
             cPassword = Password "adminpassword",
-            cAvatar = Image image "png"
+            cAvatar = Nothing
           }
-  Handler.create (handle pool) user $ Admin True
+   in Handler.create (handle pool) user $ Admin True
 
 getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
@@ -130,6 +136,9 @@ getLogin query = Login <$> getText query "login"
 
 getPassword :: QueryText -> Either Error Password
 getPassword query = Password <$> getText query "password"
+
+getMaybeAvatar :: ByteString -> Maybe Image
+getMaybeAvatar body = getMaybeImage body "avatar"
 
 getAvatar :: ByteString -> Either Error Image
 getAvatar body = getImage body "avatar"
