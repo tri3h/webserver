@@ -12,7 +12,7 @@ import Database.PostgreSQL.Simple
     execute,
     query,
   )
-import Error (Error, alreadyAuthor, authorNotExist, unknownError, userNotExist)
+import Error (Error, alreadyAuthor, authorNotExist, draftNotExist, unknownError, userNotAuthor, userNotExist)
 import Types.Author
   ( AuthorId,
     CreateAuthor (..),
@@ -35,25 +35,28 @@ create author conn = do
       IO (Either SqlError ())
   return $ case result of
     Right _ -> Right ()
-    Left e -> case sqlErrorMsg e of
+    Left l -> case sqlErrorMsg l of
       "duplicate key value violates unique constraint \"user_id_unique\"" -> Left alreadyAuthor
       "insert or update on table \"authors\" violates foreign key constraint \"user_id\"" -> Left userNotExist
       _ -> Left unknownError
 
-delete :: AuthorId -> Connection -> IO ()
+delete :: AuthorId -> Connection -> IO (Either Error ())
 delete authorId conn = do
-  _ <- execute conn "DELETE FROM authors WHERE authors.author_id = ?" (Only authorId)
-  return ()
+  result <- execute conn "DELETE FROM authors WHERE authors.author_id = ?" (Only authorId)
+  return $ if result == 0 then Left authorNotExist else Right ()
 
-get :: AuthorId -> Connection -> IO GetAuthor
+get :: AuthorId -> Connection -> IO (Either Error GetAuthor)
 get authId conn = do
-  [(gAuthorId, gUserId, gDescription)] <-
+  result <-
     query
       conn
       "SELECT author_id, user_id, description FROM authors \
       \WHERE authors.author_id = ?"
       (Only authId)
-  return GetAuthor {..}
+  return $
+    if null result
+      then Left authorNotExist
+      else Right $ (\[(gAuthorId, gUserId, gDescription)] -> GetAuthor {..}) result
 
 getMaybe :: AuthorId -> Connection -> IO (Maybe GetAuthor)
 getMaybe authId conn = do
@@ -68,27 +71,15 @@ getMaybe authId conn = do
       return $ Just GetAuthor {..}
     _ -> return Nothing
 
-edit :: EditAuthor -> Connection -> IO ()
+edit :: EditAuthor -> Connection -> IO (Either Error ())
 edit author conn = do
-  _ <-
+  result <-
     execute
       conn
       "UPDATE authors SET description = ? \
       \WHERE authors.author_id = ?"
       (eDescription author, eAuthorId author)
-  return ()
-
-doesExist :: AuthorId -> Connection -> IO (Either Error ())
-doesExist authorId conn = do
-  [Only n] <-
-    query
-      conn
-      "SELECT COUNT(author_id) FROM authors \
-      \WHERE authors.author_id = ?"
-      (Only authorId)
-  if (n :: Integer) == 1
-    then return $ Right ()
-    else return $ Left authorNotExist
+  return $ if result == 0 then Left authorNotExist else Right ()
 
 getByPostId :: PostId -> Connection -> IO AuthorId
 getByPostId postId conn = do
@@ -100,32 +91,26 @@ getByPostId postId conn = do
       (Only postId)
   return authorId
 
-getByDraftId :: DraftId -> Connection -> IO AuthorId
+getByDraftId :: DraftId -> Connection -> IO (Either Error AuthorId)
 getByDraftId draftId conn = do
-  [Only authorId] <-
+  result <-
     query
       conn
       "SELECT author_id FROM drafts \
       \WHERE draft_id = ?"
       (Only draftId)
-  return authorId
+  return $ case result of
+    [Only authorId] -> Right authorId
+    _ -> Left draftNotExist
 
-getByToken :: Token -> Connection -> IO AuthorId
+getByToken :: Token -> Connection -> IO (Either Error AuthorId)
 getByToken token conn = do
-  [Only authorId] <-
+  result <-
     query
       conn
       "SELECT author_id FROM authors a INNER JOIN \
       \users u ON a.user_id = u.user_id WHERE u.token = ?"
       (Only token)
-  return authorId
-
-isAuthor :: Token -> Connection -> IO Bool
-isAuthor token conn = do
-  [Only n] <-
-    query
-      conn
-      "SELECT COUNT(author_id) FROM authors a \
-      \INNER JOIN users u ON a.user_id = u.user_id WHERE token = ?"
-      (Only token)
-  return $ (n :: Integer) == 1
+  return $ case result of
+    [Only authorId] -> Right authorId
+    _ -> Left userNotAuthor

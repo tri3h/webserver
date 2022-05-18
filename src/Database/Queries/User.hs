@@ -24,6 +24,7 @@ import Types.User
     GetUser (..),
     Login,
     Password,
+    PostUser (..),
     Token,
     UserId,
   )
@@ -70,36 +71,50 @@ isAdmin token conn = do
 
 create :: FullUser -> Connection -> IO (Either Error Token)
 create user conn = do
-  let (Image image imageType) = fAvatar user
-  result <-
-    try . void $
-      execute
-        conn
-        "WITH i AS (INSERT INTO images (image, image_type) \
-        \VALUES (?, ?) RETURNING image_id) \
-        \INSERT INTO users (name, surname, image_id, \
-        \login, password, registration_date, admin, token) \
-        \VALUES (?, ?, (SELECT image_id FROM i), ?, ?, CURRENT_DATE, ?, ?)"
-        ( Binary image,
-          imageType,
-          fName user,
-          fSurname user,
-          fLogin user,
-          fPassword user,
-          fAdmin user,
-          fToken user
-        ) ::
-      IO (Either SqlError ())
+  result <- case fAvatar user of
+    Just (Image image imageType) ->
+      try . void $
+        execute
+          conn
+          "WITH i AS (INSERT INTO images (image, image_type) \
+          \VALUES (?, ?) RETURNING image_id) \
+          \INSERT INTO users (name, surname, image_id, \
+          \login, password, registration_date, admin, token) \
+          \VALUES (?, ?, (SELECT image_id FROM i), ?, ?, CURRENT_DATE, ?, ?)"
+          ( Binary image,
+            imageType,
+            fName user,
+            fSurname user,
+            fLogin user,
+            fPassword user,
+            fAdmin user,
+            fToken user
+          ) ::
+        IO (Either SqlError ())
+    Nothing ->
+      try . void $
+        execute
+          conn
+          "INSERT INTO users (name, surname, login, password, \
+          \registration_date, admin, token) VALUES (?, ?, ?, ?, CURRENT_DATE, ?, ?)"
+          ( fName user,
+            fSurname user,
+            fLogin user,
+            fPassword user,
+            fAdmin user,
+            fToken user
+          ) ::
+        IO (Either SqlError ())
   return $ case result of
     Right _ -> Right $ fToken user
-    Left e -> case sqlErrorMsg e of
+    Left l -> case sqlErrorMsg l of
       "duplicate key value violates unique constraint \"login_unique\"" -> Left loginTaken
       _ -> Left unknownError
 
-delete :: UserId -> Connection -> IO ()
+delete :: UserId -> Connection -> IO (Either Error ())
 delete userId conn = do
-  _ <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
-  return ()
+  result <- execute conn "DELETE FROM users WHERE users.user_id = ?" (Only userId)
+  return $ if result == 0 then Left userNotExist else Right ()
 
 get :: Token -> (ImageId -> Link) -> Connection -> IO GetUser
 get token f conn = do
@@ -111,41 +126,37 @@ get token f conn = do
       (Only token)
   return
     GetUser
-      { gAvatar = f imageId,
+      { gAvatar = f <$> imageId,
         gDate = Date . pack $ show (regDate :: Time.Date),
         ..
       }
 
-getMaybeByUserId :: UserId -> (ImageId -> Link) -> Connection -> IO (Maybe GetUser)
-getMaybeByUserId uId f conn = do
+addAvatar :: Token -> Image -> Connection -> IO ()
+addAvatar token (Image image imageType) conn =
+  void $
+    execute
+      conn
+      "WITH i AS (INSERT INTO images (image, image_type) \
+      \VALUES (?, ?) RETURNING image_id) \
+      \UPDATE users SET image_id = (SELECT image_id FROM i) \
+      \WHERE token = ?"
+      (Binary image, imageType, token)
+
+getPostUser :: UserId -> Connection -> IO (Maybe PostUser)
+getPostUser uId conn = do
   x <-
     query
       conn
-      "SELECT user_id, name, surname, image_id, login, registration_date \
-      \FROM users WHERE users.user_id = ?"
+      "SELECT user_id, name, surname FROM users WHERE users.user_id = ?"
       (Only uId)
   case x of
-    [(gUserId, gName, gSurname, imageId, gLogin, regDate)] ->
+    [(pUserId, pName, pSurname)] ->
       return $
         Just
-          GetUser
-            { gAvatar = f imageId,
-              gDate = Date . pack $ show (regDate :: Time.Date),
-              ..
+          PostUser
+            { ..
             }
     _ -> return Nothing
-
-doesExist :: UserId -> Connection -> IO (Either Error ())
-doesExist userId conn = do
-  [Only n] <-
-    query
-      conn
-      "SELECT COUNT(user_id) FROM users \
-      \WHERE users.user_id = ?"
-      (Only userId)
-  if (n :: Integer) == 1
-    then return $ Right ()
-    else return $ Left userNotExist
 
 findPassword :: Login -> Connection -> IO Password
 findPassword login conn = do

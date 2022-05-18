@@ -6,11 +6,11 @@ import Data.Aeson (ToJSON)
 import Data.Aeson.Types (ToJSON (toJSON))
 import Data.Text (Text, append, unpack)
 
-data ErrorType = UserErr | AuthorErr | TagErr | CategoryErr | DraftErr | PostErr | CommentErr | ImageErr | OtherErr deriving (Show)
+data ErrorType = UserErr | AuthorErr | TagErr | CategoryErr | DraftErr | PostErr | CommentErr | ImageErr | OtherErr deriving (Show, Eq)
 
-newtype ErrorNum = ErrorNum Integer deriving (Show)
+newtype ErrorNum = ErrorNum Integer deriving (Show, Eq)
 
-newtype ErrorMes = ErrorMes Text deriving (Show)
+newtype ErrorMes = ErrorMes Text deriving (Show, Eq)
 
 type Name = Text
 
@@ -19,7 +19,7 @@ data Error = Error
     errorNum :: ErrorNum,
     errorMes :: ErrorMes
   }
-  deriving (Show)
+  deriving (Show, Eq)
 
 instance ToJSON Error where
   toJSON (Error _ (ErrorNum n) (ErrorMes m)) = toJSON $ "Error " ++ show n ++ ". " ++ unpack m
@@ -89,3 +89,6 @@ noImage = Error ImageErr (ErrorNum 21) (ErrorMes "No image with such name")
 
 noSpecified :: Name -> Error
 noSpecified name = Error OtherErr (ErrorNum 22) (ErrorMes $ "No " `append` name `append` " specified")
+
+invalidToken :: Error
+invalidToken = Error OtherErr (ErrorNum 23) (ErrorMes "Invalid token")

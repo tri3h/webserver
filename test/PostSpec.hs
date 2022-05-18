@@ -4,6 +4,7 @@ module PostSpec where
 
 import Data.Functor.Identity (Identity)
 import Data.Text (append, pack)
+import Error (noPost)
 import qualified Handlers.Post as H
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Author (AuthorId (AuthorId))
@@ -11,7 +12,7 @@ import Types.Category (CategoryId (CategoryId))
 import Types.Config (ServerAddress)
 import qualified Types.Filter as F
 import Types.Image (Image (..), ImageId (ImageId), Link (Link), imageAddress)
-import Types.Post (Date (Date), FullPost (..), Name (Name), ShortPost (..), noPost)
+import Types.Post (Date (Date), FullPost (..), Name (Name), ShortPost (..))
 import Types.PostComment (PostId (PostId))
 
 main :: IO ()
@@ -34,7 +35,7 @@ handle =
     { H.hGet = \_ _ _ _ _ -> return [shortPost1, shortPost2],
       H.hGetMinorPhotos = \_ _ -> return [],
       H.hGetAuthor = \_ -> return Nothing,
-      H.hGetUser = \_ _ -> return Nothing,
+      H.hGetUser = \_ -> return Nothing,
       H.hGetCategory = \_ -> return [],
       H.hGetTag = \_ -> return [],
       H.hGetComment = \_ -> return []
@@ -50,8 +51,8 @@ filters =
       F.categoryId = Nothing,
       F.tagId = Nothing,
       F.tag = Nothing,
-      F.tagIn = Nothing,
-      F.tagAll = Nothing,
+      F.tagIn = [],
+      F.tagAll = [],
       F.postName = Nothing,
       F.text = Nothing,
       F.substring = Nothing
@@ -66,7 +67,7 @@ shortPost1 =
       sName = Name "post1",
       sDate = Date "01-01-2020",
       sText = "text",
-      sMainPhoto = link
+      sMainPhoto = Just link
     }
 
 fullPost1 :: FullPost
@@ -81,7 +82,7 @@ fullPost1 =
       fName = Name "post1",
       fDate = Date "01-01-2020",
       fText = "text",
-      fMainPhoto = link,
+      fMainPhoto = Just link,
       fMinorPhoto = []
     }
 
@@ -94,7 +95,7 @@ shortPost2 =
       sName = Name "post2",
       sDate = Date "01-01-2022",
       sText = "text",
-      sMainPhoto = link
+      sMainPhoto = Just link
     }
 
 fullPost2 :: FullPost
@@ -109,7 +110,7 @@ fullPost2 =
       fName = Name "post2",
       fDate = Date "01-01-2022",
       fText = "text",
-      fMainPhoto = link,
+      fMainPhoto = Just link,
       fMinorPhoto = []
     }
 

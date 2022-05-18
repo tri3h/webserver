@@ -17,6 +17,7 @@ import Types.Category (CategoryId)
 import Types.Image (Image, Link)
 import Types.PostComment (PostId)
 import Types.Tag (TagId)
+import Types.User (Token)
 
 newtype DraftId = DraftId {getDraftId :: Integer} deriving (Show, Eq, ToField, FromField, ToJSON)
 
@@ -30,24 +31,24 @@ data GetDraft = GetDraft
     gTagId :: [TagId],
     gName :: Name,
     gText :: Text,
-    gMainPhoto :: Link,
+    gMainPhoto :: Maybe Link,
     gMinorPhoto :: [Link]
   }
   deriving (Show, Eq)
 
 data CreateDraft = CreateDraft
-  { cAuthorId :: AuthorId,
+  { cToken :: Token,
     cCategoryId :: CategoryId,
     cTagId :: [TagId],
     cName :: Name,
     cText :: Text,
-    cMainPhoto :: Image
+    cMainPhoto :: Maybe Image
   }
   deriving (Show, Eq)
 
 data EditParams = EditParams
   { eCategoryId :: Maybe CategoryId,
-    eTagId :: Maybe [TagId],
+    eTagId :: [TagId],
     eName :: Maybe Name,
     eText :: Maybe Text,
     eMainPhoto :: Maybe Image

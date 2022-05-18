@@ -8,7 +8,6 @@ import Data.Pool (Pool, withResource)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Author as Db
 import Error (Error)
-import qualified Handlers.Author as Handler
 import qualified Handlers.Logger as Logger
 import Network.HTTP.Types.Header (hContentType)
 import Network.HTTP.Types.Status
@@ -38,7 +37,7 @@ create logger pool query = do
   case info of
     Right (cUserId, cDescription) -> do
       let author = CreateAuthor {..}
-      result <- Handler.hCreate (handle pool) author
+      result <- withResource pool $ Db.create author
       Logger.debug logger $ "Tried to create author and got: " ++ show result
       case result of
         Left l ->
@@ -56,7 +55,7 @@ get logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- Handler.get (handle pool) authorId
+      result <- withResource pool $ Db.get authorId
       Logger.debug logger $ "Tried to get author and got: " ++ show result
       case result of
         Right r ->
@@ -82,7 +81,7 @@ edit logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right author -> do
-      result <- Handler.edit (handle pool) author
+      result <- withResource pool $ Db.edit author
       Logger.debug logger $ "Tried to edit author and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
@@ -100,7 +99,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- Handler.delete (handle pool) authorId
+      result <- withResource pool $ Db.delete authorId
       Logger.debug logger $ "Tried to delete author and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
@@ -120,13 +119,3 @@ getDescription query = Description <$> getText query "description"
 
 getAuthorId :: QueryText -> Either Error AuthorId
 getAuthorId query = AuthorId <$> getInteger query "author_id"
-
-handle :: Pool Connection -> Handler.Handle IO
-handle pool =
-  Handler.Handle
-    { Handler.hCreate = withResource pool . Db.create,
-      Handler.hGet = withResource pool . Db.get,
-      Handler.hDelete = withResource pool . Db.delete,
-      Handler.hEdit = withResource pool . Db.edit,
-      Handler.hDoesExist = withResource pool . Db.doesExist
-    }

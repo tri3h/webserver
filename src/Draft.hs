@@ -8,9 +8,7 @@ import Data.ByteString (ByteString)
 import Data.Pool (Pool, withResource)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Author as Db.Author
-import qualified Database.Queries.Category as Db.Category
 import qualified Database.Queries.Draft as Db.Draft
-import qualified Database.Queries.Tag as Db.Tag
 import Error (Error)
 import qualified Handlers.Draft as Handler
 import qualified Handlers.Logger as Logger
@@ -37,7 +35,6 @@ import Types.User (Token (Token))
 import Utility
   ( getImage,
     getInteger,
-    getIntegers,
     getMaybeImage,
     getMaybeInteger,
     getMaybeIntegers,
@@ -47,15 +44,13 @@ import Utility
 import Prelude hiding (words)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> Token -> IO Response
-create logger pool query body token = do
-  author <- Handler.getAuthorIdByToken (handle pool) token
+create logger pool query body cToken = do
+  let cTagId = getMaybeTagId query
+  let cMainPhoto = getMaybeMainPhoto body
   let info = do
         cCategoryId <- getCategoryId query
-        cTagId <- getTagIds query
         cName <- getName query
         cText <- getText query "description"
-        cMainPhoto <- getMainPhoto body
-        cAuthorId <- author
         Right $
           CreateDraft {..}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
@@ -67,7 +62,7 @@ create logger pool query body token = do
           []
         $ encode l
     Right draft -> do
-      result <- Handler.create (handle pool) draft
+      result <- Handler.hCreate (handle pool) draft
       Logger.debug logger $ "Tried to create draft and got: " ++ show result
       case result of
         Left l ->
@@ -211,14 +206,8 @@ getDraftIdToken query = do
 getCategoryId :: QueryText -> Either Error CategoryId
 getCategoryId query = CategoryId <$> getInteger query "category_id"
 
-getTagIds :: QueryText -> Either Error [TagId]
-getTagIds query = map TagId <$> getIntegers query "tag_id"
-
 getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
-
-getMainPhoto :: ByteString -> Either Error Image
-getMainPhoto body = getImage body "main_photo"
 
 getMinorPhoto :: ByteString -> Either Error Image
 getMinorPhoto body = getImage body "minor_photo"
@@ -235,8 +224,8 @@ getToken query = Token <$> getText query "token"
 getMaybeCategoryId :: QueryText -> Maybe CategoryId
 getMaybeCategoryId query = CategoryId <$> getMaybeInteger query "category_id"
 
-getMaybeTagId :: QueryText -> Maybe [TagId]
-getMaybeTagId query = map TagId <$> getMaybeIntegers query "tag_id"
+getMaybeTagId :: QueryText -> [TagId]
+getMaybeTagId query = map TagId $ getMaybeIntegers query "tag_id"
 
 getMaybeName :: QueryText -> Maybe Name
 getMaybeName query = Name <$> getMaybeText query "name"
@@ -253,18 +242,13 @@ handle pool =
       Handler.hEditName = \a b -> withResource pool $ Db.Draft.editName a b,
       Handler.hEditDescription = \a b -> withResource pool $ Db.Draft.editText a b,
       Handler.hEditMainPhoto = \a b -> withResource pool $ Db.Draft.editMainPhoto a b,
-      Handler.hDoesExist = withResource pool . Db.Draft.doesExist,
-      Handler.hIsAuthor = withResource pool . Db.Author.isAuthor,
       Handler.hHasPost = withResource pool . Db.Draft.hasPost,
       Handler.hDelete = withResource pool . Db.Draft.delete,
       Handler.hGet = \a f -> withResource pool $ Db.Draft.get a f,
-      Handler.hGetAuthor = withResource pool . Db.Author.getByDraftId,
+      Handler.hGetAuthorIdByDraftId = withResource pool . Db.Author.getByDraftId,
       Handler.hPublish = withResource pool . Db.Draft.publish,
       Handler.hUpdate = withResource pool . Db.Draft.update,
       Handler.hGetAuthorIdByToken = withResource pool . Db.Author.getByToken,
       Handler.hAddMinorPhoto = \a b -> withResource pool $ Db.Draft.addMinorPhoto a b,
-      Handler.hDeleteMinorPhoto = \a b -> withResource pool $ Db.Draft.deleteMinorPhoto a b,
-      Handler.hDoesAuthorExist = withResource pool . Db.Author.doesExist,
-      Handler.hDoesCategoryExist = withResource pool . Db.Category.doesExist,
-      Handler.hDoesTagExist = withResource pool . Db.Tag.doesExist
+      Handler.hDeleteMinorPhoto = \a b -> withResource pool $ Db.Draft.deleteMinorPhoto a b
     }

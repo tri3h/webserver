@@ -80,8 +80,8 @@ getFilter query =
       F.categoryId = Category.CategoryId <$> getMaybeInteger query "category_id",
       F.tagId = Tag.TagId <$> getMaybeInteger query "tag_id",
       F.tag = Tag.Name <$> getMaybeText query "tag",
-      F.tagIn = map Tag.TagId <$> getMaybeIntegers query "tag_in",
-      F.tagAll = map Tag.TagId <$> getMaybeIntegers query "tag_all",
+      F.tagIn = map Tag.TagId $ getMaybeIntegers query "tag_in",
+      F.tagAll = map Tag.TagId $ getMaybeIntegers query "tag_all",
       F.postName = Name <$> getMaybeText query "post_name",
       F.text = getMaybeText query "text",
       F.substring = getMaybeText query "substring"
@@ -93,10 +93,8 @@ handle pool =
     { Handler.hGet = \a b c d e -> withResource pool $ Db.get a b c d e,
       Handler.hGetMinorPhotos = \a b -> withResource pool $ Db.getMinorPhotos a b,
       Handler.hGetAuthor = withResource pool . AuthorDb.getMaybe . fromMaybe (Author.AuthorId 0),
-      Handler.hGetUser = \a b -> withResource pool $ UserDb.getMaybeByUserId (fromMaybe (User.UserId 0) a) b,
-      Handler.hGetCategory = \catId -> do
-        parents <- withResource pool $ CategoryDb.getParents (fromMaybe (Category.CategoryId 0) catId)
-        mapM (withResource pool . CategoryDb.get) parents,
+      Handler.hGetUser = withResource pool . UserDb.getPostUser . fromMaybe (User.UserId 0),
+      Handler.hGetCategory = withResource pool . CategoryDb.getWithParents,
       Handler.hGetTag = withResource pool . TagDb.getByPostId,
       Handler.hGetComment = withResource pool . CommentDb.get
     }

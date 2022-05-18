@@ -41,13 +41,10 @@ library
       Database.Queries.User
       Draft
       Error
-      Handlers.Author
       Handlers.Category
-      Handlers.Comment
       Handlers.Draft
       Handlers.Logger
       Handlers.Post
-      Handlers.Tag
       Handlers.User
       Image
       Logger
@@ -123,12 +120,9 @@ test-suite webserver-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      AuthorSpec
       CategorySpec
-      CommentSpec
       DraftSpec
       PostSpec
-      TagSpec
       UserSpec
       Paths_webserver
   hs-source-dirs:
