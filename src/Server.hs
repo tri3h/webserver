@@ -34,7 +34,8 @@ run :: Logger.Handle IO -> Config.Config -> Pool Connection -> IO ()
 run logger config pool = do
   let port = fromInteger . sPort $ server config
   let host = fromString . unpack . sHost $ server config
-  let settings = Warp.setHost host $ Warp.setPort port Warp.defaultSettings
+  let onExp _ e = Logger.error logger $ show e
+  let settings = Warp.setOnException onExp $ Warp.setHost host $ Warp.setPort port Warp.defaultSettings
   Logger.info logger "Starting server"
   Warp.runSettings settings $ \req f -> do
     let query = queryToQueryText $ queryString req

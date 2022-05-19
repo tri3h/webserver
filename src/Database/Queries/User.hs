@@ -168,13 +168,12 @@ findPassword login conn = do
   return password
 
 updateToken :: Login -> Token -> Connection -> IO ()
-updateToken login token conn = do
-  _ <-
+updateToken login token conn =
+  void $
     execute
       conn
       "UPDATE users SET token = ? WHERE login = ?"
       (token, login)
-  return ()
 
 hasAdmin :: Connection -> IO Bool
 hasAdmin conn = do

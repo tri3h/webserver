@@ -1,5 +1,8 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+id="1"
+
 #Required parameters: i. Others are optional
 while getopts i:l:o: flag
 do

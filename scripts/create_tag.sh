@@ -1,5 +1,8 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+name="tag"
+
 #All parameters are required
 while getopts t:n: flag
 do

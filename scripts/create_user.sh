@@ -1,5 +1,10 @@
 #! /bin/sh
 
+name="ivan"
+surname="invanov"
+login="login"
+password="password"
+
 #Required parameters: n, s, l, p. Others are optional.
 while getopts n:s:a:l:p:y: flag
 do

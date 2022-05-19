@@ -1,6 +1,6 @@
 module Database.Migration where
 
-import Database.Connection (openConnection)
+import Database.Connection (tryOpenConnection)
 import Database.PostgreSQL.Simple (close, withTransaction)
 import Database.PostgreSQL.Simple.Migration
   ( MigrationCommand (MigrationDirectory, MigrationInitialization),
@@ -8,11 +8,12 @@ import Database.PostgreSQL.Simple.Migration
     MigrationResult,
     runMigration,
   )
+import qualified Handlers.Logger as Logger
 import Types.Config (DatabaseConfig)
 
-execute :: DatabaseConfig -> IO (MigrationResult String)
-execute config = do
-  conn <- openConnection config
+execute :: DatabaseConfig -> Logger.Handle IO -> IO (MigrationResult String)
+execute config logger = do
+  conn <- tryOpenConnection config logger
   _ <-
     withTransaction conn $
       runMigration $

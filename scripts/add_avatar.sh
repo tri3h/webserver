@@ -1,5 +1,8 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+avatar="utility/image.png"
+
 #All parameters are required
 while getopts t:a: flag
 do

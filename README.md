@@ -8,7 +8,12 @@ Also it may be necessary to use a command *stack setup*.
 
 After these two files are filled, the project may be started by typing *stack run* into command line while being in the project folder. If there are no admins in the database, the program will ask about creating default admin.
 
-Scripts from folder *scripts* may be run with bash like: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. Some of scripts take an image, they take it in the form of two parameters: a path to the file and a type of image, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg" -y "jpg"*. 
+## How to use scripts
+Scripts from folder *scripts* may be run with bash in two ways: with *user* parameters and with *default* parameters. 
+
+To run a script with default parameters: *bash script_name.sh*. In this case scripts will take a token from the file *token.txt* and take the file *"image.png"* for user avatar and draft photos. Both of these files are in the folder *scripts/utility*. Because a token can not be preset, before using scripts it is necessary either to create a user by running *"create_user.sh"* script (then a token will be set automatically) or to put a token into the file *"token.txt"* manually. Scripts can create only a usual user so admin functionallity will not be available when use token from *"create_user.sh"*.
+
+To run a script with user parameters: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. All required parameters that will not be filled explicitly, will use default values. All optional parameters that will not be filled, will be empty. Some of scripts take an image, they take it in the form of a path to the file, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg"*. 
 
 ## Basic structure 
 The project has 3 main parts:

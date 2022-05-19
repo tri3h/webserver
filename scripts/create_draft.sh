@@ -1,5 +1,10 @@
 #! /bin/sh
 
+token=$(<utility/token.txt)
+category_id="1"
+name="draft"
+description="text"
+
 #Required parameters: t, c, n, d. Others are optional
 while getopts t:c:i:n:d:m:y: flag
 do
