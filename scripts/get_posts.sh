@@ -1,8 +1,6 @@
 #! /bin/sh
 
-token=$(<utility/token.txt)
-
-#Required parameters: t. Others are optional.
+#Parameters are optional
 while getopts a:c:g:i:n:p:e:s:z:y:x:b:o:l:h: flag
 do
  case "$flag" in

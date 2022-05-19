@@ -4,10 +4,8 @@ name="ivan"
 surname="invanov"
 login="login"
 password="password"
-avatar="utility/image.png"
-avatar_image_type="png"
 
-#All parameters are required
+#Required parameters: n, s, l, p. Others are optional.
 while getopts n:s:a:l:p:y: flag
 do
  case "$flag" in

@@ -5,13 +5,10 @@ module Tag where
 
 import Data.Aeson (encode)
 import Data.Pool (Pool, withResource)
-import Data.Text (Text)
-import qualified Data.Text.Lazy as LazyText
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Tag as Db
+import Error (Error)
 import qualified Handlers.Logger as Logger
-import qualified Handlers.Tag as Handler
 import Network.HTTP.Types.Header (hContentType)
 import Network.HTTP.Types.Status
   ( status200,
@@ -22,7 +19,7 @@ import Network.HTTP.Types.Status
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response, responseLBS)
 import Types.Tag (Name (Name), Tag (..), TagId (TagId))
-import Utility (getInteger, getText)
+import Utility (getInteger, getMaybeInteger, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
@@ -30,27 +27,26 @@ create logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right name -> do
-      result <- Handler.create (handle pool) name
+      result <- withResource pool $ Db.create name
       Logger.debug logger $ "Tried to create tag and got: " ++ show result
       case result of
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
+            $ encode l
         Right _ -> return $ responseLBS status201 [] ""
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+    Left l -> return . responseLBS status400 [] $ encode l
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
-  let info = getTagId query
+  let info = getMaybeTagId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Right tagId -> do
-      result <- Handler.get (handle pool) tagId
-      Logger.debug logger $ "Tried to get tag and got: " ++ show result
+    Just tagId -> do
+      result <- withResource pool $ Db.get tagId
+      Logger.debug logger $ "Tried to get a tag and got: " ++ show result
       case result of
         Right r ->
           return $
@@ -59,13 +55,19 @@ get logger pool query = do
               [(hContentType, "application/json")]
               $ encode r
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+            $ encode l
+    Nothing -> do
+      result <- withResource pool Db.getAll
+      Logger.debug logger $ "Tried to get a list of tags and got: " ++ show result
+      return $
+        responseLBS
+          status200
+          [(hContentType, "application/json")]
+          $ encode result
 
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
@@ -77,18 +79,17 @@ edit logger pool query = do
   case info of
     Right (tagId, name) -> do
       let tag = Tag {..}
-      result <- Handler.edit (handle pool) tag
+      result <- withResource pool $ Db.edit tag
       Logger.debug logger $ "Tried to edit tag and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status201 [] ""
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+            $ encode l
+    Left l -> return . responseLBS status400 [] $ encode l
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
@@ -96,31 +97,23 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right tagId -> do
-      result <- Handler.delete (handle pool) tagId
+      result <- withResource pool $ Db.delete tagId
       Logger.debug logger $ "Tried to delete tag and got: " ++ show result
       case result of
         Right _ -> return $ responseLBS status204 [] ""
         Left l ->
-          return $
-            responseLBS
+          return
+            . responseLBS
               status400
               []
-              . encodeUtf8
-              $ LazyText.fromStrict l
-    Left l -> return $ responseLBS status400 [] . encodeUtf8 $ LazyText.fromStrict l
+            $ encode l
+    Left l -> return . responseLBS status400 [] $ encode l
 
-getName :: QueryText -> Either Text Name
+getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
 
-getTagId :: QueryText -> Either Text TagId
+getTagId :: QueryText -> Either Error TagId
 getTagId query = TagId <$> getInteger query "tag_id"
 
-handle :: Pool Connection -> Handler.Handle IO
-handle pool =
-  Handler.Handle
-    { Handler.hCreate = withResource pool . Db.create,
-      Handler.hGet = withResource pool . Db.get,
-      Handler.hDelete = withResource pool . Db.delete,
-      Handler.hEdit = withResource pool . Db.edit,
-      Handler.hDoesExist = withResource pool . Db.doesExist
-    }
+getMaybeTagId :: QueryText -> Maybe TagId
+getMaybeTagId query = TagId <$> getMaybeInteger query "tag_id"

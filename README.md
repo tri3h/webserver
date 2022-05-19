@@ -64,7 +64,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * surname
         * login
         * password
-    * Also there should be an image "avatar"
+    * Also there *may* be an image "avatar"
     * Return a token in case of success
 
 - /tokens 
@@ -81,16 +81,18 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Return an image in case of success
 
 - GET /tags 
-    * Get a tag
-    * Required parameters:
+    * Get tags or a tag
+    * Required parameters: none
+    * Optional parameters:
         * tag_id
-    * Return a tag in case of success
+    * Return a list of tags if there are no parameters or a tag if there are in case of success
 
 - GET /categories
-    * Get a category
-    * Required parameters:
+    * Get categories or a category
+    * Required parameters: none
+    * Optional parameters:
         * category_id
-    * Return a category in case of success
+    * Return a list of categories if there are no parameters or a category if there are in case of success
 
 - GET /posts
     * Get posts
@@ -124,6 +126,11 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * token
     * Return a user in case of success
 
+- POST users/avatar
+    * Add an avatar to a user (or change it in case there is already an avatar)
+    * Required parameters: an image "avatar"
+    * Return nothing in case of success
+
 - GET /comments
     * Get all comments to a post
     * Required parameters:
@@ -136,7 +143,6 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Required parameters:
         * token
         * post_id
-        * user_id
         * text
     * Return nothing in case of success
 
@@ -153,9 +159,10 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * token
         * category_id
         * description
-        * tag_id
         * name
-    * Also there should be an image "main_photo"
+    * Optional parameters:
+        * tag_id
+    * Also there *may* be an image "main_photo"
     * Return nothing in case of success
 
 - PUT /drafts

@@ -5,7 +5,7 @@ module Server where
 import qualified Author
 import qualified Category
 import qualified Comment
-import Control.Monad (join)
+import Data.Aeson (encode)
 import qualified Data.ByteString as BS
 import Data.ByteString.Lazy (toStrict)
 import Data.Pool (Pool)
@@ -13,6 +13,7 @@ import Data.String (IsString (fromString))
 import Data.Text (unpack)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Draft
+import Error (invalidToken)
 import qualified Handlers.Logger as Logger
 import qualified Image
 import Network.HTTP.Types (queryToQueryText)
@@ -28,7 +29,7 @@ import qualified Post
 import qualified Tag
 import Types.Config (Config (server), ServerConfig (sAddress, sHost, sPort))
 import qualified Types.Config as Config
-import Types.User (Token (Token))
+import Types.User (Token)
 import qualified User
 
 run :: Logger.Handle IO -> Config.Config -> Pool Connection -> IO ()
@@ -69,15 +70,14 @@ makeNoTokenResponse logger config pool req body = do
       _ -> chooseResponse query
     _ -> chooseResponse query
   where
-    chooseResponse query = case Token <$> join (lookup "token" query) of
+    chooseResponse query = case User.getToken query of
       Just token -> do
         isValid <- User.isTokenValid pool token
         if isValid
           then makeTokenResponse logger config pool req body token
           else do
-            let err = "Invalid token"
-            Logger.debug logger $ show err
-            return $ responseLBS status400 [] err
+            Logger.debug logger $ show invalidToken
+            return $ responseLBS status400 [] $ encode invalidToken
       Nothing -> return $ responseLBS status404 [] ""
 
 makeTokenResponse :: Logger.Handle IO -> Config.Config -> Pool Connection -> Request -> BS.ByteString -> Token -> IO Response
@@ -89,9 +89,12 @@ makeTokenResponse logger config pool req body token = do
     ["users"] -> case requestMethod req of
       "GET" -> User.get logger pool address token
       _ -> chooseResponse isAdmin
+    ["users", "avatar"] -> case requestMethod req of
+      "POST" -> User.addAvatar pool token body
+      _ -> return $ responseLBS status404 [] ""
     ["comments"] -> case requestMethod req of
       "GET" -> Comment.get logger pool query
-      "POST" -> Comment.create logger pool query
+      "POST" -> Comment.create logger pool query token
       _ -> chooseResponse isAdmin
     ["drafts"] -> case requestMethod req of
       "GET" -> Draft.get logger pool address query

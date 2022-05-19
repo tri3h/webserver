@@ -22,8 +22,8 @@ data Filter = Filter
     categoryId :: Maybe Category.CategoryId,
     tagId :: Maybe Tag.TagId,
     tag :: Maybe Tag.Name,
-    tagIn :: Maybe [Tag.TagId],
-    tagAll :: Maybe [Tag.TagId],
+    tagIn :: [Tag.TagId],
+    tagAll :: [Tag.TagId],
     postName :: Maybe Post.Name,
     text :: Maybe Text,
     substring :: Maybe Text
