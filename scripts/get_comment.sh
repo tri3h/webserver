@@ -3,15 +3,16 @@
 token=$(<utility/token.txt)
 id="1"
 
-#All parameters are required
-while getopts t:i: flag
+#Required parameters: i. Others are optional
+while getopts i:l:o: flag
 do
  case "$flag" in
-  t) token=${OPTARG};;
   i) id=${OPTARG};;
+  l) limit=${OPTARG};;
+  o) offset=${OPTARG};;
  esac
 done
 
 source utility/load_config.sh
 
-curl "$host:$port/comments?token=$token&post_id=$id" -X GET
+curl "$host:$port/comments?post_id=$id&limit=$limit&offset=$offset" -X GET

@@ -75,7 +75,6 @@ handle =
     { H.hIsTokenUnique = \_ -> return True,
       H.hCreate = \_ -> return $ Right testToken,
       H.hGet = \_ _ -> return getUser,
-      H.hDelete = \_ -> return $ Right (),
       H.hGetRandomNumber = return 1,
       H.hIsLoginValid = \_ -> return True,
       H.hFindPassword = \_ -> return $ Password "password",

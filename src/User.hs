@@ -69,7 +69,7 @@ delete logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right userId -> do
-      result <- Handler.hDelete (handle pool) userId
+      result <- withResource pool $ Db.delete userId
       Logger.debug logger $ "Tried to delete user and got: " ++ show result
       case result of
         Left l ->
@@ -148,7 +148,6 @@ handle pool =
           Handler.hIsTokenUnique = f . Db.isTokenUnique,
           Handler.hCreate = f . Db.create,
           Handler.hGet = \a b -> f $ Db.get a b,
-          Handler.hDelete = f . Db.delete,
           Handler.hGetRandomNumber = randomIO,
           Handler.hFindPassword = f . Db.findPassword,
           Handler.hUpdateToken = \a b -> f $ Db.updateToken a b

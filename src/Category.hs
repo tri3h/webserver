@@ -15,8 +15,10 @@ import Types.Category
     CreateCategory (..),
     Name (Name),
     ParentId,
+    categoriesOnPage,
   )
-import Utility (getInteger, getMaybeInteger, getMaybeText, getText, response200JSON, response201, response204, response400)
+import Types.Limit (Offset (..))
+import Utility (getInteger, getLimit, getMaybeInteger, getMaybeText, getOffset, getText, response200JSON, response201, response204, response400)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
@@ -48,7 +50,9 @@ get logger pool query = do
         Right r -> response200JSON r
         Left l -> response400 l
     Nothing -> do
-      result <- withResource pool Db.getAll
+      let limit = getLimit query categoriesOnPage
+      let offset = getOffset query $ Offset 0
+      result <- withResource pool $ Db.getAll limit offset
       Logger.debug logger $ "Tried to get a list of categories and got: " ++ show result
       return $ response200JSON result
 

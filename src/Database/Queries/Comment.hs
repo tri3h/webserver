@@ -18,6 +18,7 @@ import Types.Comment
     CreateComment (..),
     GetComment (..),
   )
+import Types.Limit (Limit, Offset)
 import Types.PostComment (PostId)
 
 create :: CreateComment -> Connection -> IO (Either Error ())
@@ -36,16 +37,16 @@ create comment conn = do
       "insert or update on table \"comments\" violates foreign key constraint \"post_id\"" -> Left postNotExist
       _ -> Left unknownError
 
-getEither :: PostId -> Connection -> IO (Either Error [GetComment])
-getEither postId conn = do
+getEither :: PostId -> Limit -> Offset -> Connection -> IO (Either Error [GetComment])
+getEither postId limit offset conn = do
   [Only countPost] <- query conn "SELECT COUNT(post_id) FROM posts WHERE post_id = ?" (Only postId)
   if (countPost :: Integer) /= 0
     then do
       xs <-
         query
           conn
-          "SELECT comment_id, user_id, text FROM comments WHERE post_id = ?"
-          (Only postId)
+          "SELECT comment_id, user_id, text FROM comments WHERE post_id = ? LIMIT ? OFFSET ?"
+          (postId, limit, offset)
       return . Right $
         map
           ( \(gCommentId, gUserId, gText) ->

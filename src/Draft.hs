@@ -57,7 +57,7 @@ create logger pool query body cToken = do
   case info of
     Left l -> return $ response400 l
     Right draft -> do
-      result <- Handler.hCreate (handle pool) draft
+      result <- withResource pool $ Db.Draft.create draft
       Logger.debug logger $ "Tried to create draft and got: " ++ show result
       return $ case result of
         Left l -> response400 l
@@ -80,7 +80,7 @@ getAllByAuthor :: Logger.Handle IO -> Pool Connection -> Token -> QueryText -> I
 getAllByAuthor logger pool token query = do
   let limit = getLimit query draftsOnPage
   let offset = getOffset query (Offset 0)
-  result <- Handler.hGetAllByAuthor (handle pool) token limit offset
+  result <- withResource pool $ Db.Draft.getAllByAuthor token limit offset
   Logger.debug logger $ "Tried to get a list of draft id and got: " ++ show result
   return $ response200JSON result
 
@@ -205,8 +205,7 @@ handle :: Pool Connection -> Handler.Handle IO
 handle pool =
   let f = withResource pool
    in Handler.Handle
-        { Handler.hCreate = f . Db.Draft.create,
-          Handler.hEditCategoryId = \a b -> f $ Db.Draft.editCategoryId a b,
+        { Handler.hEditCategoryId = \a b -> f $ Db.Draft.editCategoryId a b,
           Handler.hEditTagId = \a b -> f $ Db.Draft.editTagId a b,
           Handler.hEditName = \a b -> f $ Db.Draft.editName a b,
           Handler.hEditDescription = \a b -> f $ Db.Draft.editText a b,
@@ -214,7 +213,6 @@ handle pool =
           Handler.hHasPost = f . Db.Draft.hasPost,
           Handler.hDelete = f . Db.Draft.delete,
           Handler.hGet = \a b -> f $ Db.Draft.get a b,
-          Handler.hGetAllByAuthor = \a b c -> f $ Db.Draft.getAllByAuthor a b c,
           Handler.hGetAuthorIdByDraftId = f . Db.Author.getByDraftId,
           Handler.hPublish = f . Db.Draft.publish,
           Handler.hUpdate = f . Db.Draft.update,
