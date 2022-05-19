@@ -17,7 +17,7 @@ main = do
   logger <- Logger.make
   config <- Config.make logger
   let db = database config
-  void $ Database.Migration.execute db
+  void $ Database.Migration.execute db logger
   pool <- Connection.makePool db
   makeAdmin pool
   Server.run logger config pool
