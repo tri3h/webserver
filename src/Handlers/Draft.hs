@@ -22,13 +22,14 @@ import Types.Draft
     Name,
   )
 import Types.Image (Image, ImageId, Link)
+import Types.Limit (Limit, Offset)
 import Types.Tag (TagId)
 import Types.User (Token)
 import Utility (imageIdToLink)
 import Prelude hiding (words)
 
 data Handle m = Handle
-  { hCreate :: CreateDraft -> m (Either Error ()),
+  { hCreate :: CreateDraft -> m (Either Error DraftId),
     hEditCategoryId :: DraftId -> CategoryId -> m (Either Error ()),
     hEditTagId :: DraftId -> [TagId] -> m (Either Error ()),
     hEditName :: DraftId -> Name -> m (Either Error ()),
@@ -39,6 +40,7 @@ data Handle m = Handle
     hDeleteMinorPhoto :: DraftId -> ImageId -> m (Either Error ()),
     hHasPost :: DraftId -> m Bool,
     hGet :: DraftId -> (ImageId -> Link) -> m GetDraft,
+    hGetAllByAuthor :: Token -> Limit -> Offset -> m [DraftId],
     hGetAuthorIdByDraftId :: DraftId -> m (Either Error AuthorId),
     hPublish :: DraftId -> m (Either Error ()),
     hUpdate :: DraftId -> m (Either Error ()),

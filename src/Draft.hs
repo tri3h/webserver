@@ -20,17 +20,21 @@ import Types.Draft
     DraftId (DraftId),
     EditParams (..),
     Name (Name),
+    draftsOnPage,
   )
 import Types.Image (Image (..), ImageId (ImageId))
+import Types.Limit (Offset (Offset))
 import Types.Tag (TagId (TagId))
 import Types.User (Token (Token))
 import Utility
   ( getImage,
     getInteger,
+    getLimit,
     getMaybeImage,
     getMaybeInteger,
     getMaybeIntegers,
     getMaybeText,
+    getOffset,
     getText,
     response200JSON,
     response201,
@@ -57,7 +61,7 @@ create logger pool query body cToken = do
       Logger.debug logger $ "Tried to create draft and got: " ++ show result
       return $ case result of
         Left l -> response400 l
-        Right _ -> response201
+        Right r -> response200JSON r
 
 get :: Logger.Handle IO -> Pool Connection -> ServerAddress -> QueryText -> IO Response
 get logger pool server query = do
@@ -71,6 +75,14 @@ get logger pool server query = do
       return $ case result of
         Left l -> response400 l
         Right draft -> response200JSON draft
+
+getAllByAuthor :: Logger.Handle IO -> Pool Connection -> Token -> QueryText -> IO Response
+getAllByAuthor logger pool token query = do
+  let limit = getLimit query draftsOnPage
+  let offset = getOffset query (Offset 0)
+  result <- Handler.hGetAllByAuthor (handle pool) token limit offset
+  Logger.debug logger $ "Tried to get a list of draft id and got: " ++ show result
+  return $ response200JSON result
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
@@ -202,6 +214,7 @@ handle pool =
           Handler.hHasPost = f . Db.Draft.hasPost,
           Handler.hDelete = f . Db.Draft.delete,
           Handler.hGet = \a b -> f $ Db.Draft.get a b,
+          Handler.hGetAllByAuthor = \a b c -> f $ Db.Draft.getAllByAuthor a b c,
           Handler.hGetAuthorIdByDraftId = f . Db.Author.getByDraftId,
           Handler.hPublish = f . Db.Draft.publish,
           Handler.hUpdate = f . Db.Draft.update,

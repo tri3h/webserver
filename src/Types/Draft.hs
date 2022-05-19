@@ -15,6 +15,7 @@ import Database.PostgreSQL.Simple.ToField (ToField)
 import Types.Author (AuthorId)
 import Types.Category (CategoryId)
 import Types.Image (Image, Link)
+import Types.Limit (Limit (..))
 import Types.PostComment (PostId)
 import Types.Tag (TagId)
 import Types.User (Token)
@@ -68,3 +69,6 @@ instance ToJSON GetDraft where
         "main_photo" .= gMainPhoto draft,
         "minor_photo" .= gMinorPhoto draft
       ]
+
+draftsOnPage :: Limit
+draftsOnPage = Limit 10

@@ -15,6 +15,7 @@ import Types.Author (AuthorId, GetAuthor)
 import Types.Category (CategoryId, GetCategory)
 import Types.Comment (GetComment)
 import Types.Image (Link)
+import Types.Limit (Limit (..))
 import Types.PostComment (PostId)
 import Types.Tag (Tag)
 import Types.User (PostUser)
@@ -64,3 +65,6 @@ instance ToJSON FullPost where
         "main_photo" .= fMainPhoto post,
         "minor_photo" .= fMinorPhoto post
       ]
+
+postsOnPage :: Limit
+postsOnPage = Limit 10
