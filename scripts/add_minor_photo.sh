@@ -3,7 +3,6 @@
 token=$(<utility/token.txt)
 draft_id="1"
 minor_photo="utility/image.png"
-minor_photo_image_type="png"
 
 #All parameters are required
 while getopts t:d:p: flag
