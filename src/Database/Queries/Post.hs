@@ -9,7 +9,7 @@ import Data.Text (Text, append, pack)
 import Database.PostgreSQL.Simple
   ( Connection,
     In (In),
-    Only (Only),
+    Only (Only, fromOnly),
     query,
   )
 import qualified Database.PostgreSQL.Simple.Time as Time
@@ -21,7 +21,6 @@ import Types.Post
   ( Date (Date),
     Name (Name),
     ShortPost (..),
-    postNotExist,
   )
 import Types.PostComment (PostId)
 import qualified Types.Tag as Tag
@@ -45,7 +44,7 @@ get filters order limit offset f conn = do
                ) ->
                 ShortPost
                   { sDate = Date . pack $ show (date :: Time.Date),
-                    sMainPhoto = f mainPhoto,
+                    sMainPhoto = f <$> mainPhoto,
                     ..
                   }
           )
@@ -97,11 +96,11 @@ applyFilters filters =
         Just x -> [whereTag x]
         Nothing -> [],
       case F.tagIn filters of
-        Just x -> [whereTagIn x]
-        Nothing -> [],
+        [] -> []
+        x -> [whereTagIn x],
       case F.tagAll filters of
-        Just x -> [whereTagAll x]
-        Nothing -> [],
+        [] -> []
+        x -> [whereTagAll x],
       case F.postName filters of
         Just x -> [wherePostName x]
         Nothing -> [],
@@ -135,8 +134,8 @@ selectAll =
   \FROM posts p INNER JOIN authors a ON p.author_id = a.author_id \
   \INNER JOIN users u ON a.user_id = u.user_id \
   \INNER JOIN categories c ON c.category_id = p.category_id \
-  \INNER JOIN post_tags pt ON pt.post_id = p.post_id \
-  \INNER JOIN tags t ON t.tag_id = pt.tag_id \
+  \LEFT JOIN post_tags pt ON pt.post_id = p.post_id \
+  \LEFT JOIN tags t ON t.tag_id = pt.tag_id \
   \LEFT JOIN post_minor_photos pmp ON pmp.post_id = p.post_id "
 
 whereWord :: String
@@ -223,21 +222,4 @@ getMinorPhotos postId f conn = do
       "SELECT image_id FROM post_minor_photos \
       \WHERE post_id = ?"
       (Only postId)
-  let xs' =
-        map
-          ( \(Only x) -> f x
-          )
-          xs
-  return xs'
-
-doesExist :: PostId -> Connection -> IO (Either Text ())
-doesExist postId conn = do
-  [Only n] <-
-    query
-      conn
-      "SELECT COUNT(post_id) FROM posts \
-      \WHERE posts.post_id = ?"
-      (Only postId)
-  if (n :: Integer) == 1
-    then return $ Right ()
-    else return $ Left postNotExist
+  return $ map (f . fromOnly) xs

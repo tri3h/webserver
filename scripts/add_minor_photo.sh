@@ -2,7 +2,7 @@
 
 
 #All parameters are required
-while getopts t:d:p:y: flag
+while getopts t:d:p: flag
 do
  case "$flag" in
   t) token=${OPTARG};;
