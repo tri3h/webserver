@@ -114,6 +114,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * offset
         * limit
     * "sort_by" can be: "by_date" / "by_author" / "by_category" / "by_photos_number"
+    * "tag_in" and "tag_all" can have several values, they should be separated by ","
     * Return all posts (max at a time = 10) if there are no optional parameters. Return posts (max at a time = 10 or less if there is a limit parameter) only with corresponding parameters if there are optional paramaters. Return no post if there are no posts with such optional parameters
 </details>
 
@@ -163,6 +164,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Optional parameters:
         * tag_id
     * Also there *may* be an image "main_photo"
+    * "tag_id" can have serveral values, they should be separated by ","
     * Return nothing in case of success
 
 - PUT /drafts
@@ -176,6 +178,7 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
         * name
         * description
     * Also there may be an image "main_photo"
+    * "tag_id" can have serveral values, they should be separated by ","
     * Return nothing in case of success
 
 - DELETE /drafts

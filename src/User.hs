@@ -107,17 +107,8 @@ addAvatar pool token body = do
       return $ responseLBS status201 [] ""
     Left l -> return . responseLBS status400 [] $ encode l
 
-makeDefaultAdmin :: Pool Connection -> IO (Either Error Token)
-makeDefaultAdmin pool =
-  let user =
-        CreateUser
-          { cName = Name "admin",
-            cSurname = Surname "none",
-            cLogin = Login "admin",
-            cPassword = Password "adminpassword",
-            cAvatar = Nothing
-          }
-   in Handler.create (handle pool) user $ Admin True
+makeAdmin :: Pool Connection -> CreateUser -> IO (Either Error Token)
+makeAdmin pool admin = Handler.create (handle pool) admin $ Admin True
 
 getName :: QueryText -> Either Error Name
 getName query = Name <$> getText query "name"
@@ -151,13 +142,14 @@ isTokenValid pool = withResource pool . Db.isTokenValid
 
 handle :: Pool Connection -> Handler.Handle IO
 handle pool =
-  Handler.Handle
-    { Handler.hIsLoginValid = withResource pool . Db.isLoginValid,
-      Handler.hIsTokenUnique = withResource pool . Db.isTokenUnique,
-      Handler.hCreate = withResource pool . Db.create,
-      Handler.hGet = \a b -> withResource pool $ Db.get a b,
-      Handler.hDelete = withResource pool . Db.delete,
-      Handler.hGetRandomNumber = randomIO,
-      Handler.hFindPassword = withResource pool . Db.findPassword,
-      Handler.hUpdateToken = \a b -> withResource pool $ Db.updateToken a b
-    }
+  let f = withResource pool
+   in Handler.Handle
+        { Handler.hIsLoginValid = f . Db.isLoginValid,
+          Handler.hIsTokenUnique = f . Db.isTokenUnique,
+          Handler.hCreate = f . Db.create,
+          Handler.hGet = \a b -> f $ Db.get a b,
+          Handler.hDelete = f . Db.delete,
+          Handler.hGetRandomNumber = randomIO,
+          Handler.hFindPassword = f . Db.findPassword,
+          Handler.hUpdateToken = \a b -> f $ Db.updateToken a b
+        }

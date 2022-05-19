@@ -3,21 +3,13 @@
 
 module Author where
 
-import Data.Aeson (encode)
 import Data.Pool (Pool, withResource)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.Author as Db
 import Error (Error)
 import qualified Handlers.Logger as Logger
-import Network.HTTP.Types.Header (hContentType)
-import Network.HTTP.Types.Status
-  ( status200,
-    status201,
-    status204,
-    status400,
-  )
 import Network.HTTP.Types.URI (QueryText)
-import Network.Wai (Response, responseLBS)
+import Network.Wai (Response)
 import Types.Author
   ( AuthorId (AuthorId),
     CreateAuthor (..),
@@ -25,7 +17,7 @@ import Types.Author
     EditAuthor (..),
   )
 import Types.User (UserId (UserId))
-import Utility (getInteger, getText)
+import Utility (getInteger, getText, response200JSON, response201, response204, response400)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 create logger pool query = do
@@ -39,15 +31,10 @@ create logger pool query = do
       let author = CreateAuthor {..}
       result <- withResource pool $ Db.create author
       Logger.debug logger $ "Tried to create author and got: " ++ show result
-      case result of
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-        Right _ -> return $ responseLBS status201 [] ""
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Left l -> response400 l
+        Right _ -> response201
+    Left l -> return $ response400 l
 
 get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 get logger pool query = do
@@ -57,20 +44,10 @@ get logger pool query = do
     Right authorId -> do
       result <- withResource pool $ Db.get authorId
       Logger.debug logger $ "Tried to get author and got: " ++ show result
-      case result of
-        Right r ->
-          return $
-            responseLBS
-              status200
-              [(hContentType, "application/json")]
-              $ encode r
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Right r -> response200JSON r
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
@@ -83,15 +60,10 @@ edit logger pool query = do
     Right author -> do
       result <- withResource pool $ Db.edit author
       Logger.debug logger $ "Tried to edit author and got: " ++ show result
-      case result of
-        Right _ -> return $ responseLBS status201 [] ""
-        Left l ->
-          return
-            . responseLBS
-              status400
-              []
-            $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Right _ -> response201
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 delete logger pool query = do
@@ -101,15 +73,10 @@ delete logger pool query = do
     Right authorId -> do
       result <- withResource pool $ Db.delete authorId
       Logger.debug logger $ "Tried to delete author and got: " ++ show result
-      case result of
-        Right _ -> return $ responseLBS status204 [] ""
-        Left l ->
-          return $
-            responseLBS
-              status400
-              []
-              $ encode l
-    Left l -> return . responseLBS status400 [] $ encode l
+      return $ case result of
+        Right _ -> response204
+        Left l -> response400 l
+    Left l -> return $ response400 l
 
 getUserId :: QueryText -> Either Error UserId
 getUserId query = UserId <$> getInteger query "user_id"
