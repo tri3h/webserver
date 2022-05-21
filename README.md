@@ -11,7 +11,7 @@ After these two files are filled, the project may be started by typing *stack ru
 ## How to use scripts
 Scripts from folder *scripts* may be run with bash in two ways: with *user* parameters and with *default* parameters. 
 
-To run a script with default parameters: *bash script_name.sh*. In this case scripts will take a token from the file *token.txt* and take the file *"image.png"* for user avatar and draft photos. Both of these files are in the folder *scripts/utility*. Because a token can not be preset, before using scripts it is necessary either to create a user by running *"create_user.sh"* script (then a token will be set automatically) or to put a token into the file *"token.txt"* manually. Scripts can create only a usual user so admin functionallity will not be available when use token from *"create_user.sh"*.
+To run a script with default parameters: *bash script_name.sh*. In this case scripts will take a token from the file *token.txt* and take the file *"image.png"* for user avatar and draft photos. Both of these files are in the folder *scripts/utility*. Before using scripts it is necessary either to create a user by running *"create_user.sh"* script (then a token will be set automatically) or to put a token into the file *"token.txt"* manually. Scripts can create only a usual user so admin functionallity will not be available when using token from *"create_user.sh"*.
 
 To run a script with user parameters: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. All required parameters that will not be filled explicitly, will use default values. All optional parameters that will not be filled, will be empty. Some of scripts take an image, they take it in the form of a path to the file, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg"*. 
 
@@ -21,13 +21,13 @@ The project has 3 main parts:
 <summary>Server part</summary>
 
 The file **Server.hs** gets a user request, considers a path and a method within a request and then calls a requested function from one of the server part files. These files are found in the folder */src*.
-Each of these functions gets a query and, if necessary, a body of request from the **Server.hs**. Then they try to parse these data using functions from **Utility.hs** and then check if all needed data are presented. If not, they give a negative answer to user. Otherwise they call functons from *Handler part* and give an answer to user according to results.
+Each of these functions gets a query and, if necessary, a body of request from the **Server.hs**. Then they try to parse these data using functions from **Utility.hs** and then check if all needed data are presented. If not, they give a negative answer to a user. Otherwise they call functons from *Handler part* or *Database part* and give an answer to a user according to results.
 </details>
 
 <details>
 <summary>Handler part</summary>
 
-Files from this part are in the folder */Handler*. These files contain the main logic of the project. They get data from the server part and perform actions with a help of *Database part*, then return results to the server part. 
+Files from this part are in the folder */Handler*. They get data from the server part and perform actions with a help of *Database part*, then return results to the server part. 
 </details>
 
 <details>
@@ -38,12 +38,11 @@ This part is responsible for work with database and contains queries to a databa
 **Migration.hs** is responsible for applying migrations to a database.
 </details>
 
-All three parts are splitted into files with the same names. For example, there are 4 files with a name *Tag.hs*: one in the Server part, one in the Handler part, one in the Database part and one in the Types. All of these 4 files are responsible for actions with tags. But each of them do his part of the job.
+Also there is folder */Types* with types.
+These parts are splitted into files with the same names. For example, there are 4 files with a name *User.hs*: one in the Server part, one in the Handler part, one in the Database part and one in the Types. Some have only 3 files (without handler part). 
 
 <details>
 <summary>Additional parts</summary>
-
-Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
 
 - *Scripts* contains sh scripts with curl requests in main folder and additional utility scripts in *utility* folder. 
 
@@ -81,33 +80,24 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * Return an image in case of success
 
 - GET /tags 
-    * Get tags or a tag
+    * Get a tag or tags
     * Required parameters: none
     * Optional parameters:
         * tag_id
         * limit
         * offset
     * Limit and offset matter only when getting a list of tags
-    * Return a list of tags if there are no parameters or a tag if there are in case of success
+    * Return a tag if there is "tag_id" parameter or a list of tags otherwise in case of success
 
 - GET /categories
-    * Get categories or a category
+    * Get a category or categories
     * Required parameters: none
     * Optional parameters:
         * category_id
         * limit
         * offset
     * Limit and offset matter only when getting a list of categories
-    * Return a list of categories if there are no parameters or a category if there are in case of success
-
-- GET /comments
-    * Get all comments to a post
-    * Required parameters:
-        * post_id
-    * Optional parameters:
-        * limit
-        * offset
-    * Return a list of comments to a post in case of success
+    * Return a category if there is "category_id" parameter or a list of categories otherwise in case of success
 
 - GET /posts
     * Get posts
@@ -131,6 +121,15 @@ Additional parts are folders */scripts*, */DatabaseMigrations* and */test*:
     * "sort_by" can be: "by_date" / "by_author" / "by_category" / "by_photos_number"
     * "tag_in" and "tag_all" can have several values, they should be separated by ","
     * Return all posts (max at a time = 10) if there are no optional parameters. Return posts (max at a time = 10 or less if there is a limit parameter) only with corresponding parameters if there are optional paramaters. Return no post if there are no posts with such optional parameters
+
+- GET /comments
+    * Get comments to a post
+    * Required parameters:
+        * post_id
+    * Optional parameters:
+        * limit
+        * offset
+    * Return a list of comments to a post in case of success
 </details>
 
 <details>
