@@ -1,63 +1,54 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Admin where
 
+import Config (loggerError)
 import Control.Monad (unless)
+import qualified Data.Configurator as C
 import Data.Pool (Pool, withResource)
 import Data.Text (pack)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.User as UserDb
+import qualified Handlers.Logger as Logger
 import Types.User (CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname))
 import qualified User
 
-check :: Pool Connection -> IO ()
-check pool = do
+check :: Logger.Handle IO -> Pool Connection -> IO ()
+check logger pool = do
   hasAdmin <- withResource pool UserDb.hasAdmin
-  unless hasAdmin (make pool)
+  unless hasAdmin (make logger pool)
 
-make :: Pool Connection -> IO ()
-make pool = do
-  print "There is no admin in the database. Do you want to create one? (y/n)"
-  answer <- getLine
-  case answer of
-    "y" -> set pool
-    "n" -> return ()
-    _ -> do
-      notRecognized
-      make pool
+make :: Logger.Handle IO -> Pool Connection -> IO ()
+make logger pool = do
+  admin <- getDefaultAdmin logger
+  case admin of
+    Just x -> do
+      result <- User.makeAdmin pool x
+      Logger.info logger $ show result
+    Nothing -> return ()
 
-set :: Pool Connection -> IO ()
-set pool = do
-  print $ "Do you want to use default parameters? (y/n) Default parameters are: " ++ show defaultAdmin
-  answer <- getLine
-  case answer of
-    "y" -> do
-      result <- User.makeAdmin pool defaultAdmin
-      print result
-    "n" -> do
-      print "Type name"
-      cName <- Name . pack <$> getLine
-      print "Type surname"
-      cSurname <- Surname . pack <$> getLine
-      print "Type login"
-      cLogin <- Login . pack <$> getLine
-      print "Type password"
-      cPassword <- Password . pack <$> getLine
-      result <- User.makeAdmin pool $ CreateUser {cAvatar = Nothing, ..}
-      print result
-    _ -> do
-      notRecognized
-      set pool
-
-notRecognized :: IO ()
-notRecognized = print "Answer is not recognized"
-
-defaultAdmin :: CreateUser
-defaultAdmin =
-  CreateUser
-    { cName = Name $ pack "admin",
-      cSurname = Surname $ pack "none",
-      cLogin = Login $ pack "admin",
-      cPassword = Password $ pack "adminpassword",
-      cAvatar = Nothing
-    }
+getDefaultAdmin :: Logger.Handle IO -> IO (Maybe CreateUser)
+getDefaultAdmin logger = do
+  config <- C.load [C.Required "Configs/Server.config"]
+  isNeeded <- C.lookup config "admin.is_needed"
+  case isNeeded of
+    Just True -> do
+      maybeName <- C.lookup config "admin.name"
+      cName <- case maybeName of
+        Just x@(_ : _) -> return . Name $ pack x
+        _ -> loggerError logger "Admin name has invalid format"
+      maybeSurname <- C.lookup config "admin.surname"
+      cSurname <- case maybeSurname of
+        Just x@(_ : _) -> return . Surname $ pack x
+        _ -> loggerError logger "Admin surname has invalid format"
+      maybeLogin <- C.lookup config "admin.login"
+      cLogin <- case maybeLogin of
+        Just x@(_ : _) -> return . Login $ pack x
+        _ -> loggerError logger "Admin login has invalid format"
+      maybePassword <- C.lookup config "admin.password"
+      cPassword <- case maybePassword of
+        Just x@(_ : _) -> return . Password $ pack x
+        _ -> loggerError logger "Admin password has invalid format"
+      return $ Just CreateUser {cAvatar = Nothing, ..}
+    _ -> return Nothing

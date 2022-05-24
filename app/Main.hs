@@ -16,5 +16,5 @@ main = do
   let db = database config
   void $ Database.Migration.execute db logger
   pool <- Connection.makePool db
-  Admin.check pool
+  Admin.check logger pool
   Server.run logger config pool

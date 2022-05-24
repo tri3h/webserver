@@ -2,9 +2,11 @@
 
 ## How to run
 Before the first run, a config file should be filled. It is **Server.config** in the folder *Configs*.
+You need to fill information for connection to a database and server. 
+Also you can fill information about default admin. Then the program will create default admin in the database when it starts (but only if there is no admin in the database yet). The token of the created admin will be displayed in the logger on level info.
 Also it may be necessary to use a command *stack setup*.
 
-After that the project may be started by typing *stack run* into command line while being in the project folder. If there are no admins in the database, the program will ask about creating default admin.
+After that the project may be started by typing *stack run* into command line while being in the project folder. 
 
 ## How to use scripts
 Scripts from folder *scripts* may be run with bash in two ways: with *user* parameters and with *default* parameters. 
