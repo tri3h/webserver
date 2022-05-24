@@ -21,32 +21,32 @@ make logger = do
 
 getDatabaseConfig :: Logger.Handle IO -> IO DatabaseConfig
 getDatabaseConfig logger = do
-  config <- C.load [C.Required "Configs/Database.config"]
-  maybeHost <- C.lookup config "host"
+  config <- C.load [C.Required "Configs/Server.config"]
+  maybeHost <- C.lookup config "db.host"
   dHost <- case maybeHost of
     Just x -> return x
     Nothing -> do
       Logger.error logger "Database host has invalid format"
       exitFailure
-  maybePort <- C.lookup config "port"
+  maybePort <- C.lookup config "db.port"
   dPort <- case maybePort of
     Just x -> return x
     Nothing -> do
       Logger.error logger "Database port has invalid format"
       exitFailure
-  maybeUser <- C.lookup config "user"
+  maybeUser <- C.lookup config "db.user"
   dUser <- case maybeUser of
     Just x -> return x
     Nothing -> do
       Logger.error logger "User name for access to a database has invalid format"
       exitFailure
-  maybePassword <- C.lookup config "password"
+  maybePassword <- C.lookup config "db.password"
   dPassword <- case maybePassword of
     Just x -> return x
     Nothing -> do
       Logger.error logger "Password for access to a database has invalid format"
       exitFailure
-  maybeName <- C.lookup config "database"
+  maybeName <- C.lookup config "db.name"
   dName <- case maybeName of
     Just x -> return x
     Nothing -> do
@@ -57,13 +57,13 @@ getDatabaseConfig logger = do
 getServerConfig :: Logger.Handle IO -> IO ServerConfig
 getServerConfig logger = do
   config <- C.load [C.Required "Configs/Server.config"]
-  maybeHost <- C.lookup config "host"
+  maybeHost <- C.lookup config "server.host"
   sHost <- case maybeHost of
     Just x -> return x
     Nothing -> do
       Logger.error logger "Server host has invalid format"
       exitFailure
-  maybePort <- C.lookup config "port"
+  maybePort <- C.lookup config "server.port"
   sPort <- case maybePort of
     Just x -> return x
     Nothing -> do

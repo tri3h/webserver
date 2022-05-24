@@ -1,12 +1,10 @@
 # webserver
 
 ## How to run
-Before the first run, 2 config files should be filled. They are both in the folder **Configs**.
-The first file is **Server.config** that contains information about a port, a host and a log verbosity.
-The second file is **Database.config** that contains information about a database.
+Before the first run, a config file should be filled. It is **Server.config** in the folder *Configs*.
 Also it may be necessary to use a command *stack setup*.
 
-After these two files are filled, the project may be started by typing *stack run* into command line while being in the project folder. If there are no admins in the database, the program will ask about creating default admin.
+After that the project may be started by typing *stack run* into command line while being in the project folder. If there are no admins in the database, the program will ask about creating default admin.
 
 ## How to use scripts
 Scripts from folder *scripts* may be run with bash in two ways: with *user* parameters and with *default* parameters. 
