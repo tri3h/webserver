@@ -1,10 +1,12 @@
 # webserver
 
 ## How to run
-Before the first run, a config file should be filled. It is **Server.config** in the folder *Configs*.
+Before the first run, a config file should be filled. It is **Server.config.template** in the folder *Configs*. 
 You need to fill information for connection to a database and server. 
 Also you can fill information about default admin. Then the program will create default admin in the database when it starts (but only if there is no admin in the database yet). The token of the created admin will be displayed in the logger on level info.
-Also it may be necessary to use a command *stack setup*.
+Then this file should be renamed to **Server.config**.
+
+Also before the first run it may be necessary to use a command *stack setup*.
 
 After that the project may be started by typing *stack run* into command line while being in the project folder. 
 
