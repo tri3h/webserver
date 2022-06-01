@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Database.Queries.Category where
 
@@ -58,12 +57,12 @@ get catId conn = do
   return $
     if null result
       then Left categoryNotExist
-      else Right $ (\[(gCategoryId, gName, gParentId)] -> GetCategory {..}) result
+      else Right $ (\[(categoryId, name, parentId)] -> GetCategory {gCategoryId = categoryId, gName = name, gParentId = parentId}) result
 
 getAll :: Limit -> Offset -> Connection -> IO [GetCategory]
 getAll limit offset conn = do
   result <- query conn "SELECT category_id, name, parent_id FROM categories LIMIT ? OFFSET ?" (limit, offset)
-  return $ map (\(gCategoryId, gName, gParentId) -> GetCategory {..}) result
+  return $ map (\(categoryId, name, parentId) -> GetCategory {gCategoryId = categoryId, gName = name, gParentId = parentId}) result
 
 editName :: CategoryId -> Name -> Connection -> IO (Either Error ())
 editName categoryId name conn = do
@@ -106,7 +105,7 @@ getWithParents catId conn = do
       \parents p WHERE c.category_id = p.parent_id) SELECT category_id, name, parent_id \
       \FROM parents"
       (Only catId)
-  return $ map (\(gCategoryId, gName, gParentId) -> GetCategory {..}) xs
+  return $ map (\(categoryId, name, parentId) -> GetCategory {gCategoryId = categoryId, gName = name, gParentId = parentId}) xs
 
 getChildren :: CategoryId -> Connection -> IO [CategoryId]
 getChildren parId conn = do

@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Database.Queries.User where
 
@@ -118,7 +117,7 @@ delete userId conn = do
 
 get :: Token -> (ImageId -> Link) -> Connection -> IO GetUser
 get token f conn = do
-  [(gUserId, gName, gSurname, imageId, gLogin, regDate)] <-
+  [(userId, name, surname, imageId, login, regDate)] <-
     query
       conn
       "SELECT user_id, name, surname, image_id, login, registration_date \
@@ -128,7 +127,10 @@ get token f conn = do
     GetUser
       { gAvatar = f <$> imageId,
         gDate = Date . pack $ show (regDate :: Time.Date),
-        ..
+        gName = name,
+        gSurname = surname,
+        gLogin = login,
+        gUserId = userId
       }
 
 addAvatar :: Token -> Image -> Connection -> IO ()
@@ -150,11 +152,13 @@ getPostUser uId conn = do
       "SELECT user_id, name, surname FROM users WHERE users.user_id = ?"
       (Only uId)
   case x of
-    [(pUserId, pName, pSurname)] ->
+    [(userId, name, surname)] ->
       return $
         Just
           PostUser
-            { ..
+            { pUserId = userId,
+              pName = name,
+              pSurname = surname
             }
     _ -> return Nothing
 

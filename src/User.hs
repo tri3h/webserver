@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module User where
 
@@ -29,15 +28,19 @@ import Utility (getImage, getInteger, getMaybeImage, getMaybeText, getText)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> IO Response
 create logger pool query body = do
-  let cAvatar = getMaybeAvatar body
+  let avatar = getMaybeAvatar body
   let info = do
-        cName <- getName query
-        cSurname <- getSurname query
-        cLogin <- getLogin query
-        cPassword <- getPassword query
+        name <- getName query
+        surname <- getSurname query
+        login <- getLogin query
+        password <- getPassword query
         Right $
           CreateUser
-            { ..
+            { cName = name,
+              cAvatar = avatar,
+              cSurname = surname,
+              cLogin = login,
+              cPassword = password
             }
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of

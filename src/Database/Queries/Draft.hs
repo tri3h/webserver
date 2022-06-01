@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 
 module Database.Queries.Draft where
@@ -85,19 +84,19 @@ create draft conn = do
             _ -> Left unknownError
 
 get :: DraftId -> (ImageId -> Link) -> Connection -> IO GetDraft
-get gDraftId f conn = do
-  [(gPostId, gAuthorId, gCategoryId, gName, gText, mainPhotoId)] <-
+get draftId f conn = do
+  [(postId, authorId, categoryId, name, text, mainPhotoId)] <-
     query
       conn
       "SELECT post_id, author_id, category_id, name, \
       \text, image_id FROM drafts WHERE draft_id = ?"
-      (Only gDraftId)
-  tagIds <- query conn "SELECT tag_id FROM draft_tags WHERE draft_id = ?" (Only gDraftId)
+      (Only draftId)
+  tagIds <- query conn "SELECT tag_id FROM draft_tags WHERE draft_id = ?" (Only draftId)
   minorPhotoId <-
     query
       conn
       "SELECT image_id FROM draft_minor_photos WHERE draft_id = ?"
-      (Only gDraftId)
+      (Only draftId)
   return $
     GetDraft
       { gTagId = map fromOnly tagIds,
@@ -106,7 +105,12 @@ get gDraftId f conn = do
           map
             (f . fromOnly)
             minorPhotoId,
-        ..
+        gPostId = postId,
+        gCategoryId = categoryId,
+        gName = name,
+        gText = text,
+        gDraftId = draftId,
+        gAuthorId = authorId
       }
 
 getAllByAuthor :: Token -> Limit -> Offset -> Connection -> IO [DraftId]

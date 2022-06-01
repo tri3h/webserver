@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Admin where
 
@@ -35,20 +34,28 @@ getDefaultAdmin logger = do
   case isNeeded of
     Just True -> do
       maybeName <- C.lookup config "admin.name"
-      cName <- case maybeName of
+      name <- case maybeName of
         Just x@(_ : _) -> return . Name $ pack x
         _ -> loggerError logger "Admin name has invalid format"
       maybeSurname <- C.lookup config "admin.surname"
-      cSurname <- case maybeSurname of
+      surname <- case maybeSurname of
         Just x@(_ : _) -> return . Surname $ pack x
         _ -> loggerError logger "Admin surname has invalid format"
       maybeLogin <- C.lookup config "admin.login"
-      cLogin <- case maybeLogin of
+      login <- case maybeLogin of
         Just x@(_ : _) -> return . Login $ pack x
         _ -> loggerError logger "Admin login has invalid format"
       maybePassword <- C.lookup config "admin.password"
-      cPassword <- case maybePassword of
+      password <- case maybePassword of
         Just x@(_ : _) -> return . Password $ pack x
         _ -> loggerError logger "Admin password has invalid format"
-      return $ Just CreateUser {cAvatar = Nothing, ..}
+      return $
+        Just
+          CreateUser
+            { cAvatar = Nothing,
+              cName = name,
+              cLogin = login,
+              cPassword = password,
+              cSurname = surname
+            }
     _ -> return Nothing

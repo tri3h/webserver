@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Database.Queries.Comment where
 
@@ -49,8 +48,12 @@ getEither postId limit offset conn = do
           (postId, limit, offset)
       return . Right $
         map
-          ( \(gCommentId, gUserId, gText) ->
-              GetComment {..}
+          ( \(commentId, userId, text) ->
+              GetComment
+                { gCommentId = commentId,
+                  gUserId = userId,
+                  gText = text
+                }
           )
           xs
     else return $ Left postNotExist
@@ -64,8 +67,12 @@ get postId conn = do
       (Only postId)
   return $
     map
-      ( \(gCommentId, gUserId, gText) ->
-          GetComment {..}
+      ( \(commentId, userId, text) ->
+          GetComment
+            { gCommentId = commentId,
+              gUserId = userId,
+              gText = text
+            }
       )
       xs
 

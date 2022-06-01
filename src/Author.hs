@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Author where
 
@@ -27,8 +26,8 @@ create logger pool query = do
         Right (userId, description)
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
-    Right (cUserId, cDescription) -> do
-      let author = CreateAuthor {..}
+    Right (userId, description) -> do
+      let author = CreateAuthor {cUserId = userId, cDescription = description}
       result <- withResource pool $ Db.create author
       Logger.debug logger $ "Tried to create author and got: " ++ show result
       return $ case result of
@@ -52,9 +51,9 @@ get logger pool query = do
 edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
 edit logger pool query = do
   let info = do
-        eAuthorId <- getAuthorId query
-        eDescription <- getDescription query
-        Right $ EditAuthor {..}
+        authorId <- getAuthorId query
+        description <- getDescription query
+        Right $ EditAuthor {eAuthorId = authorId, eDescription = description}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right author -> do

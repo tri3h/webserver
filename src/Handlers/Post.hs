@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Handlers.Post (get, Handle (..)) where
 
@@ -43,14 +42,19 @@ get handle server filters order limit offset = do
   minorPhotos <- mapM (\x -> hGetMinorPhotos handle (sPostId x) f) shortPosts
   let fullPosts =
         zipWith7
-          ( \post fAuthor fUser fCategory fTag fComment fMinorPhoto ->
+          ( \post author user category tag comment minorPhoto ->
               FullPost
                 { fPostId = sPostId post,
                   fName = sName post,
                   fDate = sDate post,
                   fText = sText post,
                   fMainPhoto = sMainPhoto post,
-                  ..
+                  fAuthor = author,
+                  fUser = user,
+                  fComment = comment,
+                  fCategory = category,
+                  fTag = tag,
+                  fMinorPhoto = minorPhoto
                 }
           )
           shortPosts

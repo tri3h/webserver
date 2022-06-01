@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Database.Queries.Author where
 
@@ -56,7 +55,7 @@ get authId conn = do
   return $
     if null result
       then Left authorNotExist
-      else Right $ (\[(gAuthorId, gUserId, gDescription)] -> GetAuthor {..}) result
+      else Right $ (\[(authorId, userId, description)] -> GetAuthor {gAuthorId = authorId, gUserId = userId, gDescription = description}) result
 
 getMaybe :: AuthorId -> Connection -> IO (Maybe GetAuthor)
 getMaybe authId conn = do
@@ -67,8 +66,8 @@ getMaybe authId conn = do
       \WHERE authors.author_id = ?"
       (Only authId)
   case x of
-    [(gAuthorId, gUserId, gDescription)] ->
-      return $ Just GetAuthor {..}
+    [(authorId, userId, description)] ->
+      return $ Just GetAuthor {gAuthorId = authorId, gUserId = userId, gDescription = description}
     _ -> return Nothing
 
 edit :: EditAuthor -> Connection -> IO (Either Error ())

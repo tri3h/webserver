@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Database.Queries.Post where
 
@@ -35,18 +34,22 @@ get filters order limit offset f conn = do
   result <- query conn (fromString str) params
   let posts =
         map
-          ( \( sPostId,
-               sAuthorId,
-               sCategoryId,
-               sName,
+          ( \( postId,
+               authorId,
+               categoryId,
+               name,
                date,
-               sText,
+               text,
                mainPhoto
                ) ->
                 ShortPost
                   { sDate = Date . pack $ show (date :: Time.Date),
                     sMainPhoto = f <$> mainPhoto,
-                    ..
+                    sPostId = postId,
+                    sAuthorId = authorId,
+                    sName = name,
+                    sText = text,
+                    sCategoryId = categoryId
                   }
           )
           result
