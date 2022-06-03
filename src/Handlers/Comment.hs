@@ -1,22 +1,30 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Comment where
+module Handlers.Comment where
 
-import Data.Pool (Pool, withResource)
-import Database.PostgreSQL.Simple (Connection)
-import qualified Database.Queries.Comment as Db
 import Error (Error)
 import qualified Handlers.Logger as Logger
-import Network.HTTP.Types.URI (QueryText)
+import Network.HTTP.Types (QueryText)
 import Network.Wai (Response)
-import Types.Comment (CommentId (CommentId), CreateComment (..), commentsOnPage)
-import Types.Limit (Offset (..))
+import Types.Comment
+  ( CommentId (CommentId),
+    CreateComment (CreateComment, cPostId, cText, cToken),
+    GetComment,
+    commentsOnPage,
+  )
+import Types.Limit (Limit, Offset (Offset))
 import Types.PostComment (PostId (PostId))
 import Types.User (Token, UserId (UserId))
 import Utility (getInteger, getLimit, getOffset, getText, response200JSON, response201, response204, response400)
 
-create :: Logger.Handle IO -> Pool Connection -> QueryText -> Token -> IO Response
-create logger pool query token = do
+data Handle m = Handle
+  { hCreate :: CreateComment -> m (Either Error ()),
+    hGetEither :: PostId -> Limit -> Offset -> m (Either Error [GetComment]),
+    hDelete :: CommentId -> m (Either Error ())
+  }
+
+create :: Monad m => Handle m -> Logger.Handle m -> QueryText -> Token -> m Response
+create handle logger query token = do
   let info = do
         postId <- getPostId query
         text <- getText query "text"
@@ -24,35 +32,35 @@ create logger pool query token = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right comment -> do
-      result <- withResource pool $ Db.create comment
+      result <- hCreate handle comment
       Logger.debug logger $ "Tried to create comment and got: " ++ show result
       return $ case result of
         Right _ -> response201
         Left l -> response400 l
     Left l -> return $ response400 l
 
-get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-get logger pool query = do
+get :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+get handle logger query = do
   let info = getPostId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right postId -> do
       let limit = getLimit query commentsOnPage
       let offset = getOffset query $ Offset 0
-      result <- withResource pool $ Db.getEither postId limit offset
+      result <- hGetEither handle postId limit offset
       Logger.debug logger $ "Tried to get comment and got: " ++ show result
       return $ case result of
         Right r -> response200JSON r
         Left l -> response400 l
     Left l -> return $ response400 l
 
-delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-delete logger pool query = do
+delete :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+delete handle logger query = do
   let info = getCommentId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right commentId -> do
-      result <- withResource pool $ Db.delete commentId
+      result <- hDelete handle commentId
       Logger.debug logger $ "Tried to delete comment and got: " ++ show result
       return $ case result of
         Right _ -> response204

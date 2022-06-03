@@ -10,20 +10,20 @@ import Data.Text (pack)
 import Database.PostgreSQL.Simple (Connection)
 import qualified Database.Queries.User as UserDb
 import qualified Handlers.Logger as Logger
+import qualified Handlers.User as User
 import Types.User (CreateUser (..), Login (Login), Name (Name), Password (Password), Surname (Surname))
-import qualified User
 
-check :: Logger.Handle IO -> Pool Connection -> IO ()
-check logger pool = do
+check :: User.Handle IO -> Logger.Handle IO -> Pool Connection -> IO ()
+check userHandle logger pool = do
   hasAdmin <- withResource pool UserDb.hasAdmin
-  unless hasAdmin (make logger pool)
+  unless hasAdmin (make userHandle logger)
 
-make :: Logger.Handle IO -> Pool Connection -> IO ()
-make logger pool = do
+make :: User.Handle IO -> Logger.Handle IO -> IO ()
+make userHandle logger = do
   admin <- getDefaultAdmin logger
   case admin of
     Just x -> do
-      result <- User.makeAdmin pool x
+      result <- User.makeAdmin userHandle x
       Logger.info logger $ show result
     Nothing -> return ()
 

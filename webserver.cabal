@@ -26,9 +26,6 @@ source-repository head
 library
   exposed-modules:
       Admin
-      Author
-      Category
-      Comment
       Config
       Database.Connection
       Database.Migration
@@ -40,18 +37,19 @@ library
       Database.Queries.Post
       Database.Queries.Tag
       Database.Queries.User
-      Draft
       Error
+      Handlers.Author
       Handlers.Category
+      Handlers.Comment
       Handlers.Draft
+      Handlers.Image
       Handlers.Logger
       Handlers.Post
+      Handlers.Server
+      Handlers.Tag
       Handlers.User
-      Image
       Logger
-      Post
       Server
-      Tag
       Types.Author
       Types.Category
       Types.Comment
@@ -64,7 +62,6 @@ library
       Types.PostComment
       Types.Tag
       Types.User
-      User
       Utility
   other-modules:
       Paths_webserver
@@ -122,10 +119,15 @@ test-suite webserver-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      CategorySpec
-      DraftSpec
-      PostSpec
-      UserSpec
+      Author
+      Category
+      Comment
+      Draft
+      Handlers
+      Image
+      Post
+      Tag
+      User
       Paths_webserver
   hs-source-dirs:
       test
