@@ -2,6 +2,7 @@
 
 module Comment where
 
+import Data (commentId, postId, text, token)
 import Data.Functor.Identity (Identity (Identity))
 import Error (commentNotExist, invalidToken, noPost, noSpecified, postNotExist)
 import Handlers (commentHandle, loggerHandle, serverHandle, userHandle)
@@ -14,13 +15,16 @@ import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Comment (GetComment (GetComment))
 import Utility (response200JSON, response201, response204, response400, response404, showResp)
 
-main :: IO ()
-main = hspec $ do
+test :: IO ()
+test = hspec $ do
+  let req =
+        defaultRequest
+          { pathInfo = ["comments"]
+          }
   describe "Testing get comments" $ do
     let reqGet =
-          defaultRequest
-            { pathInfo = ["comments"],
-              requestMethod = "GET",
+          req
+            { requestMethod = "GET",
               queryString =
                 [ postId
                 ]
@@ -41,9 +45,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing create comment" $ do
     let reqCreate =
-          defaultRequest
-            { pathInfo = ["comments"],
-              requestMethod = "POST",
+          req
+            { requestMethod = "POST",
               queryString =
                 [ postId,
                   token,
@@ -81,9 +84,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing delete comment" $ do
     let reqDelete =
-          defaultRequest
-            { pathInfo = ["comments"],
-              requestMethod = "DELETE",
+          req
+            { requestMethod = "DELETE",
               queryString =
                 [ commentId,
                   token
@@ -113,15 +115,3 @@ main = hspec $ do
       let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" reqDelete ""
       let expectation = Identity . showResp $ response400 commentNotExist
       result `shouldBe` expectation
-
-postId :: QueryItem
-postId = ("post_id", Just "1")
-
-token :: QueryItem
-token = ("token", Just "token")
-
-text :: QueryItem
-text = ("text", Just "text")
-
-commentId :: QueryItem
-commentId = ("comment_id", Just "1")

@@ -2,6 +2,7 @@
 
 module User where
 
+import Data (avatar, login, name, password, surname, token, userId)
 import Data.ByteString (ByteString)
 import Data.Functor.Identity (Identity (Identity))
 import Error (invalidData, invalidToken, loginTaken, noImage, noSpecified, userNotExist)
@@ -9,20 +10,22 @@ import Handlers (getUser, loggerHandle, serverHandle, userHandle)
 import Handlers.Server (makeNoTokenResponse)
 import qualified Handlers.Server as Server
 import qualified Handlers.User as User
-import Network.HTTP.Types (QueryItem, status400)
 import Network.HTTP.Types.Status (status200)
 import Network.Wai (Request (..), Response, defaultRequest, responseHeaders, responseStatus)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.User (Password (Password))
 import Utility (response200JSON, response201, response204, response400, response404, showResp)
 
-main :: IO ()
-main = hspec $ do
+test :: IO ()
+test = hspec $ do
+  let req =
+        defaultRequest
+          { pathInfo = ["users"]
+          }
   describe "Testing create user" $ do
     let reqCreate =
-          defaultRequest
-            { pathInfo = ["users"],
-              requestMethod = "POST",
+          req
+            { requestMethod = "POST",
               queryString =
                 [ name,
                   surname,
@@ -88,14 +91,13 @@ main = hspec $ do
       let expectation = Identity . showResp $ response400 loginTaken
       result `shouldBe` expectation
     it "Should success with an avatar" $ do
-      let result = showResp <$> makeNoTokenResponse serverHandle loggerHandle "" reqCreate body
+      let result = showResp <$> makeNoTokenResponse serverHandle loggerHandle "" reqCreate avatar
       let expectation = Identity . showResp . response200JSON $ User.generateToken userHandle
       result `shouldBe` expectation
   describe "Testing get user" $ do
     let reqGet =
-          defaultRequest
-            { pathInfo = ["users"],
-              requestMethod = "GET",
+          req
+            { requestMethod = "GET",
               queryString =
                 [ token
                 ]
@@ -116,7 +118,7 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing get new token" $ do
     let reqGetNew =
-          defaultRequest
+          req
             { pathInfo = ["tokens"],
               queryString =
                 [ login,
@@ -149,13 +151,13 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing add an avatar" $ do
     let reqAdd =
-          defaultRequest
+          req
             { pathInfo = ["users", "avatar"],
               requestMethod = "POST",
               queryString = [token]
             }
     it "Should successfully add" $ do
-      let result = showResp <$> makeNoTokenResponse serverHandle loggerHandle "" reqAdd body
+      let result = showResp <$> makeNoTokenResponse serverHandle loggerHandle "" reqAdd avatar
       let expectation = Identity . showResp $ response201
       result `shouldBe` expectation
     it "Should fail if there is no avatar" $ do
@@ -164,19 +166,18 @@ main = hspec $ do
       result `shouldBe` expectation
     it "Should fail if token is invalid" $ do
       let serverHandleCase = serverHandle {Server.hUser = userHandle {User.hIsTokenValid = \_ -> return False}}
-      let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" reqAdd body
+      let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" reqAdd avatar
       let expectation = Identity . showResp $ response400 invalidToken
       result `shouldBe` expectation
     it "Should fail if there is no token" $ do
       let reqAddCase = reqAdd {queryString = []}
-      let result = showResp <$> makeNoTokenResponse serverHandle loggerHandle "" reqAddCase body
+      let result = showResp <$> makeNoTokenResponse serverHandle loggerHandle "" reqAddCase avatar
       let expectation = Identity $ showResp response404
       result `shouldBe` expectation
   describe "Testing delete user" $ do
     let reqDelete =
-          defaultRequest
-            { pathInfo = ["users"],
-              requestMethod = "DELETE",
+          req
+            { requestMethod = "DELETE",
               queryString = [token, userId]
             }
     it "Should successfully delete" $ do
@@ -208,24 +209,3 @@ main = hspec $ do
       let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" reqDelete ""
       let expectation = Identity . showResp $ response400 userNotExist
       result `shouldBe` expectation
-
-name :: QueryItem
-name = ("name", Just "name")
-
-surname :: QueryItem
-surname = ("surname", Just "surname")
-
-login :: QueryItem
-login = ("login", Just "login")
-
-password :: QueryItem
-password = ("password", Just "password")
-
-token :: QueryItem
-token = ("token", Just "token")
-
-userId :: QueryItem
-userId = ("user_id", Just "1")
-
-body :: ByteString
-body = "Content-Type: image/png \r name=\"avatar\" 12345 \r\n-"

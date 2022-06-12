@@ -9,11 +9,11 @@ import qualified User
 
 main :: IO ()
 main = do
-  User.main
-  Tag.main
-  Author.main
-  Image.main
-  Category.main
-  Comment.main
-  Post.main
-  Draft.main
+  User.test
+  Tag.test
+  Author.test
+  Image.test
+  Category.test
+  Comment.test
+  Post.test
+  Draft.test

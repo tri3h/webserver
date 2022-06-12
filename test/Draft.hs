@@ -2,6 +2,7 @@
 
 module Draft where
 
+import Data (categoryId, description, draftId, mainPhoto, minorPhoto, minorPhotoId, name, tagId, token)
 import Data.ByteString (ByteString)
 import Data.Functor.Identity (Identity (Identity))
 import Database.Queries.Draft (hasPost)
@@ -9,20 +10,22 @@ import Error (categoryNotExist, draftNotExist, imageNotExist, invalidToken, noDe
 import Handlers (draftHandle, getDraft, loggerHandle, serverHandle)
 import qualified Handlers.Draft as Draft
 import Handlers.Server (Handle (hDraft), makeNoTokenResponse)
-import Network.HTTP.Types (QueryItem)
 import Network.Wai (Request (pathInfo, queryString, requestMethod), defaultRequest)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Author (AuthorId (AuthorId))
 import Types.Draft (DraftId (DraftId), GetDraft (gDraftId))
 import Utility (response200JSON, response201, response204, response400, response404, showResp)
 
-main :: IO ()
-main = hspec $ do
+test :: IO ()
+test = hspec $ do
+  let req =
+        defaultRequest
+          { pathInfo = ["drafts"]
+          }
   describe "Testing get draft" $ do
     let reqGet =
-          defaultRequest
-            { pathInfo = ["drafts"],
-              requestMethod = "GET",
+          req
+            { requestMethod = "GET",
               queryString =
                 [ token,
                   draftId
@@ -54,7 +57,7 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing get list of draft id" $ do
     let reqGetList =
-          defaultRequest
+          req
             { pathInfo = ["drafts", "id"],
               requestMethod = "GET",
               queryString =
@@ -72,7 +75,7 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing publish draft" $ do
     let reqPublish =
-          defaultRequest
+          req
             { pathInfo = ["publish"],
               queryString =
                 [ token,
@@ -117,9 +120,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing create draft" $ do
     let reqCreate =
-          defaultRequest
-            { pathInfo = ["drafts"],
-              requestMethod = "POST",
+          req
+            { requestMethod = "POST",
               queryString =
                 [ token,
                   categoryId,
@@ -178,7 +180,7 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing add minor photo to a draft" $ do
     let reqAdd =
-          defaultRequest
+          req
             { pathInfo = ["drafts", "minor_photo"],
               requestMethod = "POST",
               queryString =
@@ -217,9 +219,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing edit draft" $ do
     let reqEdit =
-          defaultRequest
-            { pathInfo = ["drafts"],
-              requestMethod = "PUT",
+          req
+            { requestMethod = "PUT",
               queryString =
                 [ token,
                   draftId,
@@ -275,9 +276,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing delete draft" $ do
     let reqDelete =
-          defaultRequest
-            { pathInfo = ["drafts"],
-              requestMethod = "DELETE",
+          req
+            { requestMethod = "DELETE",
               queryString =
                 [ token,
                   draftId
@@ -321,7 +321,7 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing delete minor photo from a draft" $ do
     let reqDeletePhoto =
-          defaultRequest
+          req
             { pathInfo = ["drafts", "minor_photo"],
               requestMethod = "DELETE",
               queryString =
@@ -364,30 +364,3 @@ main = hspec $ do
       let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" reqDeletePhoto ""
       let expectation = Identity . showResp $ response400 imageNotExist
       result `shouldBe` expectation
-
-token :: QueryItem
-token = ("token", Just "token")
-
-draftId :: QueryItem
-draftId = ("draft_id", Just "1")
-
-categoryId :: QueryItem
-categoryId = ("category_id", Just "1")
-
-description :: QueryItem
-description = ("description", Just "description")
-
-name :: QueryItem
-name = ("name", Just "name")
-
-tagId :: QueryItem
-tagId = ("tag_id", Just "1")
-
-minorPhotoId :: QueryItem
-minorPhotoId = ("minor_photo_id", Just "1")
-
-mainPhoto :: ByteString
-mainPhoto = "Content-Type: image/png \r name=\"main_photo\" 12345 \r\n-"
-
-minorPhoto :: ByteString
-minorPhoto = "Content-Type: image/png \r name=\"minor_photo\" 12345 \r\n-"

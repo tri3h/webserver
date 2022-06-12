@@ -2,24 +2,27 @@
 
 module Author where
 
+import Data (authorId, description, token, userId)
 import Data.Functor.Identity (Identity (Identity))
 import Error (alreadyAuthor, authorNotExist, invalidToken, noSpecified)
 import Handlers (authorHandle, getAuthor, loggerHandle, serverHandle, userHandle)
 import qualified Handlers.Author as Author
 import Handlers.Server (Handle (hAuthor, hUser), makeNoTokenResponse)
 import qualified Handlers.User as User
-import Network.HTTP.Types (QueryItem)
 import Network.Wai (Request (pathInfo, queryString, requestMethod), defaultRequest)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Utility (response200JSON, response201, response204, response400, response404, showResp)
 
-main :: IO ()
-main = hspec $ do
+test :: IO ()
+test = hspec $ do
+  let req =
+        defaultRequest
+          { pathInfo = ["authors"]
+          }
   describe "Testing create author" $ do
     let reqCreate =
-          defaultRequest
-            { pathInfo = ["authors"],
-              requestMethod = "POST",
+          req
+            { requestMethod = "POST",
               queryString =
                 [ token,
                   userId,
@@ -57,9 +60,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing get author" $ do
     let reqGet =
-          defaultRequest
-            { pathInfo = ["authors"],
-              requestMethod = "GET",
+          req
+            { requestMethod = "GET",
               queryString =
                 [ token,
                   authorId
@@ -91,9 +93,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing edit author" $ do
     let reqEdit =
-          defaultRequest
-            { pathInfo = ["authors"],
-              requestMethod = "PUT",
+          req
+            { requestMethod = "PUT",
               queryString =
                 [ token,
                   authorId,
@@ -131,9 +132,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing delete author" $ do
     let reqDelete =
-          defaultRequest
-            { pathInfo = ["authors"],
-              requestMethod = "DELETE",
+          req
+            { requestMethod = "DELETE",
               queryString =
                 [ token,
                   authorId
@@ -163,18 +163,3 @@ main = hspec $ do
       let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" reqDelete ""
       let expectation = Identity $ showResp response204
       result `shouldBe` expectation
-
-token :: QueryItem
-token = ("token", Just "token")
-
-name :: QueryItem
-name = ("name", Just "name")
-
-description :: QueryItem
-description = ("description", Just "description")
-
-userId :: QueryItem
-userId = ("user_id", Just "1")
-
-authorId :: QueryItem
-authorId = ("author_id", Just "1")

@@ -2,19 +2,19 @@
 
 module Post where
 
+import Data (authorId, categoryId, dateAfter, dateBefore, postName, sortBy, substring, tag, tagAll, tagId, tagIn, text)
 import Data.Functor.Identity (Identity (Identity))
 import Error (noPost)
 import Handlers (fullPost, loggerHandle, postHandle, serverHandle)
 import qualified Handlers.Post as Post
 import Handlers.Server (Handle (hPost), makeNoTokenResponse)
-import Network.HTTP.Types (QueryItem)
 import Network.Wai (Request (pathInfo, queryString, requestMethod), defaultRequest)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Post (FullPost)
 import Utility (response200JSON, response400, showResp)
 
-main :: IO ()
-main = hspec $
+test :: IO ()
+test = hspec $
   describe "Testing get post" $ do
     let req =
           defaultRequest
@@ -57,42 +57,3 @@ main = hspec $
       let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" reqCase ""
       let expectation = Identity . showResp $ response400 noPost
       result `shouldBe` expectation
-
-authorId :: QueryItem
-authorId = ("author_id", Just "1")
-
-categoryId :: QueryItem
-categoryId = ("category_id", Just "1")
-
-tag :: QueryItem
-tag = ("tag", Just "tag")
-
-tagId :: QueryItem
-tagId = ("tag_id", Just "1")
-
-tagIn :: QueryItem
-tagIn = ("tag_in", Just "1,2")
-
-tagAll :: QueryItem
-tagAll = ("tag_all", Just "1,2")
-
-postName :: QueryItem
-postName = ("post_name", Just "name")
-
-text :: QueryItem
-text = ("text", Just "text")
-
-substring :: QueryItem
-substring = ("substring", Just "substring")
-
-dateAfter :: QueryItem
-dateAfter = ("date_after", Just "01-01-2000")
-
-dateAt :: QueryItem
-dateAt = ("date_at", Just "01-01-2000")
-
-dateBefore :: QueryItem
-dateBefore = ("date_before", Just "01-01-2000")
-
-sortBy :: QueryItem
-sortBy = ("sort_by", Just "by_author")

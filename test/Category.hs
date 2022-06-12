@@ -2,25 +2,28 @@
 
 module Category where
 
+import Data (categoryId, name, parentId, token)
 import Data.Functor.Identity (Identity (Identity))
 import Error (categoryNameTaken, categoryNotExist, invalidParent, noDeleteHasChildren, noSpecified)
 import Handlers (categoryHandle, getCategory, loggerHandle, serverHandle, userHandle)
 import qualified Handlers.Category as Category
 import Handlers.Server (Handle (hCategory, hUser), makeNoTokenResponse)
 import qualified Handlers.User as User
-import Network.HTTP.Types (QueryItem)
 import Network.Wai (Request (pathInfo, queryString, requestMethod), defaultRequest)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Category (GetCategory (GetCategory))
 import Utility (response200JSON, response201, response204, response400, response404, showResp)
 
-main :: IO ()
-main = hspec $ do
+test :: IO ()
+test = hspec $ do
+  let req =
+        defaultRequest
+          { pathInfo = ["categories"]
+          }
   describe "Testing create category" $ do
     let reqCreate =
-          defaultRequest
-            { pathInfo = ["categories"],
-              requestMethod = "POST",
+          req
+            { requestMethod = "POST",
               queryString =
                 [ token,
                   name,
@@ -63,9 +66,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing get category" $ do
     let reqGet =
-          defaultRequest
-            { pathInfo = ["categories"],
-              requestMethod = "GET",
+          req
+            { requestMethod = "GET",
               queryString =
                 [ categoryId
                 ]
@@ -86,9 +88,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing edit category" $ do
     let reqEdit =
-          defaultRequest
-            { pathInfo = ["categories"],
-              requestMethod = "PUT",
+          req
+            { requestMethod = "PUT",
               queryString =
                 [ categoryId,
                   token,
@@ -132,9 +133,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing delete category" $ do
     let reqDelete =
-          defaultRequest
-            { pathInfo = ["categories"],
-              requestMethod = "DELETE",
+          req
+            { requestMethod = "DELETE",
               queryString =
                 [ categoryId,
                   token
@@ -164,15 +164,3 @@ main = hspec $ do
       let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" reqDelete ""
       let expectation = Identity . showResp $ response400 noDeleteHasChildren
       result `shouldBe` expectation
-
-token :: QueryItem
-token = ("token", Just "token")
-
-name :: QueryItem
-name = ("name", Just "name")
-
-parentId :: QueryItem
-parentId = ("parent_id", Just "1")
-
-categoryId :: QueryItem
-categoryId = ("category_id", Just "1")

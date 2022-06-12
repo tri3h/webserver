@@ -2,18 +2,18 @@
 
 module Image where
 
+import Data (imageId)
 import Data.Functor.Identity (Identity (Identity))
 import Error (noImage, noSpecified)
 import Handlers (imageHandle, loggerHandle, serverHandle)
 import qualified Handlers.Image as Image
 import Handlers.Server (Handle (hImage), makeNoTokenResponse)
-import Network.HTTP.Types (QueryItem)
 import Network.Wai (Request (pathInfo, queryString, requestMethod), defaultRequest)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Utility (response200Image, response400, showResp)
 
-main :: IO ()
-main = hspec $
+test :: IO ()
+test = hspec $
   describe "Testing get image" $ do
     let req =
           defaultRequest
@@ -37,6 +37,3 @@ main = hspec $
       let result = showResp <$> makeNoTokenResponse serverHandleCase loggerHandle "" req ""
       let expectation = Identity . showResp $ response400 noImage
       result `shouldBe` expectation
-
-imageId :: QueryItem
-imageId = ("image_id", Just "1")

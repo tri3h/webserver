@@ -2,25 +2,28 @@
 
 module Tag where
 
+import Data (name, tagId, token)
 import Data.Functor.Identity (Identity (Identity))
 import Error (invalidToken, noSpecified, tagNameTaken, tagNotExist)
 import Handlers (loggerHandle, serverHandle, tag, tagHandle, userHandle)
 import Handlers.Server (Handle (hTag, hUser), makeNoTokenResponse)
 import qualified Handlers.Tag as Tag
 import qualified Handlers.User as User
-import Network.HTTP.Types (QueryItem)
 import Network.Wai (Request (pathInfo, queryString, requestMethod), defaultRequest)
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Types.Tag (Tag (Tag))
 import Utility (response200JSON, response201, response204, response400, response404, showResp)
 
-main :: IO ()
-main = hspec $ do
+test :: IO ()
+test = hspec $ do
+  let req =
+        defaultRequest
+          { pathInfo = ["tags"]
+          }
   describe "Testing create tag" $ do
     let reqCreate =
-          defaultRequest
-            { pathInfo = ["tags"],
-              requestMethod = "POST",
+          req
+            { requestMethod = "POST",
               queryString =
                 [ token,
                   name
@@ -52,9 +55,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing get tag" $ do
     let reqGet =
-          defaultRequest
-            { pathInfo = ["tags"],
-              requestMethod = "GET",
+          req
+            { requestMethod = "GET",
               queryString =
                 [ token,
                   tagId
@@ -76,9 +78,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing edit tag" $ do
     let reqEdit =
-          defaultRequest
-            { pathInfo = ["tags"],
-              requestMethod = "PUT",
+          req
+            { requestMethod = "PUT",
               queryString =
                 [ token,
                   tagId,
@@ -121,9 +122,8 @@ main = hspec $ do
       result `shouldBe` expectation
   describe "Testing delete tag" $ do
     let reqDelete =
-          defaultRequest
-            { pathInfo = ["tags"],
-              requestMethod = "DELETE",
+          req
+            { requestMethod = "DELETE",
               queryString =
                 [ token,
                   tagId
@@ -153,12 +153,3 @@ main = hspec $ do
       let result = showResp <$> makeNoTokenResponse serverHandle loggerHandle "" reqDeleteCase ""
       let expectation = Identity . showResp . response400 $ noSpecified "tag_id"
       result `shouldBe` expectation
-
-token :: QueryItem
-token = ("token", Just "token")
-
-name :: QueryItem
-name = ("name", Just "name")
-
-tagId :: QueryItem
-tagId = ("tag_id", Just "1")
