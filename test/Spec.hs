@@ -1,12 +1,19 @@
-import qualified CategorySpec
-import qualified DraftSpec
-import qualified PostSpec
-import Test.Hspec
-import qualified UserSpec
+import qualified Author
+import qualified Category
+import qualified Comment
+import qualified Draft
+import qualified Image
+import qualified Post
+import qualified Tag
+import qualified User
 
 main :: IO ()
 main = do
-  UserSpec.main
-  CategorySpec.main
-  PostSpec.main
-  DraftSpec.main
+  User.test
+  Tag.test
+  Author.test
+  Image.test
+  Category.test
+  Comment.test
+  Post.test
+  Draft.test

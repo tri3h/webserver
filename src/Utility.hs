@@ -4,6 +4,7 @@ module Utility where
 
 import Control.Monad (join)
 import Data.Aeson (ToJSON, encode)
+import Data.Binary.Builder (fromByteString, toLazyByteString)
 import qualified Data.ByteString as BS
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, append, null, pack, splitOn, unpack)
@@ -11,7 +12,8 @@ import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Error (Error, noImage, noSpecified)
 import Network.HTTP.Types (hContentType, status200, status201, status204, status400, status404)
 import Network.HTTP.Types.URI (QueryText)
-import Network.Wai (Response, responseLBS)
+import Network.Wai (Response, responseBuilder, responseLBS)
+import Network.Wai.Internal (Response (..))
 import Text.Read (readMaybe)
 import Types.Config (ServerAddress)
 import Types.Image (Image (Image), ImageBody, ImageId (ImageId), ImageType, Link (Link), imageAddress)
@@ -109,8 +111,19 @@ response404 = responseLBS status404 [] ""
 response200JSON :: ToJSON a => a -> Response
 response200JSON x = responseLBS status200 [(hContentType, "application/json")] $ encode x
 
+response200Image :: ImageType -> ImageBody -> Response
+response200Image imageType image =
+  responseBuilder
+    status200
+    [(hContentType, encodeUtf8 $ "image/" `append` imageType)]
+    $ fromByteString image
+
 response201 :: Response
 response201 = responseLBS status201 [] ""
 
 response204 :: Response
 response204 = responseLBS status204 [] ""
+
+showResp :: Response -> Maybe String
+showResp (ResponseBuilder status header builder) = Just (show status ++ show header ++ show (toLazyByteString builder))
+showResp _ = Nothing

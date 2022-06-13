@@ -1,24 +1,32 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Handlers.Post (get, Handle (..)) where
 
 import Data.List (zipWith7)
 import Error (Error, noPost)
+import qualified Handlers.Logger as Logger
+import Network.HTTP.Types (QueryText)
+import Network.Wai (Response)
 import qualified Types.Author as A
 import Types.Category (CategoryId, GetCategory)
+import qualified Types.Category as Category
 import Types.Comment (GetComment)
 import Types.Config (ServerAddress)
 import qualified Types.Filter as F
 import Types.Image (ImageId, Link)
-import Types.Limit (Limit, Offset)
+import Types.Limit (Limit, Offset (Offset))
 import Types.Post
-  ( FullPost (..),
+  ( Date (Date),
+    FullPost (..),
+    Name (Name),
     ShortPost (..),
+    postsOnPage,
   )
 import Types.PostComment (PostId)
 import qualified Types.Tag as Tag
 import qualified Types.User as User
-import Utility (imageIdToLink)
+import Utility (getLimit, getMaybeInteger, getMaybeIntegers, getMaybeText, getOffset, imageIdToLink, response200JSON, response400)
 
 data Handle m = Handle
   { hGet :: F.Filter -> F.Order -> Limit -> Offset -> (ImageId -> Link) -> m [ShortPost],
@@ -30,8 +38,22 @@ data Handle m = Handle
     hGetComment :: PostId -> m [GetComment]
   }
 
-get :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> Limit -> Offset -> m (Either Error [FullPost])
-get handle server filters order limit offset = do
+get :: Monad m => Handle m -> Logger.Handle m -> ServerAddress -> QueryText -> m Response
+get handle logger address query = do
+  let filters = getFilter query
+  Logger.debug logger $ "Tried to parse query and got filters: " ++ show filters
+  let order = getOrder query
+  Logger.debug logger $ "Tried to parse query and got order: " ++ show order
+  let limit = getLimit query postsOnPage
+  let offset = getOffset query (Offset 0)
+  posts <- getPost handle address filters order limit offset
+  Logger.debug logger $ "Tried to get posts and got: " ++ show posts
+  return $ case posts of
+    Left l -> response400 l
+    Right r -> response200JSON r
+
+getPost :: Monad m => Handle m -> ServerAddress -> F.Filter -> F.Order -> Limit -> Offset -> m (Either Error [FullPost])
+getPost handle server filters order limit offset = do
   let f = imageIdToLink server
   shortPosts <- hGet handle filters order limit offset f
   authors <- mapM (hGetAuthor handle . sAuthorId) shortPosts
@@ -68,3 +90,28 @@ get handle server filters order limit offset = do
     if null fullPosts
       then Left noPost
       else Right fullPosts
+
+getOrder :: QueryText -> F.Order
+getOrder query = case getMaybeText query "sort_by" of
+  Just "by_date" -> F.ByDate
+  Just "by_author" -> F.ByAuthor
+  Just "by_category" -> F.ByCategory
+  Just "by_photos_number" -> F.ByPhotosNumber
+  _ -> F.None
+
+getFilter :: QueryText -> F.Filter
+getFilter query =
+  F.Filter
+    { F.dateAfter = Date <$> getMaybeText query "date_after",
+      F.dateBefore = Date <$> getMaybeText query "date_before",
+      F.dateAt = Date <$> getMaybeText query "date_at",
+      F.authorName = User.Name <$> getMaybeText query "author_name",
+      F.categoryId = Category.CategoryId <$> getMaybeInteger query "category_id",
+      F.tagId = Tag.TagId <$> getMaybeInteger query "tag_id",
+      F.tag = Tag.Name <$> getMaybeText query "tag",
+      F.tagIn = map Tag.TagId $ getMaybeIntegers query "tag_in",
+      F.tagAll = map Tag.TagId $ getMaybeIntegers query "tag_all",
+      F.postName = Name <$> getMaybeText query "post_name",
+      F.text = getMaybeText query "text",
+      F.substring = getMaybeText query "substring"
+    }

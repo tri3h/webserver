@@ -18,40 +18,24 @@ To run a script with default parameters: *bash script_name.sh*. In this case scr
 To run a script with user parameters: *bash script_name.sh -parameter1 "value1" -parameter2 "value2"*. All required parameters that will not be filled explicitly, will use default values. All optional parameters that will not be filled, will be empty. Some of scripts take an image, they take it in the form of a path to the file, for example to add a minor photo to a draft: *bash add_minor_photo.sh -t "567980" -d "8" -p "/home/user/Documents/tiger.jpg"*. 
 
 ## Basic structure 
-The project has 3 main parts:
-<details>
-<summary>Server part</summary>
 
-The file **Server.hs** gets a user request, considers a path and a method within a request and then calls a requested function from one of the server part files. These files are found in the folder */src*.
-Each of these functions gets a query and, if necessary, a body of request from the **Server.hs**. Then they try to parse these data using functions from **Utility.hs** and then check if all needed data are presented. If not, they give a negative answer to a user. Otherwise they call functons from *Handler part* or *Database part* and give an answer to a user according to results.
-</details>
+The file *src/Server.hs* starts server and gets a user request, then calls *Handlers/Server.hs* to consider a path and a method within a request. Depending on received data it calls other functions from *Handlers* to try to parse user data using functions from *src/Utility.hs* and then check if all needed data is presented. If not, they give a negative answer to a user. Otherwise they call functons from *Database/Queries* to insert, update, delete or get data and give an answer to a user according to results.
 
-<details>
-<summary>Handler part</summary>
+There are also:
 
-Files from this part are in the folder */Handler*. They get data from the server part and perform actions with a help of *Database part*, then return results to the server part. 
-</details>
+- *Database/Connection.hs* that is responsible for openning/closing connection to a database
 
-<details>
-<summary>Database part</summary>
+- *Database/Migration.hs* that is responsible for applying migrations to a database
 
-This part is responsible for work with database and contains queries to a database. They are stored in the folder */Database/Queries*. They are used to insert, update, delete or get data from a database.
-**Connection.hs** is responsible for openning/closing connection to a database.
-**Migration.hs** is responsible for applying migrations to a database.
-</details>
+- *Types* that contains types
 
-Also there is folder */Types* with types.
-These parts are splitted into files with the same names. For example, there are 4 files with a name *User.hs*: one in the Server part, one in the Handler part, one in the Database part and one in the Types. Some have only 3 files (without handler part). 
+- *src/Error.hs* that contains possible errors
 
-<details>
-<summary>Additional parts</summary>
+- *Scripts* that contains sh scripts with curl requests in main folder and additional utility scripts in *utility* folder. 
 
-- *Scripts* contains sh scripts with curl requests in main folder and additional utility scripts in *utility* folder. 
+- *DatabaseMigrations* that contains sql files that needed to make migrations.
 
-- *DatabaseMigrations* contains sql files that needed to make migrations.
-
-- *Test* contains tests for the Handler part.
-</details>
+- *Test* that contains tests for the *Handlers* files.
 
 ## List of endpoints
 
@@ -145,7 +129,9 @@ These parts are splitted into files with the same names. For example, there are 
 
 - POST users/avatar
     * Add an avatar to a user (or change it in case there is already an avatar)
-    * Required parameters: an image "avatar"
+    * Required parameters:
+        * token 
+    * Also there should be an image "avatar"
     * Return nothing in case of success
 
 - POST /comments

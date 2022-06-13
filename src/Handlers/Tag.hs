@@ -1,38 +1,43 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Tag where
+module Handlers.Tag where
 
-import Data.Pool (Pool, withResource)
-import Database.PostgreSQL.Simple (Connection)
-import qualified Database.Queries.Tag as Db
-import Error (Error)
+import Error (Error (..))
 import qualified Handlers.Logger as Logger
-import Network.HTTP.Types.URI (QueryText)
+import Network.HTTP.Types (QueryText)
 import Network.Wai (Response)
-import Types.Limit (Offset (Offset))
+import Types.Limit (Limit (..), Offset (..))
 import qualified Types.Tag as T
 import Utility (getInteger, getLimit, getMaybeInteger, getOffset, getText, response200JSON, response201, response204, response400)
 
-create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-create logger pool query = do
+data Handle m = Handle
+  { hCreate :: T.Name -> m (Either Error ()),
+    hGet :: T.TagId -> m (Either Error T.Tag),
+    hGetAll :: Limit -> Offset -> m [T.Tag],
+    hEdit :: T.Tag -> m (Either Error ()),
+    hDelete :: T.TagId -> m (Either Error ())
+  }
+
+create :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+create handle logger query = do
   let info = getName query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right name -> do
-      result <- withResource pool $ Db.create name
+      result <- hCreate handle name
       Logger.debug logger $ "Tried to create tag and got: " ++ show result
       return $ case result of
         Left l -> response400 l
         Right _ -> response201
     Left l -> return $ response400 l
 
-get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-get logger pool query = do
+get :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+get handle logger query = do
   let info = getMaybeTagId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Just tagId -> do
-      result <- withResource pool $ Db.get tagId
+      result <- hGet handle tagId
       Logger.debug logger $ "Tried to get a tag and got: " ++ show result
       return $ case result of
         Right r -> response200JSON r
@@ -40,12 +45,12 @@ get logger pool query = do
     Nothing -> do
       let limit = getLimit query T.tagsOnPage
       let offset = getOffset query $ Offset 0
-      result <- withResource pool $ Db.getAll limit offset
+      result <- hGetAll handle limit offset
       Logger.debug logger $ "Tried to get a list of tags and got: " ++ show result
       return $ response200JSON result
 
-edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-edit logger pool query = do
+edit :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+edit handle logger query = do
   let info = do
         name <- getName query
         tagId <- getTagId query
@@ -54,20 +59,20 @@ edit logger pool query = do
   case info of
     Right (tagId, name) -> do
       let tag = T.Tag {T.tagId = tagId, T.name = name}
-      result <- withResource pool $ Db.edit tag
+      result <- hEdit handle tag
       Logger.debug logger $ "Tried to edit tag and got: " ++ show result
       return $ case result of
         Right _ -> response201
         Left l -> response400 l
     Left l -> return $ response400 l
 
-delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-delete logger pool query = do
+delete :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+delete handle logger query = do
   let info = getTagId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right tagId -> do
-      result <- withResource pool $ Db.delete tagId
+      result <- hDelete handle tagId
       Logger.debug logger $ "Tried to delete tag and got: " ++ show result
       return $ case result of
         Right _ -> response204

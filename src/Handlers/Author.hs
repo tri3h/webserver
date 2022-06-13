@@ -1,25 +1,30 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Author where
+module Handlers.Author where
 
-import Data.Pool (Pool, withResource)
-import Database.PostgreSQL.Simple (Connection)
-import qualified Database.Queries.Author as Db
 import Error (Error)
 import qualified Handlers.Logger as Logger
-import Network.HTTP.Types.URI (QueryText)
+import Network.HTTP.Types (QueryText)
 import Network.Wai (Response)
 import Types.Author
   ( AuthorId (AuthorId),
-    CreateAuthor (..),
+    CreateAuthor (CreateAuthor, cDescription, cUserId),
     Description (Description),
-    EditAuthor (..),
+    EditAuthor (EditAuthor, eAuthorId, eDescription),
+    GetAuthor,
   )
 import Types.User (UserId (UserId))
 import Utility (getInteger, getText, response200JSON, response201, response204, response400)
 
-create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-create logger pool query = do
+data Handle m = Handle
+  { hCreate :: CreateAuthor -> m (Either Error ()),
+    hGet :: AuthorId -> m (Either Error GetAuthor),
+    hEdit :: EditAuthor -> m (Either Error ()),
+    hDelete :: AuthorId -> m (Either Error ())
+  }
+
+create :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+create handle logger query = do
   let info = do
         userId <- getUserId query
         description <- getDescription query
@@ -28,28 +33,28 @@ create logger pool query = do
   case info of
     Right (userId, description) -> do
       let author = CreateAuthor {cUserId = userId, cDescription = description}
-      result <- withResource pool $ Db.create author
+      result <- hCreate handle author
       Logger.debug logger $ "Tried to create author and got: " ++ show result
       return $ case result of
         Left l -> response400 l
         Right _ -> response201
     Left l -> return $ response400 l
 
-get :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-get logger pool query = do
+get :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+get handle logger query = do
   let info = getAuthorId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- withResource pool $ Db.get authorId
+      result <- hGet handle authorId
       Logger.debug logger $ "Tried to get author and got: " ++ show result
       return $ case result of
         Right r -> response200JSON r
         Left l -> response400 l
     Left l -> return $ response400 l
 
-edit :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-edit logger pool query = do
+edit :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+edit handle logger query = do
   let info = do
         authorId <- getAuthorId query
         description <- getDescription query
@@ -57,20 +62,20 @@ edit logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right author -> do
-      result <- withResource pool $ Db.edit author
+      result <- hEdit handle author
       Logger.debug logger $ "Tried to edit author and got: " ++ show result
       return $ case result of
         Right _ -> response201
         Left l -> response400 l
     Left l -> return $ response400 l
 
-delete :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
-delete logger pool query = do
+delete :: Monad m => Handle m -> Logger.Handle m -> QueryText -> m Response
+delete handle logger query = do
   let info = getAuthorId query
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right authorId -> do
-      result <- withResource pool $ Db.delete authorId
+      result <- hDelete handle authorId
       Logger.debug logger $ "Tried to delete author and got: " ++ show result
       return $ case result of
         Right _ -> response204

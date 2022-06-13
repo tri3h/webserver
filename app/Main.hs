@@ -1,6 +1,5 @@
 module Main where
 
-import qualified Admin
 import qualified Config
 import Control.Monad (void)
 import qualified Database.Connection as Connection
@@ -16,5 +15,4 @@ main = do
   let db = database config
   void $ Database.Migration.execute db logger
   pool <- Connection.makePool db
-  Admin.check logger pool
   Server.run logger config pool
