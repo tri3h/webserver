@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Comment where
 
@@ -17,11 +16,11 @@ import Types.User (Token, UserId (UserId))
 import Utility (getInteger, getLimit, getOffset, getText, response200JSON, response201, response204, response400)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> Token -> IO Response
-create logger pool query cToken = do
+create logger pool query token = do
   let info = do
-        cPostId <- getPostId query
-        cText <- getText query "text"
-        Right CreateComment {..}
+        postId <- getPostId query
+        text <- getText query "text"
+        Right CreateComment {cPostId = postId, cText = text, cToken = token}
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right comment -> do

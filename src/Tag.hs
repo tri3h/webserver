@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Tag where
 
@@ -11,7 +10,7 @@ import qualified Handlers.Logger as Logger
 import Network.HTTP.Types.URI (QueryText)
 import Network.Wai (Response)
 import Types.Limit (Offset (Offset))
-import Types.Tag (Name (Name), Tag (..), TagId (TagId), tagsOnPage)
+import qualified Types.Tag as T
 import Utility (getInteger, getLimit, getMaybeInteger, getOffset, getText, response200JSON, response201, response204, response400)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> IO Response
@@ -39,7 +38,7 @@ get logger pool query = do
         Right r -> response200JSON r
         Left l -> response400 l
     Nothing -> do
-      let limit = getLimit query tagsOnPage
+      let limit = getLimit query T.tagsOnPage
       let offset = getOffset query $ Offset 0
       result <- withResource pool $ Db.getAll limit offset
       Logger.debug logger $ "Tried to get a list of tags and got: " ++ show result
@@ -54,7 +53,7 @@ edit logger pool query = do
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Right (tagId, name) -> do
-      let tag = Tag {..}
+      let tag = T.Tag {T.tagId = tagId, T.name = name}
       result <- withResource pool $ Db.edit tag
       Logger.debug logger $ "Tried to edit tag and got: " ++ show result
       return $ case result of
@@ -75,11 +74,11 @@ delete logger pool query = do
         Left l -> response400 l
     Left l -> return $ response400 l
 
-getName :: QueryText -> Either Error Name
-getName query = Name <$> getText query "name"
+getName :: QueryText -> Either Error T.Name
+getName query = T.Name <$> getText query "name"
 
-getTagId :: QueryText -> Either Error TagId
-getTagId query = TagId <$> getInteger query "tag_id"
+getTagId :: QueryText -> Either Error T.TagId
+getTagId query = T.TagId <$> getInteger query "tag_id"
 
-getMaybeTagId :: QueryText -> Maybe TagId
-getMaybeTagId query = TagId <$> getMaybeInteger query "tag_id"
+getMaybeTagId :: QueryText -> Maybe T.TagId
+getMaybeTagId query = T.TagId <$> getMaybeInteger query "tag_id"

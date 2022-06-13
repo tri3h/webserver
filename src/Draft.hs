@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Draft where
 
@@ -44,15 +43,22 @@ import Utility
 import Prelude hiding (words)
 
 create :: Logger.Handle IO -> Pool Connection -> QueryText -> ByteString -> Token -> IO Response
-create logger pool query body cToken = do
-  let cTagId = getMaybeTagId query
-  let cMainPhoto = getMaybeMainPhoto body
+create logger pool query body token = do
+  let tagId = getMaybeTagId query
+  let mainPhoto = getMaybeMainPhoto body
   let info = do
-        cCategoryId <- getCategoryId query
-        cName <- getName query
-        cText <- getText query "description"
+        categoryId <- getCategoryId query
+        name <- getName query
+        text <- getText query "description"
         Right $
-          CreateDraft {..}
+          CreateDraft
+            { cToken = token,
+              cTagId = tagId,
+              cMainPhoto = mainPhoto,
+              cCategoryId = categoryId,
+              cName = name,
+              cText = text
+            }
   Logger.debug logger $ "Tried to parse query and got: " ++ show info
   case info of
     Left l -> return $ response400 l

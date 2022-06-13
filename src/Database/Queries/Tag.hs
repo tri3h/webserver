@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Database.Queries.Tag where
 
@@ -16,9 +15,9 @@ import Database.PostgreSQL.Simple
 import Error (Error, tagNameTaken, tagNotExist, unknownError)
 import Types.Limit (Limit, Offset)
 import Types.PostComment (PostId)
-import Types.Tag (Name, Tag (..), TagId)
+import qualified Types.Tag as T
 
-create :: Name -> Connection -> IO (Either Error ())
+create :: T.Name -> Connection -> IO (Either Error ())
 create name conn = do
   result <- try . void $ execute conn "INSERT INTO tags (name) VALUES (?)" (Only name) :: IO (Either SqlError ())
   return $ case result of
@@ -27,12 +26,12 @@ create name conn = do
       "duplicate key value violates unique constraint \"tag_name_unique\"" -> Left tagNameTaken
       _ -> Left unknownError
 
-delete :: TagId -> Connection -> IO (Either Error ())
+delete :: T.TagId -> Connection -> IO (Either Error ())
 delete tagId conn = do
   result <- execute conn "DELETE FROM tags WHERE tags.tag_id = ?" (Only tagId)
   return $ if result == 0 then Left tagNotExist else Right ()
 
-get :: TagId -> Connection -> IO (Either Error Tag)
+get :: T.TagId -> Connection -> IO (Either Error T.Tag)
 get tId conn = do
   result <-
     query
@@ -42,14 +41,14 @@ get tId conn = do
   return $
     if null result
       then Left tagNotExist
-      else Right $ (\[(tagId, name)] -> Tag {..}) result
+      else Right $ (\[(tagId, name)] -> T.Tag {T.tagId = tagId, T.name = name}) result
 
-getAll :: Limit -> Offset -> Connection -> IO [Tag]
+getAll :: Limit -> Offset -> Connection -> IO [T.Tag]
 getAll limit offset conn = do
   result <- query conn "SELECT tag_id, name FROM tags LIMIT ? OFFSET ?" (limit, offset)
-  return $ map (\(tagId, name) -> Tag {..}) result
+  return $ map (\(tagId, name) -> T.Tag {T.tagId = tagId, T.name = name}) result
 
-getByPostId :: PostId -> Connection -> IO [Tag]
+getByPostId :: PostId -> Connection -> IO [T.Tag]
 getByPostId postId conn = do
   xs <-
     query
@@ -58,10 +57,10 @@ getByPostId postId conn = do
       \INNER JOIN post_tags pt ON t.tag_id = pt.tag_id \
       \WHERE pt.post_id = ?"
       (Only postId)
-  let xs' = map (\(tagId, name) -> Tag {..}) xs
+  let xs' = map (\(tagId, name) -> T.Tag {T.tagId = tagId, T.name = name}) xs
   return xs'
 
-edit :: Tag -> Connection -> IO (Either Error ())
+edit :: T.Tag -> Connection -> IO (Either Error ())
 edit tag conn = do
   result <-
     try $
@@ -69,7 +68,7 @@ edit tag conn = do
         conn
         "UPDATE tags SET name = ? \
         \WHERE tags.tag_id = ?"
-        (name tag, tagId tag) ::
+        (T.name tag, T.tagId tag) ::
       IO (Either SqlError Int64)
   return $ case result of
     Right r -> if r == 0 then Left tagNotExist else Right ()

@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Handlers.User (Login, Token, UserId, Handle (..), create, get, getNewToken, generateToken, hashPassword) where
 
 import Crypto.Hash (SHA256 (SHA256), hashWith)
@@ -32,8 +30,8 @@ data Handle m = Handle
   }
 
 create :: Monad m => Handle m -> CreateUser -> Admin -> m (Either Error Token)
-create handle partUser fAdmin = do
-  fToken <- generateToken handle
+create handle partUser admin = do
+  token <- generateToken handle
   let hashPassw = hashPassword $ cPassword partUser
   let user =
         FullUser
@@ -42,7 +40,8 @@ create handle partUser fAdmin = do
             fAvatar = cAvatar partUser,
             fLogin = cLogin partUser,
             fPassword = hashPassw,
-            ..
+            fToken = token,
+            fAdmin = admin
           }
   hCreate handle user
 

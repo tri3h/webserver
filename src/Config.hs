@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Config (make, loggerError) where
 
@@ -15,50 +14,62 @@ import Types.Config
 
 make :: Logger.Handle IO -> IO Config
 make logger = do
-  database <- getDatabaseConfig logger
-  server <- getServerConfig logger
-  return Config {..}
+  db <- getDatabaseConfig logger
+  serv <- getServerConfig logger
+  return
+    Config
+      { database = db,
+        server = serv
+      }
 
 getDatabaseConfig :: Logger.Handle IO -> IO DatabaseConfig
 getDatabaseConfig logger = do
   config <- C.load [C.Required "Configs/Server.config"]
   maybeHost <- C.lookup config "db.host"
-  dHost <- case maybeHost of
+  host <- case maybeHost of
     Just x -> return x
     Nothing -> loggerError logger "Database host has invalid format"
   maybePort <- C.lookup config "db.port"
-  dPort <- case maybePort of
+  port <- case maybePort of
     Just x -> return x
     Nothing -> loggerError logger "Database port has invalid format"
   maybeUser <- C.lookup config "db.user"
-  dUser <- case maybeUser of
+  user <- case maybeUser of
     Just x -> return x
     Nothing -> loggerError logger "User name for access to a database has invalid format"
   maybePassword <- C.lookup config "db.password"
-  dPassword <- case maybePassword of
+  password <- case maybePassword of
     Just x -> return x
     Nothing -> loggerError logger "Password for access to a database has invalid format"
   maybeName <- C.lookup config "db.name"
-  dName <- case maybeName of
+  name <- case maybeName of
     Just x -> return x
     Nothing -> loggerError logger "Database name has invalid format"
-  return DatabaseConfig {..}
+  return
+    DatabaseConfig
+      { dPort = port,
+        dUser = user,
+        dHost = host,
+        dPassword = password,
+        dName = name
+      }
 
 getServerConfig :: Logger.Handle IO -> IO ServerConfig
 getServerConfig logger = do
   config <- C.load [C.Required "Configs/Server.config"]
   maybeHost <- C.lookup config "server.host"
-  sHost <- case maybeHost of
+  host <- case maybeHost of
     Just x -> return x
     Nothing -> loggerError logger "Server host has invalid format"
   maybePort <- C.lookup config "server.port"
-  sPort <- case maybePort of
+  port <- case maybePort of
     Just x -> return x
     Nothing -> loggerError logger "Server port has invalid format"
   return $
     ServerConfig
-      { sAddress = "http://" `append` sHost `append` ":" `append` pack (show (sPort :: Integer)),
-        ..
+      { sAddress = "http://" `append` host `append` ":" `append` pack (show (port :: Integer)),
+        sPort = port,
+        sHost = host
       }
 
 loggerError :: Logger.Handle IO -> String -> IO b
